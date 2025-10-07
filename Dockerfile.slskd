@@ -1,0 +1,4 @@
+FROM slskd/slskd:latest
+RUN apt-get update \
+    && apt-get install -y beets jq python3-requests python3-pylast \
+    && rm -rf /var/lib/apt/lists/*

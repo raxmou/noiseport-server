@@ -1,0 +1,35 @@
+directory: /music/complete
+library: /music/musiclibrary.db
+
+import:
+  move: yes
+  copy: no
+  write: yes
+  resume: no
+  incremental: yes
+  quiet_fallback: asis
+  timid: no
+  log: /music/beets-import.log
+
+paths:
+  default: $albumartist/$album%aunique{}/$track $title
+  singleton: Non-Album/$artist/$title
+
+plugins: fetchart lastgenre lyrics scrub zero
+
+fetchart:
+  sources: coverart itunes amazon albumart
+
+lyrics:
+  sources: genius musixmatch
+
+lastgenre:
+  canonical: yes
+  source: album
+
+zero:
+  fields: comments
+
+match:
+  strong_rec_thresh: 0.60
+  medium_rec_thresh: 0.60
