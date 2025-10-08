@@ -1,14 +1,21 @@
 """Models package."""
 
 from .schemas import (
+    AlbumStats,
     APIInfo,
+    DownloadedAlbum,
+    DownloadedAlbumsResponse,
     DownloadRequest,
     DownloadResponse,
+    DownloadStatsResponse,
     ErrorResponse,
     FileInfo,
     HealthResponse,
     MetricsResponse,
+    NoResultsStatsResponse,
     SearchResult,
+    SearchWithoutResults,
+    TrackStats,
     UserFilesResponse,
 )
 

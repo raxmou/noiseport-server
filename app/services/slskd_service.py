@@ -8,7 +8,18 @@ from slskd_api.apis.transfers import TransfersApi
 
 from app.core.exceptions import DownloadError, SearchTimeoutError, SlskdConnectionError
 from app.core.logging import get_logger
-from app.models.schemas import FileInfo, SearchResult, UserFilesResponse
+from app.models.schemas import (
+    AlbumStats,
+    DownloadedAlbum,
+    DownloadedAlbumsResponse,
+    DownloadStatsResponse,
+    FileInfo,
+    NoResultsStatsResponse,
+    SearchResult,
+    SearchWithoutResults,
+    TrackStats,
+    UserFilesResponse,
+)
 from config import settings
 
 logger = get_logger(__name__)
@@ -239,6 +250,146 @@ class SlskdService:
                     return username, filtered_files
 
         return None
+
+    def get_searches_without_results(self) -> NoResultsStatsResponse:
+        """Get statistics for searches that returned no results."""
+        try:
+            searches_api: SearchesApi = self.client.searches
+            all_searches = searches_api.get_all()
+
+            no_result_searches = []
+            for search in all_searches:
+                if search.get('responseCount', 0) == 0:
+                    search_text = search.get('searchText', '')
+                    # Try to parse "artist - title" format
+                    if ' - ' in search_text:
+                        parts = search_text.split(' - ', 1)
+                        artist = parts[0].strip()
+                        title = parts[1].strip()
+                    else:
+                        # If no delimiter, treat as artist
+                        artist = search_text.strip()
+                        title = ""
+
+                    no_result_searches.append(
+                        SearchWithoutResults(
+                            artist=artist,
+                            title=title,
+                            search_text=search_text
+                        )
+                    )
+
+            return NoResultsStatsResponse(
+                count=len(no_result_searches),
+                searches=no_result_searches
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to get searches without results: {e}")
+            raise DownloadError(f"Failed to get searches without results: {e}")
+
+    def get_download_stats(self) -> DownloadStatsResponse:
+        """Get download statistics from SLSKD."""
+        try:
+            transfers_api: TransfersApi = self.client.transfers
+            transfers = transfers_api.get_all_downloads(includeRemoved=True)
+
+            # Initialize stats
+            album_stats = AlbumStats(tried=len(transfers))
+            track_stats = TrackStats(completed=0, errored=0, queued=0, tried=0)
+
+            # Process each transfer
+            for transfer in transfers:
+                for directory in transfer.get("directories", []):
+                    for file in directory.get("files", []):
+                        state = file.get("state", "")
+                        track_stats.tried += 1
+
+                        if state == "Completed, Succeeded":
+                            track_stats.completed += 1
+                        elif state == "Completed, Errored":
+                            track_stats.errored += 1
+                        elif state == "Queued, Remotely":
+                            track_stats.queued += 1
+
+            return DownloadStatsResponse(
+                albums=album_stats,
+                tracks=track_stats
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to get download stats: {e}")
+            raise DownloadError(f"Failed to get download stats: {e}")
+
+    def get_downloaded_albums(self) -> DownloadedAlbumsResponse:
+        """Get list of downloaded albums."""
+        try:
+            transfers_api: TransfersApi = self.client.transfers
+            transfers = transfers_api.get_all_downloads(includeRemoved=True)
+
+            downloaded_albums = []
+
+            for transfer in transfers:
+                # Extract album info from transfer
+                username = transfer.get("username", "")
+                directories = transfer.get("directories", [])
+
+                for directory in directories:
+                    dir_name = directory.get("directory", "")
+                    files = directory.get("files", [])
+
+                    if not files:
+                        continue
+
+                    # Try to parse artist and album from directory path
+                    # Common formats: "Artist/Album" or "Artist - Album"
+                    album_name = ""
+                    artist_name = ""
+
+                    if "/" in dir_name:
+                        parts = dir_name.split("/")
+                        if len(parts) >= 2:
+                            artist_name = parts[-2]
+                            album_name = parts[-1]
+                        else:
+                            album_name = parts[-1]
+                    elif " - " in dir_name:
+                        parts = dir_name.split(" - ", 1)
+                        artist_name = parts[0]
+                        album_name = parts[1] if len(parts) > 1 else ""
+                    else:
+                        album_name = dir_name
+
+                    # Count completed tracks and calculate total size
+                    completed_tracks = 0
+                    total_size = 0
+
+                    for file in files:
+                        if file.get("state") == "Completed, Succeeded":
+                            completed_tracks += 1
+                        file_size = file.get("size", 0)
+                        if isinstance(file_size, int):
+                            total_size += file_size
+
+                    downloaded_albums.append(
+                        DownloadedAlbum(
+                            artist=artist_name or "Unknown",
+                            album=album_name or "Unknown",
+                            username=username,
+                            track_count=len(files),
+                            completed_tracks=completed_tracks,
+                            total_size=total_size
+                        )
+                    )
+
+            return DownloadedAlbumsResponse(
+                count=len(downloaded_albums),
+                albums=downloaded_albums
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to get downloaded albums: {e}")
+            raise DownloadError(f"Failed to get downloaded albums: {e}")
 
 
 # Global service instance

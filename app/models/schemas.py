@@ -92,3 +92,58 @@ class APIInfo(BaseModel):
     description: str = Field(..., description="API description")
     docs_url: str = Field(..., description="Documentation URL")
     openapi_url: str = Field(..., description="OpenAPI schema URL")
+
+
+class SearchWithoutResults(BaseModel):
+    """Model for searches that returned no results."""
+
+    artist: str = Field(..., description="Artist name")
+    title: str = Field(..., description="Song/album title")
+    search_text: str = Field(..., description="Original search text")
+
+
+class NoResultsStatsResponse(BaseModel):
+    """Response model for searches with no results statistics."""
+
+    count: int = Field(..., ge=0, description="Number of searches with no results")
+    searches: list[SearchWithoutResults] = Field(..., description="List of searches with no results")
+
+
+class TrackStats(BaseModel):
+    """Model for track statistics."""
+
+    completed: int = Field(..., ge=0, description="Number of completed tracks")
+    errored: int = Field(..., ge=0, description="Number of errored tracks")
+    queued: int = Field(..., ge=0, description="Number of queued tracks")
+    tried: int = Field(..., ge=0, description="Total number of tracks attempted")
+
+
+class AlbumStats(BaseModel):
+    """Model for album statistics."""
+
+    tried: int = Field(..., ge=0, description="Number of albums attempted for download")
+
+
+class DownloadStatsResponse(BaseModel):
+    """Response model for download statistics."""
+
+    albums: AlbumStats = Field(..., description="Album download statistics")
+    tracks: TrackStats = Field(..., description="Track download statistics")
+
+
+class DownloadedAlbum(BaseModel):
+    """Model for a downloaded album."""
+
+    artist: str = Field(..., description="Artist name")
+    album: str = Field(..., description="Album name")
+    username: str = Field(..., description="Username who shared the album")
+    track_count: int = Field(..., ge=0, description="Number of tracks in the album")
+    completed_tracks: int = Field(..., ge=0, description="Number of completed tracks")
+    total_size: int = Field(..., ge=0, description="Total size in bytes")
+
+
+class DownloadedAlbumsResponse(BaseModel):
+    """Response model for downloaded albums list."""
+
+    count: int = Field(..., ge=0, description="Total number of downloaded albums")
+    albums: list[DownloadedAlbum] = Field(..., description="List of downloaded albums")
