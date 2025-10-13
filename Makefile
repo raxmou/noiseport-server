@@ -86,13 +86,13 @@ docker-run: ## Run Docker container
 	docker run -p $(PORT):80 --env-file .env downloader:latest
 
 docker-compose-up: ## Start services with docker-compose
-	docker-compose up -d
+	docker compose up -d
 
 docker-compose-down: ## Stop services with docker-compose
-	docker-compose down
+	docker compose down
 
 docker-logs: ## View docker-compose logs
-	docker-compose logs -f
+	docker compose logs -f
 
 # Pre-commit targets
 pre-commit-install: ## Install pre-commit hooks

@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-async def background_download_album(artist: str, album: str, task_id: str) -> None:
+def background_download_album(artist: str, album: str, task_id: str) -> None:
     """Background task for downloading album."""
     logger.info(f"[Task {task_id}] Starting download: {artist} - {album}")
 
@@ -59,7 +59,7 @@ async def background_download_album(artist: str, album: str, task_id: str) -> No
 
 
 @router.post("/download", response_model=DownloadResponse, tags=["Downloads"])
-async def download_album(
+def download_album(
     request: DownloadRequest, background_tasks: BackgroundTasks
 ) -> DownloadResponse:
     """

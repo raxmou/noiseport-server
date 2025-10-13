@@ -132,7 +132,8 @@ precision = 2
 
 [tool.coverage.html]
 directory = "htmlcov"
-
+[tool.uv]
+venv = ".venv"
 [tool.bandit]
 exclude_dirs = ["tests"]
 tests = ["B201", "B301"]

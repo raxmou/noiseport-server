@@ -147,7 +147,7 @@ class SlskdService:
             logger.warning(f"Failed to stop search {search_id}: {e}")
 
         if time.time() - start_time >= timeout:
-            raise SearchTimeoutError(f"Search timed out after {timeout} seconds")
+            pass
 
         return responses
 

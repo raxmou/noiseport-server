@@ -19,10 +19,16 @@ ENV PYTHONUNBUFFERED=1 \
 
 # Copy dependency files
 WORKDIR /app
-COPY pyproject.toml uv.lock ./
-
+COPY pyproject.toml uv.lock README.md ./
+RUN rm -rf .venv
 # Install dependencies to a virtual environment
-RUN uv sync --frozen --no-cache --no-dev
+RUN uv venv /app/.venv && \
+    uv sync --frozen --no-cache --no-dev --project . --python=/app/.venv/bin/python
+
+# 👀 Optional: sanity check
+RUN uv run python -m site && \
+    uv run uv pip list
+
 
 # Production stage
 FROM python:3.11-slim as production
@@ -62,8 +68,6 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/api/v1/system/health || exit 1
 
-# Expose port
 EXPOSE 8000
-
 # Run the application
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.core.app:app", "--host", "0.0.0.0", "--port", "80"]
