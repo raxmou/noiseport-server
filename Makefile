@@ -13,6 +13,12 @@ PORT := 8000
 COVERAGE_MIN := 80
 
 help: ## Show this help message
+	@echo "🎵 Downloader API - Music Client Management"
+	@echo ""
+	@echo "🚀 Quick Start:"
+	@echo "  make setup          # Set up development environment"
+	@echo "  make wizard-dev     # Start server and open setup wizard"
+	@echo ""
 	@echo "Available commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
@@ -148,10 +154,31 @@ docs: ## Generate API documentation
 serve-docs: ## Serve documentation locally
 	$(UV) run mkdocs serve
 
+# Setup Wizard targets
+build-wizard: ## Build the React setup wizard frontend
+	cd frontend && npm install && npm run build
+	@echo "Setup wizard built successfully!"
+	@echo "Access it at http://localhost:$(PORT)/wizard"
+
+wizard: ## Open the setup wizard (requires server to be running)
+	@echo "Opening setup wizard at http://localhost:$(PORT)/wizard"
+	@echo "Make sure the server is running with 'make dev' or 'make run'"
+	@command -v open >/dev/null 2>&1 && open http://localhost:$(PORT)/wizard || \
+	command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:$(PORT)/wizard || \
+	echo "Please open http://localhost:$(PORT)/wizard in your browser"
+
+wizard-dev: ## Start development server and open wizard
+	@echo "Starting development server and wizard..."
+	@echo "Server will be available at http://localhost:$(PORT)"
+	@echo "Wizard will be available at http://localhost:$(PORT)/wizard"
+	$(UV) run uvicorn $(APP_MODULE) --reload --host 0.0.0.0 --port $(PORT)
+
 # Environment setup
-setup: install-dev pre-commit-install ## Set up development environment
+setup: install-dev pre-commit-install build-wizard ## Set up development environment
 	@echo "Development environment setup complete!"
-	@echo "Run 'make run' to start the development server"
+	@echo "Setup wizard frontend built!"
+	@echo "Run 'make wizard-dev' to start server and access the setup wizard"
+	@echo "Or run 'make dev' to start the development server"
 
 # Build targets
 build: ## Build the application
