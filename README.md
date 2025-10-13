@@ -203,10 +203,14 @@ When running in development mode, access the interactive API documentation:
 
 ## Docker Deployment
 
-### Using Docker Compose
+The application is available as pre-built Docker images on Docker Hub for easy deployment.
+
+### Production Deployment (Recommended)
+
+Use published Docker images from Docker Hub:
 
 ```bash
-# Start all services
+# Start all services with published images
 make docker-compose-up
 
 # View logs
@@ -216,15 +220,56 @@ make docker-logs
 make docker-compose-down
 ```
 
-### Building Custom Images
+**Available Images:**
+- `maxenceroux/music-aggregator-api:latest` - FastAPI application
+- `maxenceroux/music-aggregator-slskd:latest` - SLSKD service with music tools
+
+### Development Deployment
+
+For development with local builds:
 
 ```bash
-# Build Docker image
-make docker-build
+# Start services with local builds
+make docker-compose-dev
 
-# Run container
-make docker-run
+# Stop development services
+make docker-compose-dev-down
 ```
+
+### Manual Docker Operations
+
+```bash
+# Build individual images
+make docker-build-api     # Build API image
+make docker-build-slskd   # Build SLSKD image
+make docker-build-all     # Build all images
+
+# Push to Docker Hub (requires authentication)
+make docker-login         # Login to Docker Hub
+make docker-push-all      # Push all images
+make docker-release       # Build and push all images
+
+# Run individual containers
+make docker-run           # Run API container
+```
+
+### Image Tagging Strategy
+
+Images are automatically tagged with:
+- `latest` - Latest stable release (main branch)
+- `<branch-name>` - Branch-specific builds
+- `<git-sha>` - Specific commit builds
+
+### CI/CD Integration
+
+Docker images are automatically built and pushed to Docker Hub on:
+- **Push to main branch**: Tagged as `latest` + git SHA + branch name
+- **Push to develop branch**: Tagged with git SHA + branch name
+- **Pull requests**: Tagged with git SHA + PR reference
+
+**Required GitHub Secrets for CI/CD:**
+- `DOCKER_HUB_USERNAME` - Docker Hub username
+- `DOCKER_HUB_ACCESS_TOKEN` - Docker Hub access token
 
 ## Testing
 

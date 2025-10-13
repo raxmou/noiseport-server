@@ -1,8 +1,10 @@
 ---
 services:
   slskd:
-    image: maxenceroux/music-aggregator-slskd:latest
-    container_name: slskd
+    build:  
+      context: .
+      dockerfile: Dockerfile.slskd 
+    container_name: slskd-dev
     ports:
       - "5030:5030"
       - "5031:5031"
@@ -18,15 +20,15 @@ services:
     networks:
       - rax-net
     labels:
-      glance.name: slskd
+      glance.name: slskd-dev
       glance.hide: false
       glance.icon: https://avatars.githubusercontent.com/u/76762370?s=200&v=4
       glance.url: http://slskd.rax.zone
-      glance.description: "Soudlseek file sharing network app"
+      glance.description: "Soudlseek file sharing network app (dev)"
 
   fastapi:
-    image: maxenceroux/music-aggregator-api:latest
-    container_name: fastapi
+    build: .
+    container_name: fastapi-dev
     ports:
       - "8000:80"
     
@@ -36,13 +38,13 @@ services:
     networks:
       - rax-net
     labels:
-      glance.name: FastAPI slskd endpoints
+      glance.name: FastAPI slskd endpoints (dev)
       glance.hide: false
       glance.icon: si:fastapi
       
   navidrome:
     image: deluan/navidrome:latest
-    container_name: navidrome
+    container_name: navidrome-dev
     user: 1000:1000 
     ports:
       - "4533:4533"
@@ -60,11 +62,11 @@ services:
       - "/media/pi/Lexar/music/complete:/music:ro"
       - "/home/pi/dev/navidrome:/data"
     labels:
-      glance.name: Navidrome
+      glance.name: Navidrome (dev)
       glance.hide: false
       glance.icon: https://avatars.githubusercontent.com/u/26692192?s=200&v=4
       glance.url: http://navidrome.rax.zone
-      glance.description: "Music Streaming Server"
+      glance.description: "Music Streaming Server (dev)"
     networks:
       - rax-net
 

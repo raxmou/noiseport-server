@@ -78,10 +78,10 @@ def test_stats_endpoints_structure(client):
     """Test stats endpoints return correct structure."""
     stats_endpoints = [
         "/api/v1/stats/searches/no-results",
-        "/api/v1/stats/downloads/stats", 
+        "/api/v1/stats/downloads/stats",
         "/api/v1/stats/downloads/albums"
     ]
-    
+
     for endpoint in stats_endpoints:
         response = client.get(endpoint)
         # Without SLSKD service, we expect 503 or 500 (connection error)

@@ -1,6 +1,6 @@
 # Production-ready FastAPI Makefile
 
-.PHONY: help install install-dev lint format test test-unit test-integration coverage build run clean docker-build docker-run docker-compose-up docker-compose-down pre-commit-install pre-commit-run security audit docs serve-docs
+.PHONY: help install install-dev lint format test test-unit test-integration coverage build run clean docker-build docker-run docker-compose-up docker-compose-down docker-compose-dev docker-compose-dev-down docker-build-api docker-build-slskd docker-build-all docker-push-api docker-push-slskd docker-push-all docker-login docker-release pre-commit-install pre-commit-run security audit docs serve-docs
 
 # Default target
 .DEFAULT_GOAL := help
@@ -11,6 +11,18 @@ UV := uv
 APP_MODULE := app.main:app
 PORT := 8000
 COVERAGE_MIN := 80
+
+# Docker variables
+DOCKER_ORG := maxenceroux
+DOCKER_REPO_API := music-aggregator-api
+DOCKER_REPO_SLSKD := music-aggregator-slskd
+GIT_SHA := $(shell git rev-parse --short HEAD)
+GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD | sed 's/\//-/g')
+VERSION := $(shell git describe --tags --always --dirty)
+
+# Docker image names
+API_IMAGE := $(DOCKER_ORG)/$(DOCKER_REPO_API)
+SLSKD_IMAGE := $(DOCKER_ORG)/$(DOCKER_REPO_SLSKD)
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -85,11 +97,47 @@ docker-build: ## Build Docker image
 docker-run: ## Run Docker container
 	docker run -p $(PORT):80 --env-file .env downloader:latest
 
+# Docker build targets for individual services
+docker-build-api: ## Build API Docker image
+	docker build -t $(API_IMAGE):latest -t $(API_IMAGE):$(GIT_SHA) -t $(API_IMAGE):$(GIT_BRANCH) .
+
+docker-build-slskd: ## Build SLSKD Docker image
+	docker build -f Dockerfile.slskd -t $(SLSKD_IMAGE):latest -t $(SLSKD_IMAGE):$(GIT_SHA) -t $(SLSKD_IMAGE):$(GIT_BRANCH) .
+
+docker-build-all: docker-build-api docker-build-slskd ## Build all Docker images
+
+# Docker push targets
+docker-push-api: ## Push API Docker image to registry
+	docker push $(API_IMAGE):latest
+	docker push $(API_IMAGE):$(GIT_SHA)
+	docker push $(API_IMAGE):$(GIT_BRANCH)
+
+docker-push-slskd: ## Push SLSKD Docker image to registry
+	docker push $(SLSKD_IMAGE):latest
+	docker push $(SLSKD_IMAGE):$(GIT_SHA)
+	docker push $(SLSKD_IMAGE):$(GIT_BRANCH)
+
+docker-push-all: docker-push-api docker-push-slskd ## Push all Docker images to registry
+
+# Docker login
+docker-login: ## Login to Docker Hub
+	@echo "Logging in to Docker Hub..."
+	@docker login
+
+# Docker complete workflow targets
+docker-release: docker-build-all docker-push-all ## Build and push all Docker images
+
 docker-compose-up: ## Start services with docker-compose
 	docker compose up -d
 
+docker-compose-dev: ## Start services with docker-compose for development (local builds)
+	docker compose -f docker-compose.dev.yml up -d
+
 docker-compose-down: ## Stop services with docker-compose
 	docker compose down
+
+docker-compose-dev-down: ## Stop development services with docker-compose
+	docker compose -f docker-compose.dev.yml down
 
 docker-logs: ## View docker-compose logs
 	docker compose logs -f

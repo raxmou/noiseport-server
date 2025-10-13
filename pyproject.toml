@@ -132,8 +132,7 @@ precision = 2
 
 [tool.coverage.html]
 directory = "htmlcov"
-[tool.uv]
-venv = ".venv"
+# UV configuration is now in uv.toml or as environment variables
 [tool.bandit]
 exclude_dirs = ["tests"]
 tests = ["B201", "B301"]
