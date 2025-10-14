@@ -44,7 +44,7 @@ directories:
   downloads: /music/downloads
 shares:
   directories:
-    - /music/downloads
+    - /music/complete
   filters:
     - \.ini$
     - Thumbs.db$
