@@ -366,6 +366,43 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
                 success = False
                 message = f"Failed to connect to slskd: {e}"
 
+        # --- TAILSCALE ---
+        elif service == "tailscale":
+            try:
+                import subprocess
+                # Check if tailscale is installed and running
+                result = subprocess.run(
+                    ["tailscale", "status", "--json"], 
+                    capture_output=True, 
+                    text=True, 
+                    timeout=5
+                )
+                if result.returncode == 0:
+                    import json
+                    status_data = json.loads(result.stdout)
+                    if status_data.get("BackendState") == "Running":
+                        success = True
+                        self_ip = status_data.get("TailscaleIPs", [])
+                        if self_ip:
+                            message = f"Tailscale is running. Your IP: {self_ip[0]}"
+                        else:
+                            message = "Tailscale is running but no IP assigned yet"
+                    else:
+                        success = False
+                        message = f"Tailscale not connected. State: {status_data.get('BackendState', 'Unknown')}"
+                else:
+                    success = False
+                    message = "Tailscale command failed. Make sure it's installed and configured."
+            except subprocess.TimeoutExpired:
+                success = False
+                message = "Tailscale status check timed out"
+            except FileNotFoundError:
+                success = False
+                message = "Tailscale not installed. Please install from https://tailscale.com/download"
+            except Exception as e:
+                success = False
+                message = f"Error checking Tailscale status: {e}"
+
         # --- UNKNOWN SERVICE ---
         else:
             success = False
