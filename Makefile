@@ -9,7 +9,7 @@
 PYTHON := python
 UV := uv
 APP_MODULE := app.main:app
-PORT := 8000
+PORT := 8010
 COVERAGE_MIN := 80
 
 help: ## Show this help message
@@ -171,7 +171,11 @@ wizard-dev: ## Start development server and open wizard
 	@echo "Starting development server and wizard..."
 	@echo "Server will be available at http://localhost:$(PORT)"
 	@echo "Wizard will be available at http://localhost:$(PORT)/wizard"
-	$(UV) run uvicorn $(APP_MODULE) --reload --host 0.0.0.0 --port $(PORT)
+	$(UV) run uvicorn $(APP_MODULE) --reload --host 0.0.0.0 --port $(PORT) \
+	sleep 2 \
+	@command -v open >/dev/null 2>&1 && open http://localhost:$(PORT)/wizard || \
+	command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:$(PORT)/wizard || \
+	echo "Please open http://localhost:$(PORT)/wizard in your browser"
 
 # Environment setup
 setup: install-dev pre-commit-install build-wizard ## Set up development environment

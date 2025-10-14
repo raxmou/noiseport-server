@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Any, Dict
+import hashlib
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
@@ -16,6 +16,20 @@ from app.models.config import (
     ValidationError,
 )
 from config import settings
+
+
+from pydantic import BaseModel
+import requests
+
+class ConnectionTestRequest(BaseModel):
+    service: str
+    config: dict
+
+
+class ConnectionTestResponse(BaseModel):
+    success: bool
+    message: str
+
 
 logger = get_logger(__name__)
 
@@ -256,47 +270,110 @@ async def validate_configuration(config: WizardConfiguration) -> ConfigValidatio
 
 
 @router.post("/config/test-connection", response_model=ConnectionTestResponse)
-async def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
-    """Test connection to a service."""
+def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
+    """Test connection to a service (Navidrome, Jellyfin, Spotify, Soulseek)."""
+    service = request.service.lower()
+    config = request.config
+
     try:
-        service = request.service.lower()
-        config = request.config
-        
+        # --- NAVIDROME ---
         if service == "navidrome":
-            # Simulate Navidrome connection test
-            success = bool(config.get("url") and config.get("username") and config.get("password"))
-            message = "Connection successful" if success else "Missing required fields"
-            
+        
+            base_url = config.get("url", "").rstrip("/")
+            username = config.get("username")
+            password = config.get("password")
+            client_name = config.get("client_name", "auth-tester")
+            version = "1.16.1"
+
+            # Build auth params
+            use_token = config.get("use_token", False)
+
+            if use_token:
+                salt = "abc123"  # or random string
+                token = hashlib.md5((password + salt).encode()).hexdigest()
+                auth_params = {"u": username, "t": token, "s": salt}
+            else:
+                auth_params = {"u": username, "p": password}
+
+            params = {
+                **auth_params,
+                "v": version,
+                "c": client_name,
+            }
+
+            try:
+                ping_url = f"{base_url}/rest/ping.view"
+                resp = requests.get(ping_url, params=params, timeout=5)
+
+                if resp.status_code == 200 and "ok" in resp.text:
+                    success = True
+                    message = f"Connection successful as {username}"
+                else:
+                    success = False
+                    message = f"Authentication failed: HTTP {resp.status_code} — {resp.text}"
+
+            except Exception as e:
+                success = False
+                message = f"Connection failed: {e}"
+
+            print(success, message)
+            return {"success": success, "message": message}
+        # --- JELLYFIN ---
         elif service == "jellyfin":
-            # Simulate Jellyfin connection test
-            success = bool(config.get("url") and config.get("username") and config.get("password"))
-            message = "Connection successful" if success else "Missing required fields"
-            
+            try:
+                headers = {
+                    "Authorization": (
+                        f"MediaBrowser UserId=\"{config.get('username')}\", "
+                        f"Client=\"SetupWizard\", Device=\"SetupWizard\", "
+                        f"Token=\"{config.get('password')}\""
+                    )
+                }
+                resp = requests.get(f"{config.get('url').rstrip('/')}/Users/Me", headers=headers, timeout=5)
+                success = resp.status_code == 200
+                message = "Connection successful" if success else f"HTTP {resp.status_code}: {resp.text}"
+            except Exception as e:
+                success = False
+                message = f"Connection failed: {e}"
+
+        # --- SPOTIFY ---
         elif service == "spotify":
-            # Simulate Spotify connection test
-            success = bool(config.get("clientId") and config.get("clientSecret"))
-            message = "Credentials valid" if success else "Missing required credentials"
-            
+            try:
+                data = {
+                    "grant_type": "client_credentials",
+                    "client_id": config.get("clientId"),
+                    "client_secret": config.get("clientSecret"),
+                }
+                resp = requests.post("https://accounts.spotify.com/api/token", data=data, timeout=5)
+                success = resp.status_code == 200 and "access_token" in resp.json()
+                message = "Credentials valid" if success else f"HTTP {resp.status_code}: {resp.text}"
+            except Exception as e:
+                success = False
+                message = f"Connection failed: {e}"
+
+        # --- SOULSEEK ---
         elif service == "soulseek":
-            # For Soulseek, we can use the existing slskd service
             try:
                 from app.services.slskd_service import SlskdService
-                slskd_service = SlskdService()
-                # Try to access the client to test connection
-                client = slskd_service.client
-                success = True
-                message = "Connection successful"
-            except Exception:
+                slskd_service = SlskdService(
+                    host=config.get("host"),
+                    username=config.get("username"),
+                    password=config.get("password"),
+                )
+                resp = slskd_service.client.get_status()
+                success = resp.get("status") == "ok"
+                message = "Connection successful" if success else f"Status: {resp.get('status')}"
+            except Exception as e:
                 success = False
-                message = "Failed to connect to slskd"
-                
+                message = f"Failed to connect to slskd: {e}"
+
+        # --- UNKNOWN SERVICE ---
         else:
             success = False
             message = f"Unknown service: {service}"
-        
+
         logger.info(f"Connection test for {service}: {'success' if success else 'failed'}")
         return ConnectionTestResponse(success=success, message=message)
-        
+
     except Exception as e:
         logger.error(f"Failed to test connection: {e}")
-        return ConnectionTestResponse(success=False, message=f"Connection test failed: {str(e)}")
+        return ConnectionTestResponse(success=False, message=f"Connection test failed: {e}")

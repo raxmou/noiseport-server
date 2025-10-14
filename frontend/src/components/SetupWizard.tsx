@@ -17,6 +17,7 @@ import LocalLibrariesStep from './steps/LocalLibrariesStep';
 import SpotifyStep from './steps/SpotifyStep';
 import SoulseekStep from './steps/SoulseekStep';
 import MusicPathsStep from './steps/MusicPathsStep';
+import TailscaleStep from './steps/TailscaleStep';
 import FeaturesStep from './steps/FeaturesStep';
 import SummaryStep from './steps/SummaryStep';
 
@@ -46,6 +47,13 @@ const steps: WizardStep[] = [
     id: 'paths',
     title: 'Music Paths',
     description: 'Set music folder paths',
+    completed: false,
+    valid: false,
+  },
+  {
+    id: 'tailscale',
+    title: 'Tailscale VPN',
+    description: 'Set up Tailscale VPN for remote connectivity',
     completed: false,
     valid: false,
   },
@@ -143,7 +151,7 @@ export default function SetupWizard() {
         );
       case 4:
         return (
-          <FeaturesStep
+          <TailscaleStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(4, valid)}
@@ -151,9 +159,17 @@ export default function SetupWizard() {
         );
       case 5:
         return (
+          <FeaturesStep
+            config={config}
+            onUpdate={updateConfig}
+            onValidation={(valid) => handleStepValidation(5, valid)}
+          />
+        );
+      case 6:
+        return (
           <SummaryStep
             config={config}
-            onValidation={(valid) => handleStepValidation(5, valid)}
+            onValidation={(valid) => handleStepValidation(6, valid)}
           />
         );
       default:
@@ -171,11 +187,14 @@ export default function SetupWizard() {
         <LoadingOverlay visible={loading || saving} />
         
         <Title order={1} mb="xl" ta="center">
-          Music Client Setup Wizard
+          Noiseport Setup Wizard
         </Title>
         
         <Text size="lg" c="dimmed" ta="center" mb="xl">
-          Configure your music client stack in a few simple steps
+          Configure your Noiseport client stack in a few simple steps.
+          If you encounter any issues, please refer to the documentation or seek help on our support channels. 
+          You can revisit this wizard anytime to update your settings.
+          
         </Text>
 
         {error && (

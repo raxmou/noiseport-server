@@ -16,7 +16,7 @@ services:
       - /media/pi/Lexar/music:/music
       - /media/pi/Lexar/musiclibrary.db:/music/musiclibrary.db
       - ./shared:/shared
-    restart: always
+    restart: unless-stopped
     networks:
       - rax-net
     labels:
@@ -24,7 +24,7 @@ services:
       glance.hide: false
       glance.icon: https://avatars.githubusercontent.com/u/76762370?s=200&v=4
       glance.url: http://slskd.rax.zone
-      glance.description: "Soudlseek file sharing network app"
+      glance.description: "Soulseek file sharing network app"
 
   fastapi:
     build: .
@@ -34,7 +34,7 @@ services:
     
     depends_on:
       - slskd
-    restart: always
+    restart: unless-stopped
     networks:
       - rax-net
     labels:
@@ -69,7 +69,28 @@ services:
       glance.description: "Music Streaming Server"
     networks:
       - rax-net
-
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    ports:
+      - "8096:8096"        
+    environment:
+      - PUID=1000          
+      - PGID=1000          
+      - TZ=Europe/Paris    
+    volumes:
+      - /home/pi/dev/jellyfin/config:/config
+      - /home/pi/dev/jellyfin/cache:/cache
+      - /media/pi/Lexar/music/complete:/music:ro
+    labels:
+      glance.name: Jellyfin
+      glance.hide: false
+      glance.icon: https://avatars.githubusercontent.com/u/45698031?s=200&v=4
+      glance.url: http://jellyfin.rax.zone
+      glance.description: "Media Streaming Server"
+    restart: unless-stopped
+    networks:
+      - rax-net
 
 networks:
   rax-net:
