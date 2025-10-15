@@ -1,114 +1,21 @@
 ---
 services:
-  slskd:
-    build:  
-      context: .
-      dockerfile: Dockerfile.slskd 
-    container_name: slskd
-    ports:
-      - "5030:5030"
-      - "5031:5031"
-      - "50300:50300"
-    environment:
-      - SLSKD_REMOTE_CONFIGURATION=true
-    volumes:
-      - ./slskd:/app
-      - music_downloads:/music/downloads
-      - music_complete:/music/complete
-      - ./shared:/shared
-    restart: unless-stopped
-    networks:
-      - music-net
-    labels:
-      glance.name: slskd
-      glance.hide: false
-      glance.icon: https://avatars.githubusercontent.com/u/76762370?s=200&v=4
-      glance.url: http://slskd.rax.zone
-      glance.description: "Soulseek file sharing network app"
-
   fastapi:
     build: .
-    container_name: fastapi
+    container_name: fastapi-wizard
     ports:
       - "8000:80"
     environment:
-      - SLSKD_HOST=http://slskd:5030
-      - NAVIDROME_URL=http://navidrome:4533
-      - JELLYFIN_URL=http://jellyfin:8096
-    depends_on:
-      - slskd
+      - WIZARD_MODE=true
     restart: unless-stopped
     networks:
       - music-net
     labels:
-      glance.name: Music Stack API & Wizard
+      glance.name: Music Stack Setup Wizard
       glance.hide: false
       glance.icon: si:fastapi
       glance.url: http://localhost:8000/wizard
-      glance.description: "Setup wizard and API endpoints"
-      
-  navidrome:
-    image: deluan/navidrome:latest
-    container_name: navidrome
-    user: 1000:1000 
-    ports:
-      - "4533:4533"
-    restart: unless-stopped
-    environment:
-      # Optional: put your config options customization here. Examples:
-      ND_SCANSCHEDULE: 1h
-      ND_LOGLEVEL: info  
-      ND_SESSIONTIMEOUT: 24h
-      ND_BASEURL: ""
-      ND_LASTFM_APIKEY: "ba4d1d6a559025928f35ab4499e8bd9a"
-      ND_LASTFM_SECRET:  "66fe381a44a991e76623b24177994947"
-      ND_LASTFM_LANGUAGE: "en"
-    volumes:
-      - music_complete:/music:ro
-      - navidrome_data:/data
-    labels:
-      glance.name: Navidrome
-      glance.hide: false
-      glance.icon: https://avatars.githubusercontent.com/u/26692192?s=200&v=4
-      glance.url: http://localhost:4533
-      glance.description: "Music Streaming Server"
-    networks:
-      - music-net
-
-  jellyfin:
-    image: lscr.io/linuxserver/jellyfin:latest
-    container_name: jellyfin
-    ports:
-      - "8096:8096"        
-    environment:
-      - PUID=1000          
-      - PGID=1000          
-      - TZ=UTC    
-    volumes:
-      - jellyfin_config:/config
-      - jellyfin_cache:/cache
-      - music_complete:/music:ro
-    labels:
-      glance.name: Jellyfin
-      glance.hide: false
-      glance.icon: https://avatars.githubusercontent.com/u/45698031?s=200&v=4
-      glance.url: http://localhost:8096
-      glance.description: "Media Streaming Server"
-    restart: unless-stopped
-    networks:
-      - music-net
-
-volumes:
-  music_downloads:
-    driver: local
-  music_complete:
-    driver: local
-  navidrome_data:
-    driver: local
-  jellyfin_config:
-    driver: local
-  jellyfin_cache:
-    driver: local
+      glance.description: "Setup wizard - configure paths before launching other services"
 
 networks:
   music-net:

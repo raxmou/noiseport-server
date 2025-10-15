@@ -205,55 +205,84 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
         
         logger.info("Configuration saved successfully")
         
-        # Generate docker-compose override file with new paths
+        # Generate full docker-compose file with user-specified host paths
         try:
-            # Create docker-compose override content
-            compose_override = f"""---
-version: '3.8'
-services:
-  slskd:
-    volumes:
-      - ./slskd:/app
-      - {env_vars["HOST_DOWNLOAD_PATH"]}:/music/downloads
-      - {env_vars["HOST_COMPLETE_PATH"]}:/music/complete
-      - ./shared:/shared
+            import os
+            
+            # Read the template
+            template_path = "docker-compose.full.yml.template"
+            if os.path.exists(template_path):
+                with open(template_path, "r") as f:
+                    compose_template = f.read()
+                
+                # Replace placeholders with actual paths
+                compose_content = compose_template.replace(
+                    "{{HOST_DOWNLOAD_PATH}}", env_vars["HOST_DOWNLOAD_PATH"]
+                ).replace(
+                    "{{HOST_COMPLETE_PATH}}", env_vars["HOST_COMPLETE_PATH"]
+                )
+                
+                # Write the full docker-compose file
+                with open("docker-compose.full.yml", "w") as f:
+                    f.write(compose_content)
+                
+                # Create directories with proper permissions
+                import os
+                import stat
+                
+                download_path = env_vars["HOST_DOWNLOAD_PATH"]
+                complete_path = env_vars["HOST_COMPLETE_PATH"]
+                
+                # Create directories if they don't exist
+                os.makedirs(download_path, exist_ok=True)
+                os.makedirs(complete_path, exist_ok=True)
+                os.makedirs(f"{complete_path}/navidrome_data", exist_ok=True)
+                os.makedirs(f"{complete_path}/jellyfin_config", exist_ok=True)
+                os.makedirs(f"{complete_path}/jellyfin_cache", exist_ok=True)
+                
+                # Set permissions (readable/writable for user and group)
+                for path in [download_path, complete_path]:
+                    os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
+                    for root, dirs, files in os.walk(path):
+                        for d in dirs:
+                            dir_path = os.path.join(root, d)
+                            os.chmod(dir_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
+                
+                logger.info(f"Generated docker-compose.full.yml with user paths: {download_path}, {complete_path}")
+                
+                # Create a startup script
+                startup_script = f"""#!/bin/bash
+echo "🎵 Starting Music Stack with your configured paths..."
+echo "📁 Downloads: {download_path}"
+echo "📁 Complete: {complete_path}"
+echo ""
+echo "🛑 Stopping wizard container..."
+docker compose down
 
-  fastapi:
-    volumes:
-      - {env_vars["HOST_DOWNLOAD_PATH"]}:/music/downloads
-      - {env_vars["HOST_COMPLETE_PATH"]}:/music/complete
+echo "🚀 Starting full music stack..."
+docker compose -f docker-compose.full.yml up -d
 
-  navidrome:
-    volumes:
-      - {env_vars["HOST_COMPLETE_PATH"]}:/music:ro
-      - navidrome_data:/data
-
-  jellyfin:
-    volumes:
-      - jellyfin_config:/config
-      - jellyfin_cache:/cache
-      - {env_vars["HOST_COMPLETE_PATH"]}:/music:ro
-
-volumes:
-  navidrome_data:
-    driver: local
-  jellyfin_config:
-    driver: local
-  jellyfin_cache:
-    driver: local
-
-networks:
-  music-net:
-    driver: bridge
+echo ""
+echo "✅ Music stack is starting up!"
+echo "🌐 Services will be available at:"
+echo "   - Navidrome: http://localhost:4533"
+echo "   - Jellyfin: http://localhost:8096"
+echo "   - slskd: http://localhost:5030"
+echo "   - FastAPI: http://localhost:8000"
+echo ""
+echo "⏳ Please wait a few moments for services to fully start before accessing them."
 """
-            
-            # Write the override file
-            with open("docker-compose.override.yml", "w") as f:
-                f.write(compose_override)
-            
-            logger.info("Generated docker-compose.override.yml with updated host paths")
+                
+                with open("start-music-stack.sh", "w") as f:
+                    f.write(startup_script)
+                
+                # Make script executable
+                os.chmod("start-music-stack.sh", stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+                
+            else:
+                logger.warning("docker-compose.full.yml.template not found")
         except Exception as e:
-            logger.warning(f"Failed to generate docker-compose override: {e}")
+            logger.warning(f"Failed to generate docker-compose file: {e}")
         
         return JSONResponse(
             status_code=status.HTTP_200_OK,
@@ -263,7 +292,13 @@ networks:
                 "hostPaths": {
                     "downloads": env_vars["HOST_DOWNLOAD_PATH"],
                     "complete": env_vars["HOST_COMPLETE_PATH"]
-                }
+                },
+                "nextSteps": [
+                    "Run './start-music-stack.sh' to start all services with your configured paths",
+                    "Wait for services to start, then access them at their respective URLs",
+                    "Create accounts in Navidrome and Jellyfin",
+                    "Return to wizard to configure authentication"
+                ]
             }
         )
         
@@ -482,71 +517,131 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
         return ConnectionTestResponse(success=False, message=f"Connection test failed: {e}")
 
 
-@router.post("/config/generate-compose")
-async def generate_docker_compose() -> JSONResponse:
-    """Generate docker-compose.override.yml with user-specified host paths."""
+@router.post("/config/launch-services")
+async def launch_services() -> JSONResponse:
+    """Launch the full music stack with configured paths."""
     try:
-        # Load current settings
-        from config import settings
+        import subprocess
+        import os
         
-        # Create docker-compose override content
-        compose_override = f"""---
-version: '3.8'
-services:
-  slskd:
-    volumes:
-      - ./slskd:/app
-      - {settings.host_download_path}:/music/downloads
-      - {settings.host_complete_path}:/music/complete
-      - ./shared:/shared
-
-  fastapi:
-    volumes:
-      - {settings.host_download_path}:/music/downloads
-      - {settings.host_complete_path}:/music/complete
-
-  navidrome:
-    volumes:
-      - {settings.host_complete_path}:/music:ro
-      - navidrome_data:/data
-
-  jellyfin:
-    volumes:
-      - jellyfin_config:/config
-      - jellyfin_cache:/cache
-      - {settings.host_complete_path}:/music:ro
-
-volumes:
-  navidrome_data:
-    driver: local
-  jellyfin_config:
-    driver: local
-  jellyfin_cache:
-    driver: local
-
-networks:
-  music-net:
-    driver: bridge
-"""
+        # Check if the full docker-compose file exists
+        if not os.path.exists("docker-compose.full.yml"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Configuration not saved yet. Please save your configuration first."
+            )
         
-        # Write the override file
-        with open("docker-compose.override.yml", "w") as f:
-            f.write(compose_override)
+        # Execute the startup script
+        if os.path.exists("start-music-stack.sh"):
+            result = subprocess.run(
+                ["bash", "start-music-stack.sh"],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                return JSONResponse(
+                    status_code=status.HTTP_200_OK,
+                    content={
+                        "message": "Music stack is starting up",
+                        "output": result.stdout,
+                        "services": {
+                            "navidrome": "http://localhost:4533",
+                            "jellyfin": "http://localhost:8096", 
+                            "slskd": "http://localhost:5030",
+                            "fastapi": "http://localhost:8000"
+                        }
+                    }
+                )
+            else:
+                return JSONResponse(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content={
+                        "message": "Failed to start services",
+                        "error": result.stderr
+                    }
+                )
+        else:
+            # Fallback - run docker compose directly
+            result = subprocess.run(
+                ["docker", "compose", "-f", "docker-compose.full.yml", "up", "-d"],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode == 0:
+                return JSONResponse(
+                    status_code=status.HTTP_200_OK,
+                    content={
+                        "message": "Music stack started successfully",
+                        "output": result.stdout
+                    }
+                )
+            else:
+                return JSONResponse(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content={
+                        "message": "Failed to start services",
+                        "error": result.stderr
+                    }
+                )
         
-        logger.info("Generated docker-compose.override.yml with user-specified host paths")
+    except subprocess.TimeoutExpired:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Service startup timed out"}
+        )
+    except Exception as e:
+        logger.error(f"Failed to launch services: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to launch services"
+        )
+
+
+@router.get("/config/service-status")
+async def get_service_status() -> JSONResponse:
+    """Check the status of all services."""
+    try:
+        import subprocess
+        
+        # Check which containers are running
+        result = subprocess.run(
+            ["docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        services = {
+            "navidrome": {"running": False, "url": "http://localhost:4533"},
+            "jellyfin": {"running": False, "url": "http://localhost:8096"},
+            "slskd": {"running": False, "url": "http://localhost:5030"},
+            "fastapi": {"running": False, "url": "http://localhost:8000"}
+        }
+        
+        if result.returncode == 0:
+            output_lines = result.stdout.split('\n')
+            for line in output_lines:
+                if 'navidrome' in line.lower():
+                    services["navidrome"]["running"] = True
+                elif 'jellyfin' in line.lower():
+                    services["jellyfin"]["running"] = True
+                elif 'slskd' in line.lower():
+                    services["slskd"]["running"] = True
+                elif 'fastapi' in line.lower():
+                    services["fastapi"]["running"] = True
+        
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={
-                "message": "Docker Compose override file generated successfully",
-                "hostDownloadPath": settings.host_download_path,
-                "hostCompletePath": settings.host_complete_path,
-                "filename": "docker-compose.override.yml"
-            }
+            content={"services": services}
         )
         
     except Exception as e:
-        logger.error(f"Failed to generate docker-compose override: {e}")
-        raise HTTPException(
+        logger.error(f"Failed to check service status: {e}")
+        return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to generate Docker Compose override file"
+            content={"message": "Failed to check service status"}
         )

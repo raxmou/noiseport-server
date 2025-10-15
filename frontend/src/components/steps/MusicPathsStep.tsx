@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Title,
   Text,
@@ -7,8 +7,10 @@ import {
   Alert,
   Group,
   Stack,
+  Button,
+  Loader,
 } from '@mantine/core';
-import { IconFolder, IconDeviceDesktop, IconServer } from '@tabler/icons-react';
+import { IconFolder, IconDeviceDesktop, IconServer, IconRocket, IconCheck, IconX, IconExternalLink } from '@tabler/icons-react';
 import { WizardConfiguration } from '../../types/wizard';
 
 interface Props {
@@ -18,6 +20,10 @@ interface Props {
 }
 
 export default function MusicPathsStep({ config, onUpdate, onValidation }: Props) {
+  const [servicesLaunched, setServicesLaunched] = useState(false);
+  const [launching, setLaunching] = useState(false);
+  const [serviceStatus, setServiceStatus] = useState<any>(null);
+  
   useEffect(() => {
     const isValid = Boolean(
       config.musicPaths?.hostDownloadPath && 
@@ -36,6 +42,37 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
         [field]: value 
       }
     });
+  };
+
+  const launchServices = async () => {
+    setLaunching(true);
+    try {
+      const response = await fetch('/api/v1/config/launch-services', {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        setServicesLaunched(true);
+        checkServiceStatus();
+      } else {
+        console.error('Failed to launch services');
+      }
+    } catch (error) {
+      console.error('Error launching services:', error);
+    }
+    setLaunching(false);
+  };
+
+  const checkServiceStatus = async () => {
+    try {
+      const response = await fetch('/api/v1/config/service-status');
+      if (response.ok) {
+        const result = await response.json();
+        setServiceStatus(result.services);
+      }
+    } catch (error) {
+      console.error('Error checking service status:', error);
+    }
   };
 
   return (
@@ -110,13 +147,84 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
 
       <Alert color="green" variant="light" mb="md">
         <Text size="sm">
-          <strong>🐳 Docker Compose Integration:</strong><br/>
-          When you save this configuration, a <code>docker-compose.override.yml</code> file will be generated 
-          that mounts your host folders into the containers. You can then start all services with:
-          <br/><br/>
-          <code>docker compose up -d</code>
+          <strong>🎯 New Workflow:</strong><br/>
+          1. Configure your host paths below<br/>
+          2. Save configuration to generate docker-compose files<br/>
+          3. Launch all music services with your configured paths<br/>
+          4. Access services and create accounts<br/>
+          5. Return to wizard to configure authentication
         </Text>
       </Alert>
+
+      {servicesLaunched && serviceStatus && (
+        <Paper p="md" withBorder mb="md" bg="green.0">
+          <Group gap="md" mb="md">
+            <IconRocket size="1.5rem" color="green" />
+            <div>
+              <Text fw={600} c="green">Services Launched Successfully!</Text>
+              <Text size="sm" c="dimmed">All services are running with your configured host paths</Text>
+            </div>
+          </Group>
+          
+          <Text fw={500} mb="sm">Access your services:</Text>
+          <Group gap="md">
+            {Object.entries(serviceStatus).map(([name, service]: [string, any]) => (
+              <Button
+                key={name}
+                component="a"
+                href={service.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="outline"
+                size="sm"
+                leftSection={service.running ? <IconCheck size="1rem" color="green" /> : <IconX size="1rem" color="red" />}
+                rightSection={<IconExternalLink size="1rem" />}
+                color={service.running ? "green" : "red"}
+              >
+                {name.charAt(0).toUpperCase() + name.slice(1)}
+              </Button>
+            ))}
+          </Group>
+        </Paper>
+      )}
+
+      <Alert color="blue" variant="light" mb="md">
+        <Text size="sm">
+          <strong>🐳 Docker Compose Integration:</strong><br/>
+          When you save this configuration, a docker-compose.full.yml file will be generated 
+          that mounts your host folders into the containers. You can then launch all services with the button below.
+        </Text>
+      </Alert>
+
+      <Paper p="md" withBorder mb="md">
+        <Group justify="space-between" align="center">
+          <div>
+            <Text fw={600} mb="xs">Ready to Launch Services?</Text>
+            <Text size="sm" c="dimmed">
+              After saving your configuration, launch all music services with your specified host paths.
+            </Text>
+          </div>
+          <Button
+            onClick={launchServices}
+            loading={launching}
+            leftSection={<IconRocket size="1rem" />}
+            disabled={!config.musicPaths?.hostDownloadPath || !config.musicPaths?.hostCompletePath}
+          >
+            {launching ? "Launching..." : "Launch Services"}
+          </Button>
+        </Group>
+        
+        {launching && (
+          <Alert color="blue" variant="light" mt="md">
+            <Group gap="sm">
+              <Loader size="sm" />
+              <Text size="sm">
+                Stopping wizard container and starting full music stack with your configured paths...
+              </Text>
+            </Group>
+          </Alert>
+        )}
+      </Paper>
 
       <Alert color="blue" variant="light">
         <Text size="sm">
