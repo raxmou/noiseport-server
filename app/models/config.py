@@ -38,8 +38,10 @@ class SoulseekConfig(BaseModel):
 
 class MusicPathsConfig(BaseModel):
     """Music folder paths configuration."""
-    downloadPath: str = Field(default="/music/downloads", description="Download directory path", alias="download_path")
-    completePath: str = Field(default="/music/complete", description="Complete files directory path", alias="complete_path")
+    hostDownloadPath: str = Field(default="./music/downloads", description="Host system path for downloads", alias="host_download_path")
+    hostCompletePath: str = Field(default="./music/complete", description="Host system path for complete music", alias="host_complete_path")
+    downloadPath: str = Field(default="/music/downloads", description="Container download directory path", alias="download_path")
+    completePath: str = Field(default="/music/complete", description="Container complete directory path", alias="complete_path")
 
     model_config = {"populate_by_name": True}
 

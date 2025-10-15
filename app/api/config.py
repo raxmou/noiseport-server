@@ -66,6 +66,8 @@ async def get_current_config() -> WizardConfiguration:
                 "password": settings.slskd_password,
             },
             musicPaths={
+                "hostDownloadPath": settings.host_download_path,
+                "hostCompletePath": settings.host_complete_path,
                 "downloadPath": settings.download_path,
                 "completePath": settings.complete_path,
             },
@@ -116,6 +118,8 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             "SLSKD_PASSWORD": config.soulseek.password,
             
             # Paths
+            "HOST_DOWNLOAD_PATH": config.musicPaths.hostDownloadPath,
+            "HOST_COMPLETE_PATH": config.musicPaths.hostCompletePath,
             "DOWNLOAD_PATH": config.musicPaths.downloadPath,
             "COMPLETE_PATH": config.musicPaths.completePath,
             
@@ -172,7 +176,11 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             for key in ["SLSKD_HOST", "SLSKD_USERNAME", "SLSKD_PASSWORD"]:
                 f.write(f"{key}={existing_vars[key]}\n")
             
-            f.write("\n# Music Paths\n")
+            # Host Paths
+            for key in ["HOST_DOWNLOAD_PATH", "HOST_COMPLETE_PATH"]:
+                f.write(f"{key}={existing_vars[key]}\n")
+            
+            f.write("\n# Container Paths\n")
             for key in ["DOWNLOAD_PATH", "COMPLETE_PATH"]:
                 f.write(f"{key}={existing_vars[key]}\n")
             
@@ -180,13 +188,13 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             for key in ["SCROBBLING_ENABLED", "DOWNLOADS_ENABLED", "DISCOVERY_ENABLED"]:
                 f.write(f"{key}={existing_vars[key]}\n")
             
-            # Write any remaining variables
+            # Update written keys set
             written_keys = {
                 "NAVIDROME_ENABLED", "NAVIDROME_URL", "NAVIDROME_USERNAME", "NAVIDROME_PASSWORD",
                 "JELLYFIN_ENABLED", "JELLYFIN_URL", "JELLYFIN_USERNAME", "JELLYFIN_PASSWORD",
                 "SPOTIFY_ENABLED", "SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET",
                 "SLSKD_HOST", "SLSKD_USERNAME", "SLSKD_PASSWORD",
-                "DOWNLOAD_PATH", "COMPLETE_PATH",
+                "HOST_DOWNLOAD_PATH", "HOST_COMPLETE_PATH", "DOWNLOAD_PATH", "COMPLETE_PATH",
                 "SCROBBLING_ENABLED", "DOWNLOADS_ENABLED", "DISCOVERY_ENABLED",
             }
             
@@ -196,9 +204,67 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                     f.write(f"{key}={value}\n")
         
         logger.info("Configuration saved successfully")
+        
+        # Generate docker-compose override file with new paths
+        try:
+            # Create docker-compose override content
+            compose_override = f"""---
+version: '3.8'
+services:
+  slskd:
+    volumes:
+      - ./slskd:/app
+      - {env_vars["HOST_DOWNLOAD_PATH"]}:/music/downloads
+      - {env_vars["HOST_COMPLETE_PATH"]}:/music/complete
+      - ./shared:/shared
+
+  fastapi:
+    volumes:
+      - {env_vars["HOST_DOWNLOAD_PATH"]}:/music/downloads
+      - {env_vars["HOST_COMPLETE_PATH"]}:/music/complete
+
+  navidrome:
+    volumes:
+      - {env_vars["HOST_COMPLETE_PATH"]}:/music:ro
+      - navidrome_data:/data
+
+  jellyfin:
+    volumes:
+      - jellyfin_config:/config
+      - jellyfin_cache:/cache
+      - {env_vars["HOST_COMPLETE_PATH"]}:/music:ro
+
+volumes:
+  navidrome_data:
+    driver: local
+  jellyfin_config:
+    driver: local
+  jellyfin_cache:
+    driver: local
+
+networks:
+  music-net:
+    driver: bridge
+"""
+            
+            # Write the override file
+            with open("docker-compose.override.yml", "w") as f:
+                f.write(compose_override)
+            
+            logger.info("Generated docker-compose.override.yml with updated host paths")
+        except Exception as e:
+            logger.warning(f"Failed to generate docker-compose override: {e}")
+        
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"message": "Configuration saved successfully"}
+            content={
+                "message": "Configuration saved successfully",
+                "dockerComposeGenerated": True,
+                "hostPaths": {
+                    "downloads": env_vars["HOST_DOWNLOAD_PATH"],
+                    "complete": env_vars["HOST_COMPLETE_PATH"]
+                }
+            }
         )
         
     except Exception as e:
@@ -414,3 +480,73 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
     except Exception as e:
         logger.error(f"Failed to test connection: {e}")
         return ConnectionTestResponse(success=False, message=f"Connection test failed: {e}")
+
+
+@router.post("/config/generate-compose")
+async def generate_docker_compose() -> JSONResponse:
+    """Generate docker-compose.override.yml with user-specified host paths."""
+    try:
+        # Load current settings
+        from config import settings
+        
+        # Create docker-compose override content
+        compose_override = f"""---
+version: '3.8'
+services:
+  slskd:
+    volumes:
+      - ./slskd:/app
+      - {settings.host_download_path}:/music/downloads
+      - {settings.host_complete_path}:/music/complete
+      - ./shared:/shared
+
+  fastapi:
+    volumes:
+      - {settings.host_download_path}:/music/downloads
+      - {settings.host_complete_path}:/music/complete
+
+  navidrome:
+    volumes:
+      - {settings.host_complete_path}:/music:ro
+      - navidrome_data:/data
+
+  jellyfin:
+    volumes:
+      - jellyfin_config:/config
+      - jellyfin_cache:/cache
+      - {settings.host_complete_path}:/music:ro
+
+volumes:
+  navidrome_data:
+    driver: local
+  jellyfin_config:
+    driver: local
+  jellyfin_cache:
+    driver: local
+
+networks:
+  music-net:
+    driver: bridge
+"""
+        
+        # Write the override file
+        with open("docker-compose.override.yml", "w") as f:
+            f.write(compose_override)
+        
+        logger.info("Generated docker-compose.override.yml with user-specified host paths")
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": "Docker Compose override file generated successfully",
+                "hostDownloadPath": settings.host_download_path,
+                "hostCompletePath": settings.host_complete_path,
+                "filename": "docker-compose.override.yml"
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to generate docker-compose override: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate Docker Compose override file"
+        )
