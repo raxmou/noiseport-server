@@ -30,10 +30,7 @@ export interface WizardConfiguration {
   
   // Music folder paths
   musicPaths: {
-    hostDownloadPath: string;
-    hostCompletePath: string;
-    downloadPath: string;
-    completePath: string;
+    hostMusicPath: string;
   };
   
   // Optional features

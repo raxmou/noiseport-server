@@ -27,10 +27,7 @@ const defaultConfig: WizardConfiguration = {
     password: 'slskd',
   },
   musicPaths: {
-    hostDownloadPath: './music/downloads',
-    hostCompletePath: './music/complete',
-    downloadPath: '/music/downloads',
-    completePath: '/music/complete',
+    hostMusicPath: './music',
   },
   features: {
     scrobbling: false,

@@ -98,8 +98,9 @@ export default function SummaryStep({ config, onValidation }: Props) {
         <Card withBorder p="md">
           <Text fw={500} mb="xs">Music Paths</Text>
           <Stack gap="xs">
-            <Text size="sm">Download Path: {config.musicPaths?.downloadPath}</Text>
-            <Text size="sm">Complete Path: {config.musicPaths?.completePath}</Text>
+            <Text size="sm">Base Path: {config.musicPaths?.hostMusicPath}</Text>
+            <Text size="sm" c="dimmed">Downloads: {config.musicPaths?.hostMusicPath}/downloads</Text>
+            <Text size="sm" c="dimmed">Complete: {config.musicPaths?.hostMusicPath}/complete</Text>
           </Stack>
         </Card>
 

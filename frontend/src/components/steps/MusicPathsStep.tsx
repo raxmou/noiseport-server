@@ -6,11 +6,10 @@ import {
   Paper,
   Alert,
   Group,
-  Stack,
   Button,
   Loader,
 } from '@mantine/core';
-import { IconFolder, IconDeviceDesktop, IconServer, IconRocket, IconCheck, IconX, IconExternalLink } from '@tabler/icons-react';
+import { IconFolder, IconDeviceDesktop, IconRocket, IconCheck, IconX, IconExternalLink } from '@tabler/icons-react';
 import { WizardConfiguration } from '../../types/wizard';
 
 interface Props {
@@ -28,18 +27,17 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
   
   useEffect(() => {
     const isValid = Boolean(
-      config.musicPaths?.hostDownloadPath && 
-      config.musicPaths?.hostCompletePath
+      config.musicPaths?.hostMusicPath
     );
     onValidation(isValid);
   }, [config.musicPaths, onValidation]);
 
-  const handlePathChange = (field: keyof typeof config.musicPaths, value: string) => {
+  const handlePathChange = (value: string) => {
     setConfigSaved(false); // Reset save status when paths change
     onUpdate({
       musicPaths: { 
         ...config.musicPaths,
-        [field]: value 
+        hostMusicPath: value 
       }
     });
   };
@@ -106,76 +104,46 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
         Music Folder Configuration
       </Title>
       <Text c="dimmed" mb="xl">
-        Configure the folders on your host system where music will be downloaded and stored. 
+        Configure the base music folder on your host system. The system will automatically create 
+        "downloads" and "complete" subdirectories for organizing your music files. 
         These folders will be mounted into the Docker containers for the services to access.
       </Text>
 
       <Paper p="md" withBorder mb="md">
         <Title order={4} mb="md" c="blue">
           <IconDeviceDesktop size="1.2rem" style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-          Host System Paths
+          Music Folder Configuration
         </Title>
         <Text size="sm" c="dimmed" mb="md">
-          These are the actual folders on your computer that will store your music files.
+          Specify the base folder on your computer where music will be stored. 
+          The system will automatically create "downloads" and "complete" subdirectories within this folder.
         </Text>
 
-        <Stack gap="md">
-          <TextInput
-            label="Host Download Path"
-            placeholder="./music/downloads"
-            value={config.musicPaths?.hostDownloadPath || './music/downloads'}
-            onChange={(event) => handlePathChange('hostDownloadPath', event.currentTarget.value)}
-            required
-            leftSection={<IconFolder size="1rem" />}
-            description="Folder on your computer for downloads in progress (e.g., /home/user/music/downloads)"
-          />
-          
-          <TextInput
-            label="Host Complete Path"
-            placeholder="./music/complete"
-            value={config.musicPaths?.hostCompletePath || './music/complete'}
-            onChange={(event) => handlePathChange('hostCompletePath', event.currentTarget.value)}
-            required
-            leftSection={<IconFolder size="1rem" />}
-            description="Folder on your computer for completed music (e.g., /home/user/music/complete)"
-          />
-        </Stack>
-      </Paper>
-
-      <Paper p="md" withBorder mb="md">
-        <Title order={4} mb="md" c="green">
-          <IconServer size="1.2rem" style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-          Container Paths (Advanced)
-        </Title>
-        <Text size="sm" c="dimmed" mb="md">
-          These are the paths inside the Docker containers. Usually you don't need to change these.
-        </Text>
-
-        <Group grow>
-          <TextInput
-            label="Container Download Path"
-            value={config.musicPaths?.downloadPath || '/music/downloads'}
-            onChange={(event) => handlePathChange('downloadPath', event.currentTarget.value)}
-            leftSection={<IconServer size="1rem" />}
-            description="Path inside containers"
-          />
-          
-          <TextInput
-            label="Container Complete Path"
-            value={config.musicPaths?.completePath || '/music/complete'}
-            onChange={(event) => handlePathChange('completePath', event.currentTarget.value)}
-            leftSection={<IconServer size="1rem" />}
-            description="Path inside containers"
-          />
-        </Group>
+        <TextInput
+          label="Host Music Path"
+          placeholder="./music"
+          value={config.musicPaths?.hostMusicPath || './music'}
+          onChange={(event) => handlePathChange(event.currentTarget.value)}
+          required
+          leftSection={<IconFolder size="1rem" />}
+          description="Base folder on your computer for music storage (e.g., /home/user/music or ./music)"
+        />
+        
+        <Alert color="blue" variant="light" mt="md">
+          <Text size="sm">
+            <strong>📁 Directory Structure:</strong><br/>
+            • <code>{config.musicPaths?.hostMusicPath || './music'}/downloads/</code> - For files being downloaded<br/>
+            • <code>{config.musicPaths?.hostMusicPath || './music'}/complete/</code> - For your organized music library
+          </Text>
+        </Alert>
       </Paper>
 
       <Alert color="green" variant="light" mb="md">
         <Text size="sm">
           <strong>🎯 New Workflow:</strong><br/>
-          1. Configure your host paths below ✅<br/>
+          1. Configure your music base path below ✅<br/>
           2. <strong>Save configuration</strong> to generate docker-compose files<br/>
-          3. Launch all music services with your configured paths<br/>
+          3. Launch all music services with your configured path<br/>
           4. Access services and create accounts<br/>
           5. Return to wizard to configure authentication
         </Text>
@@ -187,7 +155,7 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
             <IconCheck size="1.2rem" color="blue" />
             <div>
               <Text fw={600} c="blue">Configuration Saved!</Text>
-              <Text size="sm" c="dimmed">Docker Compose files generated with your host paths. Ready to launch services.</Text>
+              <Text size="sm" c="dimmed">Docker Compose files generated with your music base path. Ready to launch services.</Text>
             </div>
           </Group>
         </Alert>
@@ -199,7 +167,7 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
             <IconRocket size="1.5rem" color="green" />
             <div>
               <Text fw={600} c="green">Services Launched Successfully!</Text>
-              <Text size="sm" c="dimmed">All services are running with your configured host paths</Text>
+              <Text size="sm" c="dimmed">All services are running with your configured music path</Text>
             </div>
           </Group>
           
@@ -229,7 +197,7 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
         <Text size="sm">
           <strong>🐳 Docker Compose Integration:</strong><br/>
           When you save this configuration, a docker-compose.full.yml file will be generated 
-          that mounts your host folders into the containers. You can then launch all services with the button below.
+          that mounts your music folder into the containers with appropriate subdirectories. You can then launch all services with the button below.
         </Text>
       </Alert>
 
@@ -238,14 +206,14 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
           <div>
             <Text fw={600} mb="xs">Step 1: Save Configuration</Text>
             <Text size="sm" c="dimmed">
-              Save your paths to generate Docker Compose files with host mounting.
+              Save your music base path to generate Docker Compose files with subdirectory mounting.
             </Text>
           </div>
           <Button
             onClick={saveConfiguration}
             loading={saving}
             leftSection={<IconCheck size="1rem" />}
-            disabled={!config.musicPaths?.hostDownloadPath || !config.musicPaths?.hostCompletePath}
+            disabled={!config.musicPaths?.hostMusicPath}
             color={configSaved ? "green" : "blue"}
             variant={configSaved ? "light" : "filled"}
           >
@@ -257,7 +225,7 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
           <div>
             <Text fw={600} mb="xs">Step 2: Launch Services</Text>
             <Text size="sm" c="dimmed">
-              After saving configuration, launch all music services with your host paths.
+              After saving configuration, launch all music services with your music base path.
             </Text>
           </div>
           <Button
@@ -276,7 +244,7 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
             <Group gap="sm">
               <Loader size="sm" />
               <Text size="sm">
-                Stopping wizard container and starting full music stack with your configured paths...
+                Stopping wizard container and starting full music stack with your configured music path...
               </Text>
             </Group>
           </Alert>
@@ -287,12 +255,13 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
         <Text size="sm">
           <strong>Path Guidelines:</strong>
           <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-            <li><strong>Host paths</strong> can be relative (./music/downloads) or absolute (/home/user/music)</li>
-            <li>Make sure you have read/write permissions for the host folders</li>
-            <li>The download folder is for temporary files during processing</li>
-            <li>The complete folder is for your final organized music library</li>
-            <li>These folders will be automatically created if they don't exist</li>
-            <li>Use different folders for downloads and complete to avoid conflicts</li>
+            <li><strong>Base path</strong> can be relative (./music) or absolute (/home/user/music)</li>
+            <li>Make sure you have read/write permissions for the music folder</li>
+            <li>The system will automatically create downloads/ and complete/ subdirectories</li>
+            <li>downloads/ folder is for temporary files during processing</li>
+            <li>complete/ folder is for your final organized music library</li>
+            <li>Subdirectories will be automatically created if they don't exist</li>
+            <li>Choose a location with enough storage space for your music collection</li>
           </ul>
         </Text>
       </Alert>

@@ -89,17 +89,8 @@ class Settings(BaseSettings):
     metrics_path: str = Field(default="/metrics", description="Metrics endpoint path")
 
     # File Storage
-    host_download_path: str = Field(
-        default="./music/downloads", description="Host system download directory path"
-    )
-    host_complete_path: str = Field(
-        default="./music/complete", description="Host system complete files directory path"
-    )
-    download_path: str = Field(
-        default="/music/downloads", description="Container download directory path"
-    )
-    complete_path: str = Field(
-        default="/music/complete", description="Container complete files directory path"
+    host_music_path: str = Field(
+        default="./music", description="Host system music directory path (downloads and complete subdirectories will be created)"
     )
 
     @field_validator("log_level")
