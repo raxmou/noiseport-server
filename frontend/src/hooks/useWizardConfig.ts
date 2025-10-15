@@ -73,7 +73,15 @@ export const useWizardConfig = () => {
   }, [config]);
 
   const updateConfig = useCallback((updates: Partial<WizardConfiguration>) => {
-    setConfig(prev => ({ ...prev, ...updates }));
+    setConfig(prev => ({
+      ...prev,
+      ...updates,
+      musicPaths: {
+        ...prev.musicPaths,
+        ...(updates.musicPaths || {}),
+      },
+      // Add similar merging for other nested objects if needed
+    }));
   }, []);
 
   const testConnection = useCallback(async (service: string, serviceConfig: any) => {

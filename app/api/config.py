@@ -545,7 +545,7 @@ async def launch_services() -> JSONResponse:
                 text=True,
                 timeout=30
             )
-            
+            print(result)
             if result.returncode == 0:
                 return JSONResponse(
                     status_code=status.HTTP_200_OK,
@@ -620,7 +620,7 @@ async def get_service_status() -> JSONResponse:
             text=True,
             timeout=10
         )
-        
+        print(result.stdout)
         services = {
             "navidrome": {"running": False, "url": "http://localhost:4533"},
             "jellyfin": {"running": False, "url": "http://localhost:8096"},

@@ -38,10 +38,10 @@ class SoulseekConfig(BaseModel):
 
 class MusicPathsConfig(BaseModel):
     """Music folder paths configuration."""
-    hostDownloadPath: str = Field(default="./music/downloads", description="Host system path for downloads", alias="host_download_path")
-    hostCompletePath: str = Field(default="./music/complete", description="Host system path for complete music", alias="host_complete_path")
-    downloadPath: str = Field(default="/music/downloads", description="Container download directory path", alias="download_path")
-    completePath: str = Field(default="/music/complete", description="Container complete directory path", alias="complete_path")
+    hostDownloadPath: str = Field(default="./music/downloads", description="Host system path for downloads")
+    hostCompletePath: str = Field(default="./music/complete", description="Host system path for complete music")
+    downloadPath: str = Field(default="/music/downloads", description="Container download directory path")
+    completePath: str = Field(default="/music/complete", description="Container complete directory path")
 
     model_config = {"populate_by_name": True}
 
@@ -59,7 +59,7 @@ class WizardConfiguration(BaseModel):
     jellyfin: JellyfinConfig = Field(default_factory=JellyfinConfig)
     spotify: SpotifyConfig = Field(default_factory=SpotifyConfig)
     soulseek: SoulseekConfig = Field(default_factory=SoulseekConfig)
-    musicPaths: MusicPathsConfig = Field(default_factory=MusicPathsConfig, alias="music_paths")
+    musicPaths: MusicPathsConfig = Field(default_factory=MusicPathsConfig)
     features: FeaturesConfig = Field(default_factory=FeaturesConfig)
 
     model_config = {"populate_by_name": True}

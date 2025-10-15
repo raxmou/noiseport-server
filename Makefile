@@ -235,7 +235,7 @@ wizard-dev: ## Start development server and open wizard
 	@echo ""
 	$(UV) run uvicorn $(APP_MODULE) --reload --host 0.0.0.0 --port $(PORT) &
 	@sleep 3 && \
-	(command -v open >/dev/null 2>&1 && open http://localhost:$(PORT)/wizard || \
+	
 	command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:$(PORT)/wizard || \
 	echo "Please open http://localhost:$(PORT)/wizard in your browser") &
 	@wait
