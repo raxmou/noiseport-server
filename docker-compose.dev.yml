@@ -27,7 +27,7 @@ services:
       glance.description: "Setup wizard - development mode with hot reload"
 
   frontend:
-    image: node:18-alpine
+    image: node:20-alpine
     container_name: frontend-dev
     ports:
       - "3000:3000"
