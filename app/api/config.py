@@ -68,10 +68,7 @@ async def get_current_config() -> WizardConfiguration:
                 "password": settings.slskd_password,
             },
             musicPaths={
-                "hostDownloadPath": settings.host_download_path,
-                "hostCompletePath": settings.host_complete_path,
-                "downloadPath": settings.download_path,
-                "completePath": settings.complete_path,
+                "hostMusicPath": settings.host_music_path,
             },
             features={
                 "scrobbling": settings.scrobbling_enabled,
@@ -122,10 +119,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             "SLSKD_PASSWORD": config.soulseek.password,
             
             # Paths
-            "HOST_DOWNLOAD_PATH": config.musicPaths.hostDownloadPath,
-            "HOST_COMPLETE_PATH": config.musicPaths.hostCompletePath,
-            "DOWNLOAD_PATH": config.musicPaths.downloadPath,
-            "COMPLETE_PATH": config.musicPaths.completePath,
+            "HOST_MUSIC_PATH": config.musicPaths.hostMusicPath,
             
             # Features
             "SCROBBLING_ENABLED": str(config.features.scrobbling).lower(),
@@ -183,12 +177,13 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 f.write(f"{key}={existing_vars[key]}\n")
             
             # Host Paths
-            for key in ["HOST_DOWNLOAD_PATH", "HOST_COMPLETE_PATH"]:
+            for key in ["HOST_MUSIC_PATH"]:
                 f.write(f"{key}={existing_vars[key]}\n")
             
             f.write("\n# Container Paths\n")
-            for key in ["DOWNLOAD_PATH", "COMPLETE_PATH"]:
-                f.write(f"{key}={existing_vars[key]}\n")
+            f.write("# Automatically derived from HOST_MUSIC_PATH\n")
+            f.write("DOWNLOAD_PATH=/music/downloads\n")
+            f.write("COMPLETE_PATH=/music/complete\n")
             
             f.write("\n# Features\n")
             for key in ["SCROBBLING_ENABLED", "DOWNLOADS_ENABLED", "DISCOVERY_ENABLED"]:
@@ -200,7 +195,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 "JELLYFIN_ENABLED", "JELLYFIN_URL", "JELLYFIN_USERNAME", "JELLYFIN_PASSWORD",
                 "SPOTIFY_ENABLED", "SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET",
                 "SLSKD_HOST", "SLSKD_USERNAME", "SLSKD_PASSWORD",
-                "HOST_DOWNLOAD_PATH", "HOST_COMPLETE_PATH", "DOWNLOAD_PATH", "COMPLETE_PATH",
+                "HOST_MUSIC_PATH", "DOWNLOAD_PATH", "COMPLETE_PATH",
                 "SCROBBLING_ENABLED", "DOWNLOADS_ENABLED", "DISCOVERY_ENABLED",
             }
             
@@ -222,10 +217,9 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                     compose_template = f.read()
                 
                 # Replace placeholders with actual paths
+                host_music_path = env_vars["HOST_MUSIC_PATH"]
                 compose_content = compose_template.replace(
-                    "{{HOST_DOWNLOAD_PATH}}", env_vars["HOST_DOWNLOAD_PATH"]
-                ).replace(
-                    "{{HOST_COMPLETE_PATH}}", env_vars["HOST_COMPLETE_PATH"]
+                    "{{HOST_MUSIC_PATH}}", host_music_path
                 )
                 
                 # Write the full docker-compose file
@@ -236,8 +230,9 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 import os
                 import stat
                 
-                download_path = env_vars["HOST_DOWNLOAD_PATH"]
-                complete_path = env_vars["HOST_COMPLETE_PATH"]
+                host_music_path = env_vars["HOST_MUSIC_PATH"]
+                download_path = f"{host_music_path}/downloads"
+                complete_path = f"{host_music_path}/complete"
                 
                 # Create directories if they don't exist
                 os.makedirs(download_path, exist_ok=True)
@@ -247,18 +242,19 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 os.makedirs(f"{complete_path}/jellyfin_cache", exist_ok=True)
                 
                 # Set permissions (readable/writable for user and group)
-                for path in [download_path, complete_path]:
+                for path in [host_music_path, download_path, complete_path]:
                     os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
                     for root, dirs, files in os.walk(path):
                         for d in dirs:
                             dir_path = os.path.join(root, d)
                             os.chmod(dir_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
                 
-                logger.info(f"Generated docker-compose.full.yml with user paths: {download_path}, {complete_path}")
+                logger.info(f"Generated docker-compose.full.yml with user music path: {host_music_path}")
                 
                 # Create a startup script
                 startup_script = f"""#!/bin/bash
-echo "🎵 Starting Music Stack with your configured paths..."
+echo "🎵 Starting Music Stack with your configured path..."
+echo "📁 Music Base Path: {host_music_path}"
 echo "📁 Downloads: {download_path}"
 echo "📁 Complete: {complete_path}"
 echo ""
@@ -296,8 +292,9 @@ echo "⏳ Please wait a few moments for services to fully start before accessing
                 "message": "Configuration saved successfully",
                 "dockerComposeGenerated": True,
                 "hostPaths": {
-                    "downloads": env_vars["HOST_DOWNLOAD_PATH"],
-                    "complete": env_vars["HOST_COMPLETE_PATH"]
+                    "musicPath": env_vars["HOST_MUSIC_PATH"],
+                    "downloads": f"{env_vars['HOST_MUSIC_PATH']}/downloads",
+                    "complete": f"{env_vars['HOST_MUSIC_PATH']}/complete"
                 },
                 "nextSteps": [
                     "Run './start-music-stack.sh' to start all services with your configured paths",
@@ -323,11 +320,8 @@ async def validate_configuration(config: WizardConfiguration) -> ConfigValidatio
         errors = []
         
         # Validate music paths
-        if not config.musicPaths.downloadPath:
-            errors.append(ValidationError(field="musicPaths.downloadPath", message="Download path is required"))
-        
-        if not config.musicPaths.completePath:
-            errors.append(ValidationError(field="musicPaths.completePath", message="Complete path is required"))
+        if not config.musicPaths.hostMusicPath:
+            errors.append(ValidationError(field="musicPaths.hostMusicPath", message="Host music path is required"))
         
         # Validate Navidrome if enabled
         if config.navidrome.enabled:

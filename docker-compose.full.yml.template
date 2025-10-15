@@ -13,8 +13,8 @@ services:
       - SLSKD_REMOTE_CONFIGURATION=true
     volumes:
       - ./slskd:/app
-      - {{HOST_COMPLETE_PATH}}:/music
-      - {{HOST_COMPLETE_PATH}}/musiclibrary.db:/music/musiclibrary.db
+      - {{HOST_MUSIC_PATH}}:/music
+      - {{HOST_MUSIC_PATH}}/musiclibrary.db:/music/musiclibrary.db
       - ./shared:/shared
     restart: unless-stopped
     networks:
@@ -36,8 +36,8 @@ services:
       - NAVIDROME_URL=http://navidrome:4533
       - JELLYFIN_URL=http://jellyfin:8096
     volumes:
-      - {{MUSIC_HOST_PATH}}/downloads:/music/downloads
-      - {{MUSIC_HOST_PATH}}/complete:/music/complete
+      - {{HOST_MUSIC_PATH}}/downloads:/music/downloads
+      - {{HOST_MUSIC_PATH}}/complete:/music/complete
     depends_on:
       - slskd
     restart: unless-stopped
@@ -65,7 +65,7 @@ services:
       ND_LASTFM_SECRET: "66fe381a44a991e76623b24177994947"
       ND_LASTFM_LANGUAGE: "en"
     volumes:
-      - {{HOST_COMPLETE_PATH}}/complete:/music:ro
+      - {{HOST_MUSIC_PATH}}/complete:/music:ro
       - ./navidrome:/data
     labels:
       glance.name: Navidrome
@@ -88,7 +88,7 @@ services:
     volumes:
       - ./jellyfin/config:/config
       - ./jellyfin/cache:/cache
-      - {{MUSIC_HOST_PATH}}/completed:/music:ro
+      - {{HOST_MUSIC_PATH}}/complete:/music:ro
     labels:
       glance.name: Jellyfin
       glance.hide: false
