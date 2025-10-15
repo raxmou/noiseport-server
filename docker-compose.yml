@@ -7,6 +7,10 @@ services:
       - "8000:80"
     environment:
       - WIZARD_MODE=true
+    volumes:
+      # Mount current directory for configuration file persistence
+      - .:/app/workspace
+    working_dir: /app/workspace
     restart: unless-stopped
     networks:
       - music-net
