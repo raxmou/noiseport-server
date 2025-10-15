@@ -84,6 +84,28 @@ run-prod: ## Run the application in production mode
 dev: ## Run development server with auto-reload
 	$(UV) run fastapi dev app/main.py --port $(PORT)
 
+dev-frontend: ## Start frontend in development mode with hot reload
+	cd frontend && npm run dev -- --host 0.0.0.0 --port 3000
+
+dev-backend: ## Start backend in development mode with hot reload
+	$(UV) run uvicorn $(APP_MODULE) --reload --host 0.0.0.0 --port $(PORT)
+
+dev-full: ## Start both frontend and backend in development mode (requires 2 terminals)
+	@echo "🚀 Development Mode Setup:"
+	@echo ""
+	@echo "Terminal 1 - Backend with hot reload:"
+	@echo "  make dev-backend"
+	@echo ""
+	@echo "Terminal 2 - Frontend with hot reload:"
+	@echo "  make dev-frontend"
+	@echo ""
+	@echo "📡 Services:"
+	@echo "  Backend:  http://localhost:$(PORT)"
+	@echo "  Frontend: http://localhost:3000"
+	@echo "  Wizard:   http://localhost:3000"
+	@echo ""
+	@echo "✨ Both backend and frontend will auto-reload on changes!"
+
 # Docker targets
 docker-build: ## Build Docker image
 	docker build -t downloader:latest .
@@ -168,14 +190,16 @@ wizard: ## Open the setup wizard (requires server to be running)
 	echo "Please open http://localhost:$(PORT)/wizard in your browser"
 
 wizard-dev: ## Start development server and open wizard
-	@echo "Starting development server and wizard..."
+	@echo "🎵 Starting development server and wizard..."
 	@echo "Server will be available at http://localhost:$(PORT)"
 	@echo "Wizard will be available at http://localhost:$(PORT)/wizard"
-	$(UV) run uvicorn $(APP_MODULE) --reload --host 0.0.0.0 --port $(PORT) \
-	sleep 2 \
-	@command -v open >/dev/null 2>&1 && open http://localhost:$(PORT)/wizard || \
+	@echo ""
+	$(UV) run uvicorn $(APP_MODULE) --reload --host 0.0.0.0 --port $(PORT) &
+	@sleep 3 && \
+	(command -v open >/dev/null 2>&1 && open http://localhost:$(PORT)/wizard || \
 	command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:$(PORT)/wizard || \
-	echo "Please open http://localhost:$(PORT)/wizard in your browser"
+	echo "Please open http://localhost:$(PORT)/wizard in your browser") &
+	@wait
 
 # Environment setup
 setup: install-dev pre-commit-install build-wizard ## Set up development environment

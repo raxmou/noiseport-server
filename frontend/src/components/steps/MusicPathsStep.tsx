@@ -23,6 +23,8 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
   const [servicesLaunched, setServicesLaunched] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [serviceStatus, setServiceStatus] = useState<any>(null);
+  const [configSaved, setConfigSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   
   useEffect(() => {
     const isValid = Boolean(
@@ -33,6 +35,7 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
   }, [config.musicPaths, onValidation]);
 
   const handlePathChange = (field: keyof typeof config.musicPaths, value: string) => {
+    setConfigSaved(false); // Reset save status when paths change
     onUpdate({
       musicPaths: { 
         hostDownloadPath: config.musicPaths?.hostDownloadPath || './music/downloads',
@@ -42,6 +45,30 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
         [field]: value 
       }
     });
+  };
+
+  const saveConfiguration = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch('/api/v1/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(config),
+      });
+      
+      if (response.ok) {
+        setConfigSaved(true);
+        const result = await response.json();
+        console.log('Configuration saved:', result);
+      } else {
+        console.error('Failed to save configuration');
+      }
+    } catch (error) {
+      console.error('Error saving configuration:', error);
+    }
+    setSaving(false);
   };
 
   const launchServices = async () => {
@@ -148,13 +175,25 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
       <Alert color="green" variant="light" mb="md">
         <Text size="sm">
           <strong>🎯 New Workflow:</strong><br/>
-          1. Configure your host paths below<br/>
-          2. Save configuration to generate docker-compose files<br/>
+          1. Configure your host paths below ✅<br/>
+          2. <strong>Save configuration</strong> to generate docker-compose files<br/>
           3. Launch all music services with your configured paths<br/>
           4. Access services and create accounts<br/>
           5. Return to wizard to configure authentication
         </Text>
       </Alert>
+
+      {configSaved && (
+        <Alert color="blue" variant="light" mb="md">
+          <Group gap="sm">
+            <IconCheck size="1.2rem" color="blue" />
+            <div>
+              <Text fw={600} c="blue">Configuration Saved!</Text>
+              <Text size="sm" c="dimmed">Docker Compose files generated with your host paths. Ready to launch services.</Text>
+            </div>
+          </Group>
+        </Alert>
+      )}
 
       {servicesLaunched && serviceStatus && (
         <Paper p="md" withBorder mb="md" bg="green.0">
@@ -197,18 +236,38 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
       </Alert>
 
       <Paper p="md" withBorder mb="md">
+        <Group justify="space-between" align="center" mb="md">
+          <div>
+            <Text fw={600} mb="xs">Step 1: Save Configuration</Text>
+            <Text size="sm" c="dimmed">
+              Save your paths to generate Docker Compose files with host mounting.
+            </Text>
+          </div>
+          <Button
+            onClick={saveConfiguration}
+            loading={saving}
+            leftSection={<IconCheck size="1rem" />}
+            disabled={!config.musicPaths?.hostDownloadPath || !config.musicPaths?.hostCompletePath}
+            color={configSaved ? "green" : "blue"}
+            variant={configSaved ? "light" : "filled"}
+          >
+            {saving ? "Saving..." : configSaved ? "Saved ✓" : "Save Configuration"}
+          </Button>
+        </Group>
+
         <Group justify="space-between" align="center">
           <div>
-            <Text fw={600} mb="xs">Ready to Launch Services?</Text>
+            <Text fw={600} mb="xs">Step 2: Launch Services</Text>
             <Text size="sm" c="dimmed">
-              After saving your configuration, launch all music services with your specified host paths.
+              After saving configuration, launch all music services with your host paths.
             </Text>
           </div>
           <Button
             onClick={launchServices}
             loading={launching}
             leftSection={<IconRocket size="1rem" />}
-            disabled={!config.musicPaths?.hostDownloadPath || !config.musicPaths?.hostCompletePath}
+            disabled={!configSaved}
+            color="orange"
           >
             {launching ? "Launching..." : "Launch Services"}
           </Button>
