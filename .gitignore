@@ -1,5 +1,7 @@
 slskd/data/*
-navidrome_data*
+navidrome/*
+navidrome_data/*
+jellyfin/*
 docker-compose.full.yml
 start-music-stack.sh
 # Byte-compiled / optimized / DLL files

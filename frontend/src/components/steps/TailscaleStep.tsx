@@ -22,6 +22,7 @@ interface Props {
 
 export default function TailscaleStep({ onValidation }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     onValidation(true);
@@ -29,6 +30,7 @@ export default function TailscaleStep({ onValidation }: Props) {
 
   const checkTailscaleStatus = async () => {
     setConnectionStatus('testing');
+    setConnectionMessage(null);
     try {
       // Check if tailscale is installed and running
       const response = await fetch('/api/v1/config/test-connection', {
@@ -41,8 +43,10 @@ export default function TailscaleStep({ onValidation }: Props) {
       });
       const result = await response.json();
       setConnectionStatus(result.success ? 'success' : 'error');
+      setConnectionMessage(result.message || null);
     } catch {
       setConnectionStatus('error');
+      setConnectionMessage(null);
     }
   };
 
@@ -141,12 +145,22 @@ curl -fsSL https://tailscale.com/install.sh | sh
         {connectionStatus === 'success' && (
           <Alert icon={<IconCheck size="1rem" />} color="green" variant="light" mt="md">
             Tailscale is installed and connected! Your machine is ready for remote access.
+            {connectionMessage && (
+              <Text mt="xs" size="sm" c="green">
+                {connectionMessage}
+              </Text>
+            )}
           </Alert>
         )}
         
         {connectionStatus === 'error' && (
           <Alert icon={<IconX size="1rem" />} color="red" variant="light" mt="md">
             Tailscale is not detected or not connected. Please follow the installation steps above.
+            {connectionMessage && (
+              <Text mt="xs" size="sm" c="red">
+                {connectionMessage}
+              </Text>
+            )}
           </Alert>
         )}
       </Paper>
