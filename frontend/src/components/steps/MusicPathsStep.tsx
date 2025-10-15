@@ -49,6 +49,7 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
 
   const saveConfiguration = async () => {
     setSaving(true);
+    console.log('Saving configuration:', config);
     try {
       const response = await fetch('/api/v1/config', {
         method: 'POST',

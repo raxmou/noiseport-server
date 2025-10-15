@@ -1,7 +1,9 @@
 """Configuration API endpoints for the setup wizard."""
 
+
 import json
 import os
+import stat
 import hashlib
 
 from fastapi import APIRouter, HTTPException, status
@@ -92,6 +94,8 @@ async def get_current_config() -> WizardConfiguration:
 @router.post("/config")
 async def save_configuration(config: WizardConfiguration) -> JSONResponse:
     """Save the configuration to environment file."""
+    import os
+    print(config)
     try:
         # Convert config to environment variables
         env_vars = {
@@ -130,17 +134,19 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
         }
         
         # Read existing .env file if it exists
-        env_file_path = ".env"
+        env_file_path = "/workspace/.env"
         existing_vars = {}
         
-        if os.path.exists(env_file_path):
-            with open(env_file_path, "r") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        key, value = line.split("=", 1)
-                        existing_vars[key] = value
-        
+
+# Before writing .env
+    
+        with open(env_file_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    existing_vars[key] = value
+    
         # Update with new values
         existing_vars.update(env_vars)
         

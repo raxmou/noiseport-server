@@ -10,10 +10,16 @@ services:
     restart: unless-stopped
     networks:
       - music-net
+    volumes:
+      - ./:/workspace
+      - ./app/api/config.py:/app/api/config.py
+      
+
     labels:
       glance.name: Music Stack Setup Wizard
       glance.hide: false
       glance.icon: si:fastapi
+          
       glance.url: http://localhost:8000/wizard
       glance.description: "Setup wizard - configure paths before launching other services"
 
