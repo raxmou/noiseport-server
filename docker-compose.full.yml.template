@@ -66,7 +66,7 @@ services:
       ND_LASTFM_LANGUAGE: "en"
     volumes:
       - {{HOST_COMPLETE_PATH}}/complete:/music:ro
-      - {{HOST_COMPLETE_PATH}}/navidrome_data:/data
+      - ./navidrome:/data
     labels:
       glance.name: Navidrome
       glance.hide: false
@@ -86,8 +86,8 @@ services:
       - PGID=1000          
       - TZ=UTC    
     volumes:
-      - {{MUSIC_HOST_PATH}}/jellyfin_config:/config
-      - {{MUSIC_HOST_PATH}}/jellyfin_cache:/cache
+      - ./jellyfin/config:/config
+      - ./jellyfin/cache:/cache
       - {{MUSIC_HOST_PATH}}/completed:/music:ro
     labels:
       glance.name: Jellyfin
