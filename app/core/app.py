@@ -57,18 +57,19 @@ def create_app() -> FastAPI:
     
     # Serve static files for the React frontend
     frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")
-    if os.path.exists(frontend_dist_path):
-        app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist_path, "assets")), name="assets")
-        
-        # Serve the React app for wizard routes
-        @app.get("/wizard")
-        @app.get("/setup")
-        async def serve_wizard():
-            """Serve the setup wizard React app."""
-            index_path = os.path.join(frontend_dist_path, "index.html")
-            if os.path.exists(index_path):
-                return FileResponse(index_path)
-            return {"message": "Setup wizard not available. Please build the frontend first."}
+    
+    print("here")
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist_path, "assets")), name="assets")
+    
+    # Serve the React app for wizard routes
+    @app.get("/wizard")
+    @app.get("/setup")
+    async def serve_wizard():
+        """Serve the setup wizard React app."""
+        index_path = os.path.join(frontend_dist_path, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        return {"message": "Setup wizard not available. Please build the frontend first."}
 
     # Add root endpoint
     @app.get("/", tags=["Root"])
