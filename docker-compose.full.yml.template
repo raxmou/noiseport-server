@@ -1,31 +1,6 @@
 ---
 services:
-  slskd:
-    build:  
-      context: .
-      dockerfile: Dockerfile.slskd 
-    container_name: slskd
-    ports:
-      - "5030:5030"
-      - "5031:5031"
-      - "50300:50300"
-    environment:
-      - SLSKD_REMOTE_CONFIGURATION=true
-    volumes:
-      - ./slskd:/app
-      - {{HOST_DOWNLOAD_PATH}}:/music/downloads
-      - {{HOST_COMPLETE_PATH}}:/music/complete
-      - ./shared:/shared
-    restart: unless-stopped
-    networks:
-      - music-net
-    labels:
-      glance.name: slskd
-      glance.hide: false
-      glance.icon: https://avatars.githubusercontent.com/u/76762370?s=200&v=4
-      glance.url: http://localhost:5030
-      glance.description: "Soulseek file sharing network app"
-
+  
   fastapi:
     build: .
     container_name: fastapi
