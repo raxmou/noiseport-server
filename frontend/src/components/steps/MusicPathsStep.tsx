@@ -38,10 +38,7 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
     setConfigSaved(false); // Reset save status when paths change
     onUpdate({
       musicPaths: { 
-        hostDownloadPath: config.musicPaths?.hostDownloadPath || './music/downloads',
-        hostCompletePath: config.musicPaths?.hostCompletePath || './music/complete',
-        downloadPath: config.musicPaths?.downloadPath || '/music/downloads',
-        completePath: config.musicPaths?.completePath || '/music/complete',
+        ...config.musicPaths,
         [field]: value 
       }
     });
@@ -126,7 +123,7 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
           <TextInput
             label="Host Download Path"
             placeholder="./music/downloads"
-            value={config.musicPaths?.hostDownloadPath || ''}
+            value={config.musicPaths?.hostDownloadPath || './music/downloads'}
             onChange={(event) => handlePathChange('hostDownloadPath', event.currentTarget.value)}
             required
             leftSection={<IconFolder size="1rem" />}
@@ -136,7 +133,7 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
           <TextInput
             label="Host Complete Path"
             placeholder="./music/complete"
-            value={config.musicPaths?.hostCompletePath || ''}
+            value={config.musicPaths?.hostCompletePath || './music/complete'}
             onChange={(event) => handlePathChange('hostCompletePath', event.currentTarget.value)}
             required
             leftSection={<IconFolder size="1rem" />}
