@@ -134,7 +134,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
         }
         
         # Read existing .env file if it exists
-        env_file_path = "/workspace/.env"
+        env_file_path = ".env"
         existing_vars = {}
         
 
