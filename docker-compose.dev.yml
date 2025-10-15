@@ -1,0 +1,51 @@
+---
+services:
+  fastapi:
+    build: .
+    container_name: fastapi-wizard-dev
+    ports:
+      - "8000:80"
+    environment:
+      - WIZARD_MODE=true
+      - PYTHONPATH=/app
+    volumes:
+      # Mount source code for hot reload
+      - ./app:/app/app
+      - ./config:/app/config
+      # Mount configuration output directory
+      - .:/app/workspace
+    working_dir: /app/workspace
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 80
+    restart: unless-stopped
+    networks:
+      - music-net
+    labels:
+      glance.name: Music Stack Setup Wizard (Development)
+      glance.hide: false
+      glance.icon: si:fastapi
+      glance.url: http://localhost:8000/wizard
+      glance.description: "Setup wizard - development mode with hot reload"
+
+  frontend:
+    image: node:20-alpine
+    container_name: frontend-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+    environment:
+      - NODE_ENV=development
+    networks:
+      - music-net
+    labels:
+      glance.name: Frontend Development Server
+      glance.hide: false
+      glance.icon: si:react
+      glance.url: http://localhost:3000
+      glance.description: "React development server with hot reload"
+
+networks:
+  music-net:
+    driver: bridge

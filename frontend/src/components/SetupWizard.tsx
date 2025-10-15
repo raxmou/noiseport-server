@@ -23,6 +23,13 @@ import SummaryStep from './steps/SummaryStep';
 
 const steps: WizardStep[] = [
   {
+    id: 'paths',
+    title: 'Music Paths',
+    description: 'Set music folder paths',
+    completed: false,
+    valid: false,
+  },
+  {
     id: 'libraries',
     title: 'Local Libraries',
     description: 'Connect to Navidrome and Jellyfin',
@@ -43,13 +50,7 @@ const steps: WizardStep[] = [
     completed: false,
     valid: false,
   },
-  {
-    id: 'paths',
-    title: 'Music Paths',
-    description: 'Set music folder paths',
-    completed: false,
-    valid: false,
-  },
+  
   {
     id: 'tailscale',
     title: 'Tailscale VPN',
@@ -119,7 +120,7 @@ export default function SetupWizard() {
     switch (activeStep) {
       case 0:
         return (
-          <LocalLibrariesStep
+          <MusicPathsStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(0, valid)}
@@ -127,7 +128,7 @@ export default function SetupWizard() {
         );
       case 1:
         return (
-          <SpotifyStep
+          <LocalLibrariesStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(1, valid)}
@@ -135,7 +136,7 @@ export default function SetupWizard() {
         );
       case 2:
         return (
-          <SoulseekStep
+          <SpotifyStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(2, valid)}
@@ -143,7 +144,7 @@ export default function SetupWizard() {
         );
       case 3:
         return (
-          <MusicPathsStep
+          <SoulseekStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(3, valid)}

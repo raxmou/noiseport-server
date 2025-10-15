@@ -1,6 +1,6 @@
 # Production-ready FastAPI Makefile
 
-.PHONY: help install install-dev lint format test test-unit test-integration coverage build run clean docker-build docker-run docker-compose-up docker-compose-down pre-commit-install pre-commit-run security audit docs serve-docs
+.PHONY: help install install-dev lint format test test-unit test-integration coverage build run clean docker-build docker-run docker-compose-up docker-compose-down dev-compose dev-compose-bg dev-logs dev-stop pre-commit-install pre-commit-run security audit docs serve-docs
 
 # Default target
 .DEFAULT_GOAL := help
@@ -17,7 +17,13 @@ help: ## Show this help message
 	@echo ""
 	@echo "🚀 Quick Start:"
 	@echo "  make setup          # Set up development environment"
+	@echo "  make dev-compose    # Start hot reload development (recommended)"
 	@echo "  make wizard-dev     # Start server and open setup wizard"
+	@echo ""
+	@echo "🔥 Development (Hot Reload):"
+	@echo "  make dev-compose    # Docker Compose with hot reload (frontend + backend)"
+	@echo "  make dev-backend    # Backend only with hot reload"
+	@echo "  make dev-frontend   # Frontend only with hot reload"
 	@echo ""
 	@echo "Available commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -83,6 +89,61 @@ run-prod: ## Run the application in production mode
 
 dev: ## Run development server with auto-reload
 	$(UV) run fastapi dev app/main.py --port $(PORT)
+
+dev-frontend: ## Start frontend in development mode with hot reload
+	cd frontend && npm run dev -- --host 0.0.0.0 --port 3000
+
+dev-backend: ## Start backend in development mode with hot reload
+	$(UV) run uvicorn $(APP_MODULE) --reload --host 0.0.0.0 --port $(PORT)
+
+dev-compose: ## Start both frontend and backend with Docker Compose and hot reload
+	@echo "🚀 Starting development environment with hot reload..."
+	@echo "📡 Services:"
+	@echo "  Backend:  http://localhost:8000 (FastAPI + hot reload)"
+	@echo "  Frontend: http://localhost:3000 (React + hot reload)"
+	@echo "  Wizard:   http://localhost:3000"
+	@echo ""
+	@echo "✨ Both services will auto-reload on file changes!"
+	@echo "🛑 Press Ctrl+C to stop all services"
+	@echo ""
+	docker compose -f docker-compose.dev.yml up --build
+
+dev-compose-bg: ## Start development environment in background
+	@echo "🚀 Starting development environment in background..."
+	docker compose -f docker-compose.dev.yml up -d --build
+	@echo "📡 Services started:"
+	@echo "  Backend:  http://localhost:8000"
+	@echo "  Frontend: http://localhost:3000"
+	@echo "  Wizard:   http://localhost:3000"
+	@echo ""
+	@echo "Run 'make dev-logs' to see logs"
+	@echo "Run 'make dev-stop' to stop services"
+
+dev-logs: ## View development logs
+	docker compose -f docker-compose.dev.yml logs -f
+
+dev-stop: ## Stop development environment
+	docker compose -f docker-compose.dev.yml down
+
+dev-full: ## Start both frontend and backend in development mode (requires 2 terminals)
+	@echo "🚀 Development Mode Setup:"
+	@echo ""
+	@echo "🐳 Docker Compose (Recommended):"
+	@echo "  make dev-compose      # Unified hot reload environment"
+	@echo ""
+	@echo "📦 Manual (2 terminals):"
+	@echo "Terminal 1 - Backend with hot reload:"
+	@echo "  make dev-backend"
+	@echo ""
+	@echo "Terminal 2 - Frontend with hot reload:"
+	@echo "  make dev-frontend"
+	@echo ""
+	@echo "📡 Services:"
+	@echo "  Backend:  http://localhost:$(PORT)"
+	@echo "  Frontend: http://localhost:3000"
+	@echo "  Wizard:   http://localhost:3000"
+	@echo ""
+	@echo "✨ Both backend and frontend will auto-reload on changes!"
 
 # Docker targets
 docker-build: ## Build Docker image
@@ -168,14 +229,16 @@ wizard: ## Open the setup wizard (requires server to be running)
 	echo "Please open http://localhost:$(PORT)/wizard in your browser"
 
 wizard-dev: ## Start development server and open wizard
-	@echo "Starting development server and wizard..."
+	@echo "🎵 Starting development server and wizard..."
 	@echo "Server will be available at http://localhost:$(PORT)"
 	@echo "Wizard will be available at http://localhost:$(PORT)/wizard"
-	$(UV) run uvicorn $(APP_MODULE) --reload --host 0.0.0.0 --port $(PORT) \
-	sleep 2 \
-	@command -v open >/dev/null 2>&1 && open http://localhost:$(PORT)/wizard || \
+	@echo ""
+	$(UV) run uvicorn $(APP_MODULE) --reload --host 0.0.0.0 --port $(PORT) &
+	@sleep 3 && \
+	
 	command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:$(PORT)/wizard || \
-	echo "Please open http://localhost:$(PORT)/wizard in your browser"
+	echo "Please open http://localhost:$(PORT)/wizard in your browser") &
+	@wait
 
 # Environment setup
 setup: install-dev pre-commit-install build-wizard ## Set up development environment

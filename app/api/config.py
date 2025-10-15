@@ -1,7 +1,9 @@
 """Configuration API endpoints for the setup wizard."""
 
+
 import json
 import os
+import stat
 import hashlib
 
 from fastapi import APIRouter, HTTPException, status
@@ -66,6 +68,8 @@ async def get_current_config() -> WizardConfiguration:
                 "password": settings.slskd_password,
             },
             musicPaths={
+                "hostDownloadPath": settings.host_download_path,
+                "hostCompletePath": settings.host_complete_path,
                 "downloadPath": settings.download_path,
                 "completePath": settings.complete_path,
             },
@@ -90,6 +94,8 @@ async def get_current_config() -> WizardConfiguration:
 @router.post("/config")
 async def save_configuration(config: WizardConfiguration) -> JSONResponse:
     """Save the configuration to environment file."""
+    import os
+    print(config)
     try:
         # Convert config to environment variables
         env_vars = {
@@ -116,6 +122,8 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             "SLSKD_PASSWORD": config.soulseek.password,
             
             # Paths
+            "HOST_DOWNLOAD_PATH": config.musicPaths.hostDownloadPath,
+            "HOST_COMPLETE_PATH": config.musicPaths.hostCompletePath,
             "DOWNLOAD_PATH": config.musicPaths.downloadPath,
             "COMPLETE_PATH": config.musicPaths.completePath,
             
@@ -129,14 +137,16 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
         env_file_path = ".env"
         existing_vars = {}
         
-        if os.path.exists(env_file_path):
-            with open(env_file_path, "r") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        key, value = line.split("=", 1)
-                        existing_vars[key] = value
-        
+
+# Before writing .env
+    
+        with open(env_file_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    existing_vars[key] = value
+    
         # Update with new values
         existing_vars.update(env_vars)
         
@@ -172,7 +182,11 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             for key in ["SLSKD_HOST", "SLSKD_USERNAME", "SLSKD_PASSWORD"]:
                 f.write(f"{key}={existing_vars[key]}\n")
             
-            f.write("\n# Music Paths\n")
+            # Host Paths
+            for key in ["HOST_DOWNLOAD_PATH", "HOST_COMPLETE_PATH"]:
+                f.write(f"{key}={existing_vars[key]}\n")
+            
+            f.write("\n# Container Paths\n")
             for key in ["DOWNLOAD_PATH", "COMPLETE_PATH"]:
                 f.write(f"{key}={existing_vars[key]}\n")
             
@@ -180,13 +194,13 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             for key in ["SCROBBLING_ENABLED", "DOWNLOADS_ENABLED", "DISCOVERY_ENABLED"]:
                 f.write(f"{key}={existing_vars[key]}\n")
             
-            # Write any remaining variables
+            # Update written keys set
             written_keys = {
                 "NAVIDROME_ENABLED", "NAVIDROME_URL", "NAVIDROME_USERNAME", "NAVIDROME_PASSWORD",
                 "JELLYFIN_ENABLED", "JELLYFIN_URL", "JELLYFIN_USERNAME", "JELLYFIN_PASSWORD",
                 "SPOTIFY_ENABLED", "SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET",
                 "SLSKD_HOST", "SLSKD_USERNAME", "SLSKD_PASSWORD",
-                "DOWNLOAD_PATH", "COMPLETE_PATH",
+                "HOST_DOWNLOAD_PATH", "HOST_COMPLETE_PATH", "DOWNLOAD_PATH", "COMPLETE_PATH",
                 "SCROBBLING_ENABLED", "DOWNLOADS_ENABLED", "DISCOVERY_ENABLED",
             }
             
@@ -196,9 +210,102 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                     f.write(f"{key}={value}\n")
         
         logger.info("Configuration saved successfully")
+        
+        # Generate full docker-compose file with user-specified host paths
+        try:
+            import os
+            
+            # Read the template
+            template_path = "docker-compose.full.yml.template"
+            if os.path.exists(template_path):
+                with open(template_path, "r") as f:
+                    compose_template = f.read()
+                
+                # Replace placeholders with actual paths
+                compose_content = compose_template.replace(
+                    "{{HOST_DOWNLOAD_PATH}}", env_vars["HOST_DOWNLOAD_PATH"]
+                ).replace(
+                    "{{HOST_COMPLETE_PATH}}", env_vars["HOST_COMPLETE_PATH"]
+                )
+                
+                # Write the full docker-compose file
+                with open("docker-compose.full.yml", "w") as f:
+                    f.write(compose_content)
+                
+                # Create directories with proper permissions
+                import os
+                import stat
+                
+                download_path = env_vars["HOST_DOWNLOAD_PATH"]
+                complete_path = env_vars["HOST_COMPLETE_PATH"]
+                
+                # Create directories if they don't exist
+                os.makedirs(download_path, exist_ok=True)
+                os.makedirs(complete_path, exist_ok=True)
+                os.makedirs(f"{complete_path}/navidrome_data", exist_ok=True)
+                os.makedirs(f"{complete_path}/jellyfin_config", exist_ok=True)
+                os.makedirs(f"{complete_path}/jellyfin_cache", exist_ok=True)
+                
+                # Set permissions (readable/writable for user and group)
+                for path in [download_path, complete_path]:
+                    os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
+                    for root, dirs, files in os.walk(path):
+                        for d in dirs:
+                            dir_path = os.path.join(root, d)
+                            os.chmod(dir_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
+                
+                logger.info(f"Generated docker-compose.full.yml with user paths: {download_path}, {complete_path}")
+                
+                # Create a startup script
+                startup_script = f"""#!/bin/bash
+echo "🎵 Starting Music Stack with your configured paths..."
+echo "📁 Downloads: {download_path}"
+echo "📁 Complete: {complete_path}"
+echo ""
+echo "🛑 Stopping wizard container..."
+docker compose down
+
+echo "🚀 Starting full music stack..."
+docker compose -f docker-compose.full.yml up -d
+
+echo ""
+echo "✅ Music stack is starting up!"
+echo "🌐 Services will be available at:"
+echo "   - Navidrome: http://localhost:4533"
+echo "   - Jellyfin: http://localhost:8096"
+echo "   - slskd: http://localhost:5030"
+echo "   - FastAPI: http://localhost:8000"
+echo ""
+echo "⏳ Please wait a few moments for services to fully start before accessing them."
+"""
+                
+                with open("start-music-stack.sh", "w") as f:
+                    f.write(startup_script)
+                
+                # Make script executable
+                os.chmod("start-music-stack.sh", stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+                
+            else:
+                logger.warning("docker-compose.full.yml.template not found")
+        except Exception as e:
+            logger.warning(f"Failed to generate docker-compose file: {e}")
+        
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"message": "Configuration saved successfully"}
+            content={
+                "message": "Configuration saved successfully",
+                "dockerComposeGenerated": True,
+                "hostPaths": {
+                    "downloads": env_vars["HOST_DOWNLOAD_PATH"],
+                    "complete": env_vars["HOST_COMPLETE_PATH"]
+                },
+                "nextSteps": [
+                    "Run './start-music-stack.sh' to start all services with your configured paths",
+                    "Wait for services to start, then access them at their respective URLs",
+                    "Create accounts in Navidrome and Jellyfin",
+                    "Return to wizard to configure authentication"
+                ]
+            }
         )
         
     except Exception as e:
@@ -366,6 +473,43 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
                 success = False
                 message = f"Failed to connect to slskd: {e}"
 
+        # --- TAILSCALE ---
+        elif service == "tailscale":
+            try:
+                import subprocess
+                # Check if tailscale is installed and running
+                result = subprocess.run(
+                    ["tailscale", "status", "--json"], 
+                    capture_output=True, 
+                    text=True, 
+                    timeout=5
+                )
+                if result.returncode == 0:
+                    import json
+                    status_data = json.loads(result.stdout)
+                    if status_data.get("BackendState") == "Running":
+                        success = True
+                        self_ip = status_data.get("TailscaleIPs", [])
+                        if self_ip:
+                            message = f"Tailscale is running. Your IP: {self_ip[0]}"
+                        else:
+                            message = "Tailscale is running but no IP assigned yet"
+                    else:
+                        success = False
+                        message = f"Tailscale not connected. State: {status_data.get('BackendState', 'Unknown')}"
+                else:
+                    success = False
+                    message = "Tailscale command failed. Make sure it's installed and configured."
+            except subprocess.TimeoutExpired:
+                success = False
+                message = "Tailscale status check timed out"
+            except FileNotFoundError:
+                success = False
+                message = "Tailscale not installed. Please install from https://tailscale.com/download"
+            except Exception as e:
+                success = False
+                message = f"Error checking Tailscale status: {e}"
+
         # --- UNKNOWN SERVICE ---
         else:
             success = False
@@ -377,3 +521,133 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
     except Exception as e:
         logger.error(f"Failed to test connection: {e}")
         return ConnectionTestResponse(success=False, message=f"Connection test failed: {e}")
+
+
+@router.post("/config/launch-services")
+async def launch_services() -> JSONResponse:
+    """Launch the full music stack with configured paths."""
+    try:
+        import subprocess
+        import os
+        
+        # Check if the full docker-compose file exists
+        if not os.path.exists("docker-compose.full.yml"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Configuration not saved yet. Please save your configuration first."
+            )
+        
+        # Execute the startup script
+        if os.path.exists("start-music-stack.sh"):
+            result = subprocess.run(
+                ["bash", "start-music-stack.sh"],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            print(result)
+            if result.returncode == 0:
+                return JSONResponse(
+                    status_code=status.HTTP_200_OK,
+                    content={
+                        "message": "Music stack is starting up",
+                        "output": result.stdout,
+                        "services": {
+                            "navidrome": "http://localhost:4533",
+                            "jellyfin": "http://localhost:8096", 
+                            "slskd": "http://localhost:5030",
+                            "fastapi": "http://localhost:8000"
+                        }
+                    }
+                )
+            else:
+                return JSONResponse(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content={
+                        "message": "Failed to start services",
+                        "error": result.stderr
+                    }
+                )
+        else:
+            # Fallback - run docker compose directly
+            result = subprocess.run(
+                ["docker", "compose", "-f", "docker-compose.full.yml", "up", "-d"],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode == 0:
+                return JSONResponse(
+                    status_code=status.HTTP_200_OK,
+                    content={
+                        "message": "Music stack started successfully",
+                        "output": result.stdout
+                    }
+                )
+            else:
+                return JSONResponse(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content={
+                        "message": "Failed to start services",
+                        "error": result.stderr
+                    }
+                )
+        
+    except subprocess.TimeoutExpired:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Service startup timed out"}
+        )
+    except Exception as e:
+        logger.error(f"Failed to launch services: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to launch services"
+        )
+
+
+@router.get("/config/service-status")
+async def get_service_status() -> JSONResponse:
+    """Check the status of all services."""
+    try:
+        import subprocess
+        
+        # Check which containers are running
+        result = subprocess.run(
+            ["docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        print(result.stdout)
+        services = {
+            "navidrome": {"running": False, "url": "http://localhost:4533"},
+            "jellyfin": {"running": False, "url": "http://localhost:8096"},
+            "slskd": {"running": False, "url": "http://localhost:5030"},
+            "fastapi": {"running": False, "url": "http://localhost:8000"}
+        }
+        
+        if result.returncode == 0:
+            output_lines = result.stdout.split('\n')
+            for line in output_lines:
+                if 'navidrome' in line.lower():
+                    services["navidrome"]["running"] = True
+                elif 'jellyfin' in line.lower():
+                    services["jellyfin"]["running"] = True
+                elif 'slskd' in line.lower():
+                    services["slskd"]["running"] = True
+                elif 'fastapi' in line.lower():
+                    services["fastapi"]["running"] = True
+        
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"services": services}
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to check service status: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Failed to check service status"}
+        )

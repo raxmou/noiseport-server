@@ -27,6 +27,8 @@ const defaultConfig: WizardConfiguration = {
     password: 'slskd',
   },
   musicPaths: {
+    hostDownloadPath: './music/downloads',
+    hostCompletePath: './music/complete',
     downloadPath: '/music/downloads',
     completePath: '/music/complete',
   },
@@ -71,7 +73,15 @@ export const useWizardConfig = () => {
   }, [config]);
 
   const updateConfig = useCallback((updates: Partial<WizardConfiguration>) => {
-    setConfig(prev => ({ ...prev, ...updates }));
+    setConfig(prev => ({
+      ...prev,
+      ...updates,
+      musicPaths: {
+        ...prev.musicPaths,
+        ...(updates.musicPaths || {}),
+      },
+      // Add similar merging for other nested objects if needed
+    }));
   }, []);
 
   const testConnection = useCallback(async (service: string, serviceConfig: any) => {
