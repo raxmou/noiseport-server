@@ -44,6 +44,10 @@ async def get_current_config() -> WizardConfiguration:
     try:
         # Build configuration from current settings
         config = WizardConfiguration(
+            tailscale={
+                "enabled": getattr(settings, 'tailscale_enabled', False),
+                "ip": getattr(settings, 'tailscale_ip', ''),
+            },
             navidrome={
                 "enabled": settings.navidrome_enabled,
                 "url": settings.navidrome_url,
@@ -66,6 +70,8 @@ async def get_current_config() -> WizardConfiguration:
                 "host": settings.slskd_host,
                 "username": settings.slskd_username,
                 "password": settings.slskd_password,
+                "soulseekUsername": getattr(settings, 'soulseek_username', ''),
+                "soulseekPassword": getattr(settings, 'soulseek_password', ''),
             },
             musicPaths={
                 "hostMusicPath": settings.host_music_path,
@@ -96,6 +102,10 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
     try:
         # Convert config to environment variables
         env_vars = {
+            # Tailscale
+            "TAILSCALE_ENABLED": str(config.tailscale.enabled).lower(),
+            "TAILSCALE_IP": config.tailscale.ip,
+            
             # Navidrome
             "NAVIDROME_ENABLED": str(config.navidrome.enabled).lower(),
             "NAVIDROME_URL": config.navidrome.url,
@@ -113,10 +123,12 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             "SPOTIFY_CLIENT_ID": config.spotify.clientId,
             "SPOTIFY_CLIENT_SECRET": config.spotify.clientSecret,
             
-            # Soulseek
+            # Soulseek/slskd
             "SLSKD_HOST": config.soulseek.host,
             "SLSKD_USERNAME": config.soulseek.username,
             "SLSKD_PASSWORD": config.soulseek.password,
+            "SOULSEEK_USERNAME": config.soulseek.soulseekUsername,
+            "SOULSEEK_PASSWORD": config.soulseek.soulseekPassword,
             
             # Paths
             "HOST_MUSIC_PATH": config.musicPaths.hostMusicPath,
@@ -160,6 +172,10 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 if key in existing_vars:
                     f.write(f"{key}={existing_vars[key]}\n")
             
+            f.write("\n# Tailscale\n")
+            for key in ["TAILSCALE_ENABLED", "TAILSCALE_IP"]:
+                f.write(f"{key}={existing_vars[key]}\n")
+            
             f.write("\n# Navidrome\n")
             for key in ["NAVIDROME_ENABLED", "NAVIDROME_URL", "NAVIDROME_USERNAME", "NAVIDROME_PASSWORD"]:
                 f.write(f"{key}={existing_vars[key]}\n")
@@ -173,7 +189,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 f.write(f"{key}={existing_vars[key]}\n")
             
             f.write("\n# Soulseek/slskd\n")
-            for key in ["SLSKD_HOST", "SLSKD_USERNAME", "SLSKD_PASSWORD"]:
+            for key in ["SLSKD_HOST", "SLSKD_USERNAME", "SLSKD_PASSWORD", "SOULSEEK_USERNAME", "SOULSEEK_PASSWORD"]:
                 f.write(f"{key}={existing_vars[key]}\n")
             
             # Host Paths
@@ -191,10 +207,11 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             
             # Update written keys set
             written_keys = {
+                "TAILSCALE_ENABLED", "TAILSCALE_IP",
                 "NAVIDROME_ENABLED", "NAVIDROME_URL", "NAVIDROME_USERNAME", "NAVIDROME_PASSWORD",
                 "JELLYFIN_ENABLED", "JELLYFIN_URL", "JELLYFIN_USERNAME", "JELLYFIN_PASSWORD",
                 "SPOTIFY_ENABLED", "SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET",
-                "SLSKD_HOST", "SLSKD_USERNAME", "SLSKD_PASSWORD",
+                "SLSKD_HOST", "SLSKD_USERNAME", "SLSKD_PASSWORD", "SOULSEEK_USERNAME", "SOULSEEK_PASSWORD",
                 "HOST_MUSIC_PATH", "DOWNLOAD_PATH", "COMPLETE_PATH",
                 "SCROBBLING_ENABLED", "DOWNLOADS_ENABLED", "DISCOVERY_ENABLED",
             }
@@ -203,6 +220,36 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             for key, value in existing_vars.items():
                 if key not in written_keys:
                     f.write(f"{key}={value}\n")
+        
+        
+        # Save Soulseek credentials to slskd.yml
+        try:
+            import yaml
+            import os
+            
+            slskd_config_path = "slskd/slskd.yml"
+            if os.path.exists(slskd_config_path):
+                # Read existing slskd config
+                with open(slskd_config_path, 'r') as f:
+                    slskd_config = yaml.safe_load(f)
+                
+                # Update soulseek credentials if provided
+                if config.soulseek.soulseekUsername and config.soulseek.soulseekPassword:
+                    if 'soulseek' not in slskd_config:
+                        slskd_config['soulseek'] = {}
+                    
+                    slskd_config['soulseek']['username'] = config.soulseek.soulseekUsername
+                    slskd_config['soulseek']['password'] = config.soulseek.soulseekPassword
+                    
+                    # Write back to slskd config
+                    with open(slskd_config_path, 'w') as f:
+                        yaml.dump(slskd_config, f, default_flow_style=False)
+                    
+                    logger.info("Updated slskd.yml with Soulseek credentials")
+            else:
+                logger.warning("slskd.yml not found, skipping Soulseek credential update")
+        except Exception as e:
+            logger.warning(f"Failed to update slskd.yml: {e}")
         
         logger.info("Configuration saved successfully")
         
@@ -515,6 +562,53 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
     except Exception as e:
         logger.error(f"Failed to test connection: {e}")
         return ConnectionTestResponse(success=False, message=f"Connection test failed: {e}")
+
+
+@router.post("/config/restart-slskd")
+async def restart_slskd() -> JSONResponse:
+    """Restart the slskd container."""
+    try:
+        import subprocess
+        
+        # Try to restart the slskd container using docker compose
+        result = subprocess.run(
+            ["docker", "compose", "restart", "slskd"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        if result.returncode == 0:
+            logger.info("slskd container restarted successfully")
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={
+                    "message": "slskd container restarted successfully",
+                    "output": result.stdout
+                }
+            )
+        else:
+            logger.error(f"Failed to restart slskd container: {result.stderr}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={
+                    "message": "Failed to restart slskd container",
+                    "error": result.stderr
+                }
+            )
+            
+    except subprocess.TimeoutExpired:
+        logger.error("slskd restart timed out")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "slskd restart timed out"}
+        )
+    except Exception as e:
+        logger.error(f"Failed to restart slskd: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to restart slskd container"
+        )
 
 
 @router.post("/config/launch-services")

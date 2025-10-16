@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Title,
   Text,
+  TextInput,
   Button,
   Group,
   Alert,
@@ -10,6 +11,7 @@ import {
   List,
   Stack,
   Code,
+  Checkbox,
 } from '@mantine/core';
 import { IconAlertCircle, IconCheck, IconX, IconExternalLink, IconShield } from '@tabler/icons-react';
 import { WizardConfiguration } from '../../types/wizard';
@@ -20,13 +22,22 @@ interface Props {
   onValidation: (valid: boolean) => void;
 }
 
-export default function TailscaleStep({ onValidation }: Props) {
+export default function TailscaleStep({ config, onUpdate, onValidation }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    onValidation(true);
-  }, [onValidation]);
+    // Step is valid if Tailscale is disabled or if it's enabled and has valid IP
+    const isValid = !config.tailscale.enabled || (config.tailscale.enabled && !!config.tailscale.ip);
+    onValidation(isValid);
+  }, [config.tailscale, onValidation]);
+
+  const extractTailscaleIP = (message: string): string | null => {
+    // Extract IP from message like "Tailscale is running. Your IP: 100.64.1.2"
+    const ipRegex = /Your IP: ((?:100\.6[4-9]|100\.[7-9]\d|100\.1[0-1]\d|100\.12[0-7])\.\d{1,3}\.\d{1,3})/;
+    const match = message.match(ipRegex);
+    return match ? match[1] : null;
+  };
 
   const checkTailscaleStatus = async () => {
     setConnectionStatus('testing');
@@ -42,12 +53,41 @@ export default function TailscaleStep({ onValidation }: Props) {
         })
       });
       const result = await response.json();
-      setConnectionStatus(result.success ? 'success' : 'error');
-      setConnectionMessage(result.message || null);
+      
+      if (result.success) {
+        setConnectionStatus('success');
+        setConnectionMessage(result.message || null);
+        
+        // Extract and save the Tailscale IP
+        const tailscaleIP = extractTailscaleIP(result.message || '');
+        if (tailscaleIP) {
+          onUpdate({
+            tailscale: { 
+              enabled: true, 
+              ip: tailscaleIP 
+            }
+          });
+        }
+      } else {
+        setConnectionStatus('error');
+        setConnectionMessage(result.message || null);
+      }
     } catch {
       setConnectionStatus('error');
       setConnectionMessage(null);
     }
+  };
+
+  const handleTailscaleToggle = (enabled: boolean) => {
+    onUpdate({
+      tailscale: { ...config.tailscale, enabled }
+    });
+  };
+
+  const handleIPChange = (value: string) => {
+    onUpdate({
+      tailscale: { ...config.tailscale, ip: value }
+    });
   };
 
   return (
@@ -125,7 +165,14 @@ curl -fsSL https://tailscale.com/install.sh | sh
         </List>
       </Paper>
 
-      <Paper p="md" withBorder>
+      <Paper p="md" withBorder mb="xl">
+        <Checkbox
+          label="Enable Tailscale Integration"
+          checked={config.tailscale.enabled}
+          onChange={(event) => handleTailscaleToggle(event.currentTarget.checked)}
+          mb="md"
+        />
+        
         <Group justify="space-between" align="center">
           <div>
             <Text fw={500}>Check Tailscale Status</Text>
@@ -164,6 +211,19 @@ curl -fsSL https://tailscale.com/install.sh | sh
           </Alert>
         )}
       </Paper>
+
+      {config.tailscale.enabled && (
+        <Paper p="md" withBorder mb="xl">
+          <TextInput
+            label="Tailscale IP Address"
+            placeholder="100.64.1.2"
+            value={config.tailscale.ip}
+            onChange={(event) => handleIPChange(event.currentTarget.value)}
+            description="Your Tailscale IP address (automatically detected if status check succeeds)"
+            required
+          />
+        </Paper>
+      )}
 
       <Alert color="yellow" variant="light" mt="xl">
         <Text size="sm">

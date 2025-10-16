@@ -32,8 +32,10 @@ class SoulseekConfig(BaseModel):
     """Soulseek/slskd configuration."""
     enabled: bool = Field(default=True, description="Enable Soulseek integration")
     host: str = Field(default="http://slskd:5030", description="SLSKD server URL")
-    username: str = Field(default="slskd", description="SLSKD username")
-    password: str = Field(default="slskd", description="SLSKD password")
+    username: str = Field(default="slskd", description="SLSKD daemon username")
+    password: str = Field(default="slskd", description="SLSKD daemon password")
+    soulseekUsername: str = Field(default="", description="Soulseek network username")
+    soulseekPassword: str = Field(default="", description="Soulseek network password")
 
 
 class MusicPathsConfig(BaseModel):
@@ -50,8 +52,15 @@ class FeaturesConfig(BaseModel):
     discovery: bool = Field(default=False, description="Enable music discovery")
 
 
+class TailscaleConfig(BaseModel):
+    """Tailscale configuration."""
+    enabled: bool = Field(default=False, description="Enable Tailscale integration")
+    ip: str = Field(default="", description="Tailscale IP address")
+
+
 class WizardConfiguration(BaseModel):
     """Complete wizard configuration."""
+    tailscale: TailscaleConfig = Field(default_factory=TailscaleConfig)
     navidrome: NavidromeConfig = Field(default_factory=NavidromeConfig)
     jellyfin: JellyfinConfig = Field(default_factory=JellyfinConfig)
     spotify: SpotifyConfig = Field(default_factory=SpotifyConfig)

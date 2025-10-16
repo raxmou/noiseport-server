@@ -3,6 +3,10 @@ import { WizardConfiguration } from '../types/wizard';
 import { ApiService } from '../utils/api';
 
 const defaultConfig: WizardConfiguration = {
+  tailscale: {
+    enabled: false,
+    ip: '',
+  },
   navidrome: {
     enabled: false,
     url: '',
@@ -25,6 +29,8 @@ const defaultConfig: WizardConfiguration = {
     host: 'http://slskd:5030',
     username: 'slskd',
     password: 'slskd',
+    soulseekUsername: '',
+    soulseekPassword: '',
   },
   musicPaths: {
     hostMusicPath: './music',
