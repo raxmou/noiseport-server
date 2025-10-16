@@ -26,7 +26,7 @@ interface Props {
 export default function SoulseekStep({ config, onUpdate, onValidation }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'success' | 'error'>('idle');
-  const { testConnection } = useWizardConfig();
+  const { testConnectionAndSave } = useWizardConfig();
 
   useEffect(() => {
     const isValid = !config.soulseek.enabled || 
@@ -59,7 +59,7 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
   const testSoulseekConnection = async () => {
     setConnectionStatus('testing');
     try {
-      const success = await testConnection('soulseek', config.soulseek);
+      const success = await testConnectionAndSave('soulseek', config.soulseek);
       setConnectionStatus(success ? 'success' : 'error');
     } catch {
       setConnectionStatus('error');

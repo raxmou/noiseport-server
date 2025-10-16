@@ -15,6 +15,7 @@ import {
 } from '@mantine/core';
 import { IconAlertCircle, IconCheck, IconX, IconExternalLink, IconShield } from '@tabler/icons-react';
 import { WizardConfiguration } from '../../types/wizard';
+import { useWizardConfig } from '../../hooks/useWizardConfig';
 
 interface Props {
   config: WizardConfiguration;
@@ -25,6 +26,7 @@ interface Props {
 export default function TailscaleStep({ config, onUpdate, onValidation }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
+  const { saveConfig } = useWizardConfig();
 
   useEffect(() => {
     // Step is valid if Tailscale is disabled or if it's enabled and has valid IP
@@ -67,6 +69,13 @@ export default function TailscaleStep({ config, onUpdate, onValidation }: Props)
               ip: tailscaleIP 
             }
           });
+        }
+        
+        // Auto-save the configuration when connection test is successful
+        try {
+          await saveConfig();
+        } catch (err) {
+          console.error('Failed to auto-save config after Tailscale test:', err);
         }
       } else {
         setConnectionStatus('error');

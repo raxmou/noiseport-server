@@ -29,9 +29,9 @@ const steps: WizardStep[] = [
     valid: false,
   },
   {
-    id: 'spotify',
-    title: 'Spotify API',
-    description: 'Configure Spotify credentials',
+    id: 'paths',
+    title: 'Music Paths',
+    description: 'Set music folder paths',
     completed: false,
     valid: false,
   },
@@ -43,15 +43,15 @@ const steps: WizardStep[] = [
     valid: false,
   },
   {
-    id: 'paths',
-    title: 'Music Paths',
-    description: 'Set music folder paths',
+    id: 'spotify',
+    title: 'Spotify API',
+    description: 'Configure Spotify credentials',
     completed: false,
     valid: false,
   },
   {
     id: 'features',
-    title: 'Optional Features',
+    title: 'Additional Features',
     description: 'Choose additional features',
     completed: false,
     valid: false,
@@ -119,7 +119,7 @@ export default function SetupWizard() {
         );
       case 1:
         return (
-          <SpotifyStep
+          <MusicPathsStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(1, valid)}
@@ -135,7 +135,7 @@ export default function SetupWizard() {
         );
       case 3:
         return (
-          <MusicPathsStep
+          <SpotifyStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(3, valid)}
