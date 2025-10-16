@@ -3,6 +3,10 @@ import { WizardConfiguration } from '../types/wizard';
 import { ApiService } from '../utils/api';
 
 const defaultConfig: WizardConfiguration = {
+  tailscale: {
+    enabled: false,
+    ip: '',
+  },
   navidrome: {
     enabled: false,
     url: '',
@@ -25,6 +29,8 @@ const defaultConfig: WizardConfiguration = {
     host: 'http://slskd:5030',
     username: 'slskd',
     password: 'slskd',
+    soulseekUsername: '',
+    soulseekPassword: '',
   },
   musicPaths: {
     hostMusicPath: './music',
@@ -90,6 +96,20 @@ export const useWizardConfig = () => {
     }
   }, []);
 
+  const testConnectionAndSave = useCallback(async (service: string, serviceConfig: any) => {
+    try {
+      const success = await ApiService.testConnection(service, serviceConfig);
+      if (success) {
+        // Save the configuration automatically when connection is successful
+        await ApiService.saveConfiguration(config);
+      }
+      return success;
+    } catch (err) {
+      console.error('Error testing connection:', err);
+      return false;
+    }
+  }, [config]);
+
   return {
     config,
     loading,
@@ -98,5 +118,6 @@ export const useWizardConfig = () => {
     saveConfig,
     updateConfig,
     testConnection,
+    testConnectionAndSave,
   };
 };

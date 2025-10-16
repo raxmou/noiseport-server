@@ -1,4 +1,10 @@
 export interface WizardConfiguration {
+  // Tailscale VPN
+  tailscale: {
+    enabled: boolean;
+    ip: string;
+  };
+  
   // Local libraries
   navidrome: {
     enabled: boolean;
@@ -26,6 +32,8 @@ export interface WizardConfiguration {
     host: string;
     username: string;
     password: string;
+    soulseekUsername: string;
+    soulseekPassword: string;
   };
   
   // Music folder paths

@@ -13,7 +13,6 @@ import {
 import { IconAlertCircle, IconCheck } from '@tabler/icons-react';
 import { useWizardConfig } from '../hooks/useWizardConfig';
 import { WizardStep } from '../types/wizard';
-import LocalLibrariesStep from './steps/LocalLibrariesStep';
 import SpotifyStep from './steps/SpotifyStep';
 import SoulseekStep from './steps/SoulseekStep';
 import MusicPathsStep from './steps/MusicPathsStep';
@@ -23,6 +22,13 @@ import SummaryStep from './steps/SummaryStep';
 
 const steps: WizardStep[] = [
   {
+    id: 'tailscale',
+    title: 'Tailscale VPN',
+    description: 'Set up Tailscale VPN for secure remote access',
+    completed: false,
+    valid: false,
+  },
+  {
     id: 'paths',
     title: 'Music Paths',
     description: 'Set music folder paths',
@@ -30,9 +36,9 @@ const steps: WizardStep[] = [
     valid: false,
   },
   {
-    id: 'libraries',
-    title: 'Local Libraries',
-    description: 'Connect to Navidrome and Jellyfin',
+    id: 'soulseek',
+    title: 'Soulseek/slskd',
+    description: 'Configure Soulseek connection',
     completed: false,
     valid: false,
   },
@@ -44,23 +50,8 @@ const steps: WizardStep[] = [
     valid: false,
   },
   {
-    id: 'soulseek',
-    title: 'Soulseek/slskd',
-    description: 'Configure Soulseek connection',
-    completed: false,
-    valid: false,
-  },
-  
-  {
-    id: 'tailscale',
-    title: 'Tailscale VPN',
-    description: 'Set up Tailscale VPN for remote connectivity',
-    completed: false,
-    valid: false,
-  },
-  {
     id: 'features',
-    title: 'Optional Features',
+    title: 'Additional Features',
     description: 'Choose additional features',
     completed: false,
     valid: false,
@@ -120,7 +111,7 @@ export default function SetupWizard() {
     switch (activeStep) {
       case 0:
         return (
-          <MusicPathsStep
+          <TailscaleStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(0, valid)}
@@ -128,7 +119,7 @@ export default function SetupWizard() {
         );
       case 1:
         return (
-          <LocalLibrariesStep
+          <MusicPathsStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(1, valid)}
@@ -136,7 +127,7 @@ export default function SetupWizard() {
         );
       case 2:
         return (
-          <SpotifyStep
+          <SoulseekStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(2, valid)}
@@ -144,7 +135,7 @@ export default function SetupWizard() {
         );
       case 3:
         return (
-          <SoulseekStep
+          <SpotifyStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(3, valid)}
@@ -152,7 +143,7 @@ export default function SetupWizard() {
         );
       case 4:
         return (
-          <TailscaleStep
+          <FeaturesStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(4, valid)}
@@ -160,17 +151,9 @@ export default function SetupWizard() {
         );
       case 5:
         return (
-          <FeaturesStep
-            config={config}
-            onUpdate={updateConfig}
-            onValidation={(valid) => handleStepValidation(5, valid)}
-          />
-        );
-      case 6:
-        return (
           <SummaryStep
             config={config}
-            onValidation={(valid) => handleStepValidation(6, valid)}
+            onValidation={(valid) => handleStepValidation(5, valid)}
           />
         );
       default:

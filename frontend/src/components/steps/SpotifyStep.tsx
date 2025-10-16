@@ -24,7 +24,7 @@ interface Props {
 
 export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-  const { testConnection } = useWizardConfig();
+  const { testConnectionAndSave } = useWizardConfig();
 
   useEffect(() => {
     onValidation(true);
@@ -45,7 +45,7 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
   const testSpotifyConnection = async () => {
     setConnectionStatus('testing');
     try {
-      const success = await testConnection('spotify', config.spotify);
+      const success = await testConnectionAndSave('spotify', config.spotify);
       setConnectionStatus(success ? 'success' : 'error');
     } catch {
       setConnectionStatus('error');
