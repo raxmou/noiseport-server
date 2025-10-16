@@ -611,87 +611,69 @@ async def restart_slskd() -> JSONResponse:
         )
 
 
+
+import threading
+
 @router.post("/config/launch-services")
 async def launch_services() -> JSONResponse:
-    """Launch the full music stack with configured paths."""
-    try:
-        import subprocess
-        import os
-        
-        # Check if the full docker-compose file exists
-        if not os.path.exists("docker-compose.full.yml"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Configuration not saved yet. Please save your configuration first."
-            )
-        
-        # Execute the startup script
-        if os.path.exists("start-music-stack.sh"):
-            result = subprocess.run(
-                ["bash", "start-music-stack.sh"],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            print(result)
-            if result.returncode == 0:
-                return JSONResponse(
-                    status_code=status.HTTP_200_OK,
-                    content={
-                        "message": "Music stack is starting up",
-                        "output": result.stdout,
-                        "services": {
-                            "navidrome": "http://localhost:4533",
-                            "jellyfin": "http://localhost:8096", 
-                            "slskd": "http://localhost:5030",
-                            "fastapi": "http://localhost:8000"
-                        }
-                    }
-                )
-            else:
-                return JSONResponse(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    content={
-                        "message": "Failed to start services",
-                        "error": result.stderr
-                    }
-                )
-        else:
-            # Fallback - run docker compose directly
-            result = subprocess.run(
-                ["docker", "compose", "-f", "docker-compose.full.yml", "up", "-d"],
-                capture_output=True,
-                text=True,
-                timeout=60
-            )
-            
-            if result.returncode == 0:
-                return JSONResponse(
-                    status_code=status.HTTP_200_OK,
-                    content={
-                        "message": "Music stack started successfully",
-                        "output": result.stdout
-                    }
-                )
-            else:
-                return JSONResponse(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    content={
-                        "message": "Failed to start services",
-                        "error": result.stderr
-                    }
-                )
-        
-    except subprocess.TimeoutExpired:
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"message": "Service startup timed out"}
-        )
-    except Exception as e:
-        logger.error(f"Failed to launch services: {e}")
+    """Launch the full music stack with configured paths asynchronously."""
+    import subprocess
+    import os
+    
+    # Check if the full docker-compose file exists
+    if not os.path.exists("docker-compose.full.yml"):
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to launch services"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Configuration not saved yet. Please save your configuration first."
+        )
+
+    log_file = "launch_services.log"
+
+    def run_stack():
+        try:
+            with open(log_file, "w") as log:
+                if os.path.exists("start-music-stack.sh"):
+                    process = subprocess.Popen(["bash", "start-music-stack.sh"], stdout=log, stderr=log)
+                else:
+                    process = subprocess.Popen(["docker", "compose", "-f", "docker-compose.full.yml", "up", "--build", "-d"], stdout=log, stderr=log)
+                process.wait()
+        except Exception as e:
+            with open(log_file, "a") as log:
+                log.write(f"\nERROR: {e}\n")
+
+    # Start the stack in a background thread
+    thread = threading.Thread(target=run_stack, daemon=True)
+    thread.start()
+
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={
+            "message": "Music stack launch started in background. Check progress via /config/launch-status.",
+            "logFile": log_file,
+            "services": {
+                "navidrome": "http://localhost:4533",
+                "jellyfin": "http://localhost:8096", 
+                "slskd": "http://localhost:5030",
+                "fastapi": "http://localhost:8000"
+            }
+        }
+    )
+
+@router.get("/config/launch-status")
+async def launch_status() -> JSONResponse:
+    """Get the status/log output of the music stack launch."""
+    log_file = "launch_services.log"
+    if os.path.exists(log_file):
+        with open(log_file, "r") as f:
+            log_content = f.read()
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"log": log_content}
+        )
+    else:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"log": "No launch log found yet."}
         )
 
 
