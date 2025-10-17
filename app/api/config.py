@@ -706,11 +706,26 @@ async def get_service_status() -> JSONResponse:
             timeout=10
         )
         print(result.stdout)
+
+        # Get TAILSCALE_IP from .env if available
+        tailscale_ip = None
+        try:
+            with open('.env', 'r') as f:
+                for line in f:
+                    if line.startswith('TAILSCALE_IP='):
+                        tailscale_ip = line.strip().split('=', 1)[1]
+                        break
+        except Exception:
+            pass
+
+        def url(ip, port):
+            return f"http://{ip}:{port}" if ip else f"http://localhost:{port}"
+
         services = {
-            "navidrome": {"running": False, "url": "http://localhost:4533"},
-            "jellyfin": {"running": False, "url": "http://localhost:8096"},
-            "slskd": {"running": False, "url": "http://localhost:5030"},
-            "fastapi": {"running": False, "url": "http://localhost:8000"}
+            "navidrome": {"running": False, "url": url(tailscale_ip, 4533)},
+            "jellyfin": {"running": False, "url": url(tailscale_ip, 8096)},
+            "slskd": {"running": False, "url": url(tailscale_ip, 5030)},
+            "fastapi": {"running": False, "url": url(tailscale_ip, 8000)}
         }
         
         if result.returncode == 0:
