@@ -59,6 +59,17 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
   const testSoulseekConnection = async () => {
     setConnectionStatus('testing');
     try {
+      // Save config before testing
+      const saveResponse = await fetch('/api/v1/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+      if (!saveResponse.ok) {
+        setConnectionStatus('error');
+        return;
+      }
+      // Now test connection
       const success = await testConnectionAndSave('soulseek', config.soulseek);
       setConnectionStatus(success ? 'success' : 'error');
     } catch {
