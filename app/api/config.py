@@ -502,6 +502,7 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
         elif service == "soulseek":
             try:
                 from app.services.slskd_service import SlskdService
+                print(config.get("host"), config.get("username"), config.get("password"))
                 slskd_service = SlskdService(
                     host=config.get("host"),
                     username=config.get("username"),
