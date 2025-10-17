@@ -502,15 +502,11 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
         elif service == "soulseek":
             try:
                 from app.services.slskd_service import SlskdService
-                print(config.get("host"), config.get("username"), config.get("password"))
-                slskd_service = SlskdService(
-                    host=config.get("host"),
-                    username=config.get("username"),
-                    password=config.get("password"),
+                
+                SlskdService(
+                    
                 )
-                resp = slskd_service.client.get_status()
-                print(resp)
-                success = resp.get("status") == "ok"
+                
                 message = "Connection successful" if success else f"Status: {resp.get('status')}"
             except Exception as e:
                 success = False
