@@ -692,6 +692,103 @@ async def launch_status() -> JSONResponse:
         )
 
 
+@router.post("/config/restart-containers")
+async def restart_containers() -> JSONResponse:
+    """Restart development containers for Tailscale integration."""
+    try:
+        import subprocess
+        import asyncio
+        
+        logger.info("Starting container restart for Tailscale integration")
+        
+        # Get current compose configuration
+        # Check if we're in dev mode or full mode
+        compose_files = []
+        if os.path.exists("docker-compose.dev.yml"):
+            compose_files = ["-f", "docker-compose.dev.yml"]
+        elif os.path.exists("docker-compose.full.yml"):
+            compose_files = ["-f", "docker-compose.full.yml"]
+        else:
+            compose_files = []  # Use default docker-compose.yml
+        
+        # First, restart the containers that need Tailscale integration
+        containers_to_restart = ["fastapi"]  # Start with FastAPI, add others as needed
+        
+        restart_results = []
+        for container in containers_to_restart:
+            try:
+                logger.info(f"Restarting container: {container}")
+                cmd = ["docker", "compose"] + compose_files + ["restart", container]
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                if result.returncode == 0:
+                    restart_results.append({
+                        "container": container,
+                        "status": "success",
+                        "message": f"Container {container} restarted successfully"
+                    })
+                    logger.info(f"Successfully restarted container: {container}")
+                else:
+                    restart_results.append({
+                        "container": container,
+                        "status": "error",
+                        "message": f"Failed to restart {container}: {result.stderr}"
+                    })
+                    logger.error(f"Failed to restart container {container}: {result.stderr}")
+                    
+            except subprocess.TimeoutExpired:
+                restart_results.append({
+                    "container": container,
+                    "status": "error",
+                    "message": f"Timeout restarting {container}"
+                })
+                logger.error(f"Timeout restarting container: {container}")
+            except Exception as e:
+                restart_results.append({
+                    "container": container,
+                    "status": "error",
+                    "message": f"Error restarting {container}: {str(e)}"
+                })
+                logger.error(f"Error restarting container {container}: {e}")
+        
+        # Check if all restarts were successful
+        all_successful = all(result["status"] == "success" for result in restart_results)
+        
+        response_data = {
+            "message": "Container restart completed",
+            "overall_status": "success" if all_successful else "partial_failure",
+            "containers": restart_results,
+            "next_steps": [
+                "Containers are restarting and will be available shortly",
+                "Tailscale integration should now be active",
+                "You can test the Tailscale connection again"
+            ]
+        }
+        
+        status_code = status.HTTP_200_OK if all_successful else status.HTTP_207_MULTI_STATUS
+        
+        return JSONResponse(
+            status_code=status_code,
+            content=response_data
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to restart containers: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "message": "Failed to restart containers",
+                "error": str(e),
+                "overall_status": "error"
+            }
+        )
+
+
 @router.get("/config/service-status")
 async def get_service_status() -> JSONResponse:
     """Check the status of all services."""

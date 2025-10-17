@@ -12,10 +12,13 @@ import {
   Stack,
   Code,
   Checkbox,
+  Progress,
+  Loader,
 } from '@mantine/core';
-import { IconAlertCircle, IconCheck, IconX, IconExternalLink, IconShield } from '@tabler/icons-react';
+import { IconAlertCircle, IconCheck, IconX, IconExternalLink, IconShield, IconRefresh, IconInfoCircle } from '@tabler/icons-react';
 import { WizardConfiguration } from '../../types/wizard';
 import { useWizardConfig } from '../../hooks/useWizardConfig';
+import { ApiService } from '../../utils/api';
 
 interface Props {
   config: WizardConfiguration;
@@ -26,6 +29,9 @@ interface Props {
 export default function TailscaleStep({ config, onUpdate, onValidation }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
+  const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'success' | 'error'>('idle');
+  const [restartMessage, setRestartMessage] = useState<string | null>(null);
+  const [showRestartSection, setShowRestartSection] = useState(false);
   const { saveConfig } = useWizardConfig();
 
   useEffect(() => {
@@ -77,13 +83,46 @@ export default function TailscaleStep({ config, onUpdate, onValidation }: Props)
         } catch (err) {
           console.error('Failed to auto-save config after Tailscale test:', err);
         }
+
+        // Show restart section if Tailscale is working but we haven't restarted containers yet
+        if (!showRestartSection) {
+          setShowRestartSection(true);
+        }
       } else {
         setConnectionStatus('error');
         setConnectionMessage(result.message || null);
+        setShowRestartSection(false);
       }
     } catch {
       setConnectionStatus('error');
       setConnectionMessage(null);
+      setShowRestartSection(false);
+    }
+  };
+
+  const restartContainers = async () => {
+    setRestartStatus('restarting');
+    setRestartMessage(null);
+    
+    try {
+      const result = await ApiService.restartContainers();
+      
+      if (result.overall_status === 'success') {
+        setRestartStatus('success');
+        setRestartMessage('Development containers restarted successfully! Tailscale integration is now active.');
+        
+        // Auto-retest Tailscale status after a short delay to allow containers to start
+        setTimeout(() => {
+          checkTailscaleStatus();
+        }, 3000);
+      } else {
+        setRestartStatus('error');
+        setRestartMessage(result.message || 'Some containers failed to restart. Check the logs for details.');
+      }
+    } catch (error) {
+      setRestartStatus('error');
+      setRestartMessage('Failed to restart containers. Please check your Docker setup.');
+      console.error('Container restart error:', error);
     }
   };
 
@@ -220,6 +259,65 @@ curl -fsSL https://tailscale.com/install.sh | sh
           </Alert>
         )}
       </Paper>
+
+      {showRestartSection && connectionStatus === 'success' && (
+        <Paper p="md" withBorder mb="xl" bg="blue.0">
+          <Alert icon={<IconInfoCircle size="1rem" />} color="blue" variant="light" mb="md">
+            <Stack gap="xs">
+              <Text fw={500}>Container Restart Required</Text>
+              <Text size="sm">
+                For Tailscale integration to work properly, the development containers need to be restarted 
+                to mount the Tailscale socket and network configuration.
+              </Text>
+            </Stack>
+          </Alert>
+
+          <Group justify="space-between" align="center">
+            <div>
+              <Text fw={500}>Restart Development Containers</Text>
+              <Text size="sm" c="dimmed">
+                This will restart the FastAPI and other containers to enable Tailscale integration
+              </Text>
+            </div>
+            <Button
+              onClick={restartContainers}
+              loading={restartStatus === 'restarting'}
+              leftSection={<IconRefresh size="1rem" />}
+              color="blue"
+            >
+              {restartStatus === 'restarting' ? 'Restarting...' : 'Restart Containers'}
+            </Button>
+          </Group>
+
+          {restartStatus === 'restarting' && (
+            <Paper p="sm" bg="gray.0" mt="md">
+              <Group gap="xs" align="center">
+                <Loader size="sm" />
+                <Text size="sm">Restarting containers...</Text>
+              </Group>
+              <Progress value={100} animated mt="xs" />
+            </Paper>
+          )}
+
+          {restartStatus === 'success' && (
+            <Alert icon={<IconCheck size="1rem" />} color="green" variant="light" mt="md">
+              <Text fw={500}>Containers Restarted Successfully!</Text>
+              <Text mt="xs" size="sm">
+                {restartMessage}
+              </Text>
+            </Alert>
+          )}
+          
+          {restartStatus === 'error' && (
+            <Alert icon={<IconX size="1rem" />} color="red" variant="light" mt="md">
+              <Text fw={500}>Container Restart Failed</Text>
+              <Text mt="xs" size="sm">
+                {restartMessage}
+              </Text>
+            </Alert>
+          )}
+        </Paper>
+      )}
 
       {config.tailscale.enabled && (
         <Paper p="md" withBorder mb="xl">

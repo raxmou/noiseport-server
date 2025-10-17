@@ -55,4 +55,27 @@ export class ApiService {
     const result = await response.json();
     return result.success;
   }
+
+  static async restartContainers(): Promise<any> {
+    const response = await fetch(`${API_BASE}/config/restart-containers`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to restart containers');
+    }
+    return response.json();
+  }
+
+  static async getServiceStatus(): Promise<any> {
+    const response = await fetch(`${API_BASE}/config/service-status`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to get service status');
+    }
+    return response.json();
+  }
 }
