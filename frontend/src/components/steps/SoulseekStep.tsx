@@ -59,12 +59,14 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
   const testSoulseekConnection = async () => {
     setConnectionStatus('testing');
     try {
+      console.log('Saving configuration before testing:', config);
       // Save config before testing
       const saveResponse = await fetch('/api/v1/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
       });
+      console.log('Saved configuration before testing:');
       if (!saveResponse.ok) {
         setConnectionStatus('error');
         return;
