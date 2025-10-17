@@ -510,6 +510,7 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
                 message = "Connection successful" if success else f"Status: {resp.get('status')}"
             except Exception as e:
                 success = False
+                print(e)
                 message = f"Failed to connect to slskd: {e}"
 
         # --- TAILSCALE ---
