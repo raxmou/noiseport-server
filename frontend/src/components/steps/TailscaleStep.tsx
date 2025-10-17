@@ -20,6 +20,9 @@ import { WizardConfiguration } from '../../types/wizard';
 import { useWizardConfig } from '../../hooks/useWizardConfig';
 import { ApiService } from '../../utils/api';
 
+// Configuration constants
+const RESTART_STATUS_CHECK_DELAY = 3000; // 3 seconds delay before re-testing Tailscale status
+
 interface Props {
   config: WizardConfiguration;
   onUpdate: (updates: Partial<WizardConfiguration>) => void;
@@ -38,7 +41,7 @@ export default function TailscaleStep({ config, onUpdate, onValidation }: Props)
     // Step is valid if Tailscale is disabled or if it's enabled and has valid IP
     const isValid = !config.tailscale.enabled || (config.tailscale.enabled && !!config.tailscale.ip);
     onValidation(isValid);
-  }, [config.tailscale, onValidation]);
+  }, [config.tailscale.enabled, config.tailscale.ip, onValidation]);
 
   const extractTailscaleIP = (message: string): string | null => {
     // Extract IP from message like "Tailscale is running. Your IP: 100.64.1.2"
@@ -114,7 +117,7 @@ export default function TailscaleStep({ config, onUpdate, onValidation }: Props)
         // Auto-retest Tailscale status after a short delay to allow containers to start
         setTimeout(() => {
           checkTailscaleStatus();
-        }, 3000);
+        }, RESTART_STATUS_CHECK_DELAY);
       } else {
         setRestartStatus('error');
         setRestartMessage(result.message || 'Some containers failed to restart. Check the logs for details.');

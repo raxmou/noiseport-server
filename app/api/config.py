@@ -5,6 +5,8 @@ import json
 import os
 import stat
 import hashlib
+import subprocess
+import threading
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
@@ -695,10 +697,7 @@ async def launch_status() -> JSONResponse:
 @router.post("/config/restart-containers")
 async def restart_containers() -> JSONResponse:
     """Restart development containers for Tailscale integration."""
-    try:
-        import subprocess
-        import asyncio
-        
+    try:        
         logger.info("Starting container restart for Tailscale integration")
         
         # Get current compose configuration
@@ -752,7 +751,7 @@ async def restart_containers() -> JSONResponse:
                 restart_results.append({
                     "container": container,
                     "status": "error",
-                    "message": f"Error restarting {container}: {str(e)}"
+                    "message": f"Error restarting {container}: Unable to restart container"
                 })
                 logger.error(f"Error restarting container {container}: {e}")
         
@@ -783,7 +782,6 @@ async def restart_containers() -> JSONResponse:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
                 "message": "Failed to restart containers",
-                "error": str(e),
                 "overall_status": "error"
             }
         )
@@ -792,9 +790,7 @@ async def restart_containers() -> JSONResponse:
 @router.get("/config/service-status")
 async def get_service_status() -> JSONResponse:
     """Check the status of all services."""
-    try:
-        import subprocess
-        
+    try:        
         # Check which containers are running
         result = subprocess.run(
             ["docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"],
