@@ -3,6 +3,7 @@ services:
   fastapi:
     build: .
     network_mode: host
+    user: root
     container_name: fastapi-wizard-dev
     ports:
       - "8000:8000"
