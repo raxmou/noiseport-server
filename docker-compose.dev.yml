@@ -20,7 +20,7 @@ services:
       - /var/run/tailscale/tailscaled.sock:/var/run/tailscale/tailscaled.sock
       - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /app/workspace
-    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 80
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
     restart: unless-stopped
     
     labels:
