@@ -645,16 +645,31 @@ async def launch_services() -> JSONResponse:
     thread = threading.Thread(target=run_stack, daemon=True)
     thread.start()
 
+
+    # Try to get TAILSCALE_IP from .env
+    tailscale_ip = None
+    try:
+        with open('.env', 'r') as f:
+            for line in f:
+                if line.startswith('TAILSCALE_IP='):
+                    tailscale_ip = line.strip().split('=', 1)[1]
+                    break
+    except Exception:
+        pass
+
+    def url(ip, port):
+        return f"http://{ip}:{port}" if ip else f"http://localhost:{port}"
+
     return JSONResponse(
         status_code=status.HTTP_202_ACCEPTED,
         content={
             "message": "Music stack launch started in background. Check progress via /config/launch-status.",
             "logFile": log_file,
             "services": {
-                "navidrome": "http://localhost:4533",
-                "jellyfin": "http://localhost:8096", 
-                "slskd": "http://localhost:5030",
-                "fastapi": "http://localhost:8000"
+                "navidrome": url(tailscale_ip, 4533),
+                "jellyfin": url(tailscale_ip, 8096),
+                "slskd": url(tailscale_ip, 5030),
+                "fastapi": url(tailscale_ip, 8000)
             }
         }
     )
