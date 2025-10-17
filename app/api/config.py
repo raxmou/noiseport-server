@@ -509,6 +509,7 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
                     password=config.get("password"),
                 )
                 resp = slskd_service.client.get_status()
+                print(resp)
                 success = resp.get("status") == "ok"
                 message = "Connection successful" if success else f"Status: {resp.get('status')}"
             except Exception as e:
