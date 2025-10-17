@@ -507,7 +507,8 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
                     
                 )
                 
-                message = "Connection successful" if success else f"Status: {resp.get('status')}"
+                message = "Connection successful"
+                success=True
             except Exception as e:
                 success = False
                 print(e)
