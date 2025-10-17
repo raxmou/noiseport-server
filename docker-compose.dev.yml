@@ -2,9 +2,10 @@
 services:
   fastapi:
     build: .
+    network_mode: host
     container_name: fastapi-wizard-dev
     ports:
-      - "8000:80"
+      - "8000:8000"
     environment:
       - WIZARD_MODE=true
       - PYTHONPATH=/app
@@ -14,11 +15,13 @@ services:
       - ./config:/app/config
       # Mount configuration output directory
       - .:/app/workspace
+      - /usr/bin/tailscale:/usr/bin/tailscale
+      - /var/run/tailscale/tailscaled.sock:/var/run/tailscale/tailscaled.sock
+      - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /app/workspace
     command: uvicorn app.main:app --reload --host 0.0.0.0 --port 80
     restart: unless-stopped
-    networks:
-      - music-net
+    
     labels:
       glance.name: Music Stack Setup Wizard (Development)
       glance.hide: false
@@ -28,6 +31,7 @@ services:
 
   frontend:
     image: node:20-alpine
+    network_mode: host
     container_name: frontend-dev
     ports:
       - "3000:3000"
@@ -37,8 +41,7 @@ services:
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
     environment:
       - NODE_ENV=development
-    networks:
-      - music-net
+    
     labels:
       glance.name: Frontend Development Server
       glance.hide: false
