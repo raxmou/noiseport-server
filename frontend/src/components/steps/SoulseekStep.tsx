@@ -36,15 +36,16 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
     onValidation(isValid);
   }, [config.soulseek, onValidation]);
 
-  // Temporarily disable the auto-setting of Tailscale IP to prevent infinite loops
-  // useEffect(() => {
-  //   // Auto-set host using Tailscale IP if available
-  //   if (config.tailscale.enabled && config.tailscale.ip && !config.soulseek.host.includes(config.tailscale.ip)) {
-  //     onUpdate({
-  //       soulseek: { ...config.soulseek, host: `http://${config.tailscale.ip}:5030` }
-  //     });
-  //   }
-  // }, [config.tailscale.enabled, config.tailscale.ip]);
+  useEffect(() => {
+    // Auto-set host using Tailscale IP if available (only if the host is still the default)
+    if (config.tailscale.enabled && 
+        config.tailscale.ip && 
+        config.soulseek.host === 'http://slskd:5030') {
+      onUpdate({
+        soulseek: { ...config.soulseek, host: `http://${config.tailscale.ip}:5030` }
+      });
+    }
+  }, [config.tailscale.enabled, config.tailscale.ip]); // Intentionally exclude onUpdate to prevent loops
 
   const handleSoulseekToggle = (enabled: boolean) => {
     onUpdate({

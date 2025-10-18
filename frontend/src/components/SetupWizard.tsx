@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -68,13 +68,12 @@ const steps: WizardStep[] = [
 export default function SetupWizard() {
   const [activeStep, setActiveStep] = useState(0);
   const [wizardSteps, setWizardSteps] = useState(steps);
-  const { config, loading, error, saveConfig, updateConfig } = useWizardConfig();
+  const { config, loading, error, saveConfig, updateConfig, loadConfig } = useWizardConfig();
   const [saving, setSaving] = useState(false);
 
-  // Temporarily disable config loading to show UI changes
-  // useEffect(() => {
-  //   loadConfig();
-  // }, [loadConfig]);
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
 
   const handleNext = () => {
     if (activeStep < wizardSteps.length - 1) {
