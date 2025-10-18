@@ -506,7 +506,9 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
                 from app.services.slskd_service import SlskdService
                 
                 SlskdService(
-                    
+                    host=config.get("host"),
+                    username=config.get("username"),
+                    password=config.get("password"),
                 )
                 
                 message = "Connection successful"

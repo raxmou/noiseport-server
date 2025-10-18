@@ -28,8 +28,11 @@ logger = get_logger(__name__)
 class SlskdService:
     """Service for interacting with SLSKD API."""
 
-    def __init__(self) -> None:
-        """Initialize SLSKD service."""
+    def __init__(self, host: str = None, username: str = None, password: str = None) -> None:
+        """Initialize SLSKD service with optional host, username, and password."""
+        self._host = host
+        self._username = username
+        self._password = password
         self._client: SlskdClient | None = None
 
     @property
@@ -37,12 +40,15 @@ class SlskdService:
         """Get SLSKD client instance."""
         if self._client is None:
             try:
+                host = self._host if self._host is not None else settings.slskd_host
+                username = self._username if self._username is not None else settings.slskd_username
+                password = self._password if self._password is not None else settings.slskd_password
                 self._client = SlskdClient(
-                    settings.slskd_host,
-                    username=settings.slskd_username,
-                    password=settings.slskd_password,
+                    host,
+                    username=username,
+                    password=password,
                 )
-                logger.info(f"Connected to SLSKD at {settings.slskd_host}")
+                logger.info(f"Connected to SLSKD at {host}")
             except Exception as e:
                 logger.error(f"Failed to connect to SLSKD: {e}")
                 raise SlskdConnectionError(f"Failed to connect to SLSKD: {e}")
