@@ -11,6 +11,7 @@ import {
   Collapse,
   Paper,
   Anchor,
+  Stack,
 } from '@mantine/core';
 import { IconAlertCircle, IconCheck, IconX } from '@tabler/icons-react';
 import { WizardConfiguration } from '../../types/wizard';
@@ -24,7 +25,8 @@ interface Props {
 
 export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-  const { testConnectionAndSave } = useWizardConfig();
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const { testConnection, saveSpotifyConfig } = useWizardConfig();
 
   useEffect(() => {
     onValidation(true);
@@ -45,10 +47,21 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
   const testSpotifyConnection = async () => {
     setConnectionStatus('testing');
     try {
-      const success = await testConnectionAndSave('spotify', config.spotify);
+      const success = await testConnection('spotify', config.spotify);
       setConnectionStatus(success ? 'success' : 'error');
     } catch {
       setConnectionStatus('error');
+    }
+  };
+
+  const handleSaveConfig = async () => {
+    setSaveStatus('saving');
+    try {
+      await saveSpotifyConfig();
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch {
+      setSaveStatus('error');
     }
   };
 
@@ -107,6 +120,17 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
             >
               Test Connection
             </Button>
+            <Button
+              onClick={handleSaveConfig}
+              loading={saveStatus === 'saving'}
+              disabled={!config.spotify.clientId || !config.spotify.clientSecret}
+              variant="outline"
+            >
+              Save Config
+            </Button>
+          </Group>
+
+          <Stack gap="xs" mb="md">
             {connectionStatus === 'success' && (
               <Alert icon={<IconCheck size="1rem" />} color="green" variant="light">
                 Connection successful!
@@ -117,7 +141,17 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
                 Connection failed. Please check your credentials.
               </Alert>
             )}
-          </Group>
+            {saveStatus === 'success' && (
+              <Alert icon={<IconCheck size="1rem" />} color="blue" variant="light">
+                Spotify configuration saved successfully!
+              </Alert>
+            )}
+            {saveStatus === 'error' && (
+              <Alert icon={<IconX size="1rem" />} color="red" variant="light">
+                Failed to save configuration. Please try again.
+              </Alert>
+            )}
+          </Stack>
 
           <Alert color="yellow" variant="light">
             <Text size="sm">
