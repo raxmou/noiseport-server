@@ -2,6 +2,33 @@ import { WizardConfiguration, ConfigValidationResponse } from '../types/wizard';
 
 const API_BASE = '/api/v1';
 
+export interface ContainerRestartResult {
+  container: string;
+  status: 'success' | 'error';
+  message: string;
+}
+
+export interface RestartContainersResponse {
+  message: string;
+  overall_status: 'success' | 'partial_failure' | 'error';
+  containers: ContainerRestartResult[];
+  next_steps: string[];
+}
+
+export interface ServiceInfo {
+  running: boolean;
+  url: string;
+}
+
+export interface ServiceStatusResponse {
+  services: {
+    navidrome: ServiceInfo;
+    jellyfin: ServiceInfo;
+    slskd: ServiceInfo;
+    fastapi: ServiceInfo;
+  };
+}
+
 export class ApiService {
   static async getCurrentConfig(): Promise<WizardConfiguration> {
     const response = await fetch(`${API_BASE}/config`);
@@ -54,5 +81,28 @@ export class ApiService {
     }
     const result = await response.json();
     return result.success;
+  }
+
+  static async restartContainers(): Promise<RestartContainersResponse> {
+    const response = await fetch(`${API_BASE}/config/restart-containers`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to restart containers');
+    }
+    return response.json();
+  }
+
+  static async getServiceStatus(): Promise<ServiceStatusResponse> {
+    const response = await fetch(`${API_BASE}/config/service-status`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to get service status');
+    }
+    return response.json();
   }
 }
