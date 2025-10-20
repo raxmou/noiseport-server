@@ -1,14 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Title,
   Text,
   Checkbox,
+  TextInput,
+  Button,
   Paper,
   Stack,
   Alert,
+  Collapse,
+  Group,
 } from '@mantine/core';
-import { IconInfoCircle } from '@tabler/icons-react';
+import { IconInfoCircle, IconCheck,  } from '@tabler/icons-react';
 import { WizardConfiguration } from '../../types/wizard';
+
 
 interface Props {
   config: WizardConfiguration;
@@ -17,24 +22,59 @@ interface Props {
 }
 
 export default function FeaturesStep({ config, onUpdate, onValidation }: Props) {
+  const [saving, setSaving] = useState(false);
+  const [configSaved, setConfigSaved] = useState(false);
+  
+
   useEffect(() => {
     onValidation(true);
   }, [onValidation]);
 
-  const handleFeatureToggle = (feature: keyof typeof config.features, enabled: boolean) => {
+  const handleScrobblingToggle = (enabled: boolean) => {
     onUpdate({
-      features: { ...config.features, [feature]: enabled }
+      features: { ...config.features, scrobbling: enabled }
     });
   };
 
+  const handleLastfmApiKeyChange = (apiKey: string) => {
+    onUpdate({
+      features: { ...config.features, lastfmApiKey: apiKey }
+    });
+  };
+
+  const handleSaveConfig = async () => {
+    setSaving(true);
+    console.log('Saving configuration:', config);
+    try {
+      const response = await fetch('/api/v1/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(config),
+      });
+      
+      if (response.ok) {
+        setConfigSaved(true);
+        const result = await response.json();
+        console.log('Configuration saved:', result);
+      } else {
+        console.error('Failed to save configuration');
+      }
+    } catch (error) {
+      console.error('Error saving configuration:', error);
+    }
+    setSaving(false);
+  };
+  const isFormValid = !config.features.scrobbling || (config.features.scrobbling && config.features.lastfmApiKey.trim() !== '');
   return (
     <>
       <Title order={2} mb="md">
-        Optional Features
+        Additional Features
       </Title>
       <Text c="dimmed" mb="md">
-        Choose which additional features you'd like to enable. All of these are optional
-        and can be configured later through the main application interface.
+        Configure optional features for enhanced functionality. Scrobbling allows you to track 
+        your listening history and send data to Last.fm for music discovery and statistics.
       </Text>
 
       <Paper p="md" withBorder>
@@ -43,35 +83,48 @@ export default function FeaturesStep({ config, onUpdate, onValidation }: Props) 
             label="Enable Scrobbling"
             description="Track your listening history and send data to Last.fm"
             checked={config.features.scrobbling}
-            onChange={(event) => handleFeatureToggle('scrobbling', event.currentTarget.checked)}
+            onChange={(event) => handleScrobblingToggle(event.currentTarget.checked)}
           />
           
-          <Checkbox
-            label="Enable Downloads"
-            description="Allow automatic downloading of music from Soulseek"
-            checked={config.features.downloads}
-            onChange={(event) => handleFeatureToggle('downloads', event.currentTarget.checked)}
-          />
-          
-          <Checkbox
-            label="Enable Music Discovery"
-            description="Get recommendations and discover new music based on your library"
-            checked={config.features.discovery}
-            onChange={(event) => handleFeatureToggle('discovery', event.currentTarget.checked)}
-          />
-        </Stack>
+          <Collapse in={config.features.scrobbling}>
+            <TextInput
+              label="Last.fm API Key"
+              placeholder="Your Last.fm API Key"
+              value={config.features.lastfmApiKey}
+              onChange={(event) => handleLastfmApiKeyChange(event.currentTarget.value)}
+              mt="md"
+              required
+              description="Get your API key from https://www.last.fm/api/account/create"
+            />
+            
+            <Alert icon={<IconInfoCircle size="1rem" />} color="blue" variant="light" mt="md">
+              <Text size="sm">
+                <strong>Setup Instructions:</strong>
+                <ol style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                  <li>Visit the Last.fm API account creation page</li>
+                  <li>Create a new application</li>
+                  <li>Copy the API Key and paste it above</li>
+                  <li>Save the configuration to enable scrobbling</li>
+                </ol>
+              </Text>
+            </Alert>
+          </Collapse>
 
-        <Alert icon={<IconInfoCircle size="1rem" />} color="blue" variant="light" mt="md">
-          <Text size="sm">
-            <strong>Feature Details:</strong>
-            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-              <li><strong>Scrobbling:</strong> Requires Last.fm account configuration</li>
-              <li><strong>Downloads:</strong> Core functionality for music acquisition</li>
-              <li><strong>Discovery:</strong> Uses Spotify API and local library analysis</li>
-            </ul>
-            You can always enable or disable these features later in the application settings.
-          </Text>
-        </Alert>
+          <Group mt="md">
+            <Button
+              onClick={handleSaveConfig}
+              loading={saving}
+              leftSection={<IconCheck size="1rem" />}
+              disabled={!isFormValid}
+              color={configSaved ? "green" : "blue"}
+            variant={configSaved ? "light" : "filled"}
+            >
+              {saving ? "Saving..." : configSaved ? "Saved ✓" : "Save Configuration"}
+            </Button>
+          </Group>
+
+          
+        </Stack>
       </Paper>
     </>
   );

@@ -58,7 +58,7 @@ def create_app() -> FastAPI:
     # Serve static files for the React frontend
     frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")
     
-    print("here")
+    
     app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist_path, "assets")), name="assets")
     
     # Serve the React app for wizard routes

@@ -26,7 +26,9 @@ interface Props {
 export default function SoulseekStep({ config, onUpdate, onValidation }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'success' | 'error'>('idle');
-  const { testConnectionAndSave } = useWizardConfig();
+  const [saving, setSaving] = useState(false);
+  const [configSaved, setConfigSaved] = useState(false);
+  const { testConnection } = useWizardConfig();
 
   useEffect(() => {
     const isValid = !config.soulseek.enabled || 
@@ -36,13 +38,15 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
   }, [config.soulseek, onValidation]);
 
   useEffect(() => {
-    // Auto-set host using Tailscale IP if available
-    if (config.tailscale.enabled && config.tailscale.ip && !config.soulseek.host.includes(config.tailscale.ip)) {
+    // Auto-set host using Tailscale IP if available (only if the host is still the default)
+    if (config.tailscale.enabled && 
+        config.tailscale.ip && 
+        config.soulseek.host === 'http://slskd:5030') {
       onUpdate({
         soulseek: { ...config.soulseek, host: `http://${config.tailscale.ip}:5030` }
       });
     }
-  }, [config.tailscale, config.soulseek.host, onUpdate]);
+  }, [config.tailscale.enabled, config.tailscale.ip]); // Intentionally exclude onUpdate to prevent loops
 
   const handleSoulseekToggle = (enabled: boolean) => {
     onUpdate({
@@ -59,24 +63,36 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
   const testSoulseekConnection = async () => {
     setConnectionStatus('testing');
     try {
-      console.log('Saving configuration before testing:', config);
-      // Save config before testing
-      const saveResponse = await fetch('/api/v1/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
-      console.log('Saved configuration before testing:');
-      if (!saveResponse.ok) {
-        setConnectionStatus('error');
-        return;
-      }
-      // Now test connection
-      const success = await testConnectionAndSave('soulseek', config.soulseek);
+      const success = await testConnection('soulseek', config.soulseek);
       setConnectionStatus(success ? 'success' : 'error');
     } catch {
       setConnectionStatus('error');
     }
+  };
+
+  const handleSaveConfig = async () => {
+    setSaving(true);
+    console.log('Saving configuration:', config);
+    try {
+      const response = await fetch('/api/v1/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(config),
+      });
+      
+      if (response.ok) {
+        setConfigSaved(true);
+        const result = await response.json();
+        console.log('Configuration saved:', result);
+      } else {
+        console.error('Failed to save configuration');
+      }
+    } catch (error) {
+      console.error('Error saving configuration:', error);
+    }
+    setSaving(false);
   };
 
   const restartSlskdContainer = async () => {
@@ -202,8 +218,21 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
               loading={connectionStatus === 'testing'}
               disabled={!isFormValid}
             >
-              Test slskd Connection
+              Test Connection
             </Button>
+            <Button
+              onClick={handleSaveConfig}
+              loading={saving}
+              leftSection={<IconCheck size="1rem" />}
+              disabled={!isFormValid}
+              color={configSaved ? "green" : "blue"}
+            variant={configSaved ? "light" : "filled"}
+            >
+              {saving ? "Saving..." : configSaved ? "Saved ✓" : "Save Configuration"}
+            </Button>
+          </Group>
+
+          <Stack gap="xs" mb="md">
             {connectionStatus === 'success' && (
               <Alert icon={<IconCheck size="1rem" />} color="green" variant="light">
                 slskd connection successful!
@@ -214,7 +243,17 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
                 Connection failed. Please check your slskd configuration.
               </Alert>
             )}
-          </Group>
+            {/* {saveStatus === 'success' && (
+              <Alert icon={<IconCheck size="1rem" />} color="blue" variant="light">
+                Soulseek configuration saved successfully!
+              </Alert>
+            )}
+            {saveStatus === 'error' && (
+              <Alert icon={<IconX size="1rem" />} color="red" variant="light">
+                Failed to save configuration. Please try again.
+              </Alert>
+            )} */}
+          </Stack>
 
           {connectionStatus === 'success' && (
             <Paper p="md" withBorder bg="green.0" mt="md">

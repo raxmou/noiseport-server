@@ -46,6 +46,7 @@ export interface WizardConfiguration {
     scrobbling: boolean;
     downloads: boolean;
     discovery: boolean;
+    lastfmApiKey: string;
   };
 }
 

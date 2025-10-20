@@ -39,6 +39,7 @@ const defaultConfig: WizardConfiguration = {
     scrobbling: false,
     downloads: true,
     discovery: false,
+    lastfmApiKey: '',
   },
 };
 
@@ -83,6 +84,10 @@ export const useWizardConfig = () => {
         ...prev.musicPaths,
         ...(updates.musicPaths || {}),
       },
+      features: {
+        ...prev.features,
+        ...(updates.features || {}),
+      },
       // Add similar merging for other nested objects if needed
     }));
   }, []);
@@ -110,6 +115,51 @@ export const useWizardConfig = () => {
     }
   }, [config]);
 
+  const saveSoulseekConfig = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // Save the complete config with current soulseek settings
+      await ApiService.saveConfiguration(config);
+    } catch (err) {
+      setError('Failed to save Soulseek configuration');
+      console.error('Error saving Soulseek config:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [config]);
+
+  const saveSpotifyConfig = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // Save the complete config with current spotify settings
+      await ApiService.saveConfiguration(config);
+    } catch (err) {
+      setError('Failed to save Spotify configuration');
+      console.error('Error saving Spotify config:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [config]);
+
+  const saveFeaturesConfig = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // Save the complete config with current features settings
+      await ApiService.saveConfiguration(config);
+    } catch (err) {
+      setError('Failed to save features configuration');
+      console.error('Error saving features config:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [config]);
+
   return {
     config,
     loading,
@@ -119,5 +169,8 @@ export const useWizardConfig = () => {
     updateConfig,
     testConnection,
     testConnectionAndSave,
+    saveSoulseekConfig,
+    saveSpotifyConfig,
+    saveFeaturesConfig,
   };
 };
