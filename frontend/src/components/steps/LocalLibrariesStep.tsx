@@ -10,14 +10,14 @@ import {
   Alert,
   Collapse,
   Paper,
-  Anchor,
   List,
   Stack,
-  Badge,
 } from '@mantine/core';
-import { IconCheck, IconX, IconExternalLink, IconMusic, IconPlayerPlay, IconVideo, IconApi } from '@tabler/icons-react';
+import { IconCheck, IconX, IconMusic } from '@tabler/icons-react';
 import { WizardConfiguration } from '../../types/wizard';
 import { useWizardConfig } from '../../hooks/useWizardConfig';
+import { ServiceInfo } from '../ServiceInfo';
+import { serviceInfoData } from '../../data/services';
 
 interface Props {
   config: WizardConfiguration;
@@ -93,97 +93,10 @@ export default function LocalLibrariesStep({ config, onUpdate, onValidation }: P
       <Paper p="xl" withBorder mb="xl" bg="blue.0">
         <Title order={3} mb="md">Available Services</Title>
         <Stack gap="lg">
-          <Group align="flex-start" gap="md">
-            <IconMusic size="2rem" color="blue" />
-            <div style={{ flex: 1 }}>
-              <Group gap="sm" mb="xs">
-                <Text fw={600} size="lg">Navidrome</Text>
-                <Badge color="blue" variant="light">Music Server</Badge>
-                <Anchor
-                  href="http://localhost:4533"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  size="sm"
-                >
-                  Open Navidrome
-                  <IconExternalLink size="0.8rem" style={{ marginLeft: '4px' }} />
-                </Anchor>
-              </Group>
-              <Text size="sm" c="dimmed">
-                A modern music server and streamer compatible with Subsonic/Airsonic clients. 
-                Provides web-based music streaming, playlists, and metadata management for your music collection.
-              </Text>
-            </div>
-          </Group>
-
-          <Group align="flex-start" gap="md">
-            <IconVideo size="2rem" color="orange" />
-            <div style={{ flex: 1 }}>
-              <Group gap="sm" mb="xs">
-                <Text fw={600} size="lg">Jellyfin</Text>
-                <Badge color="orange" variant="light">Media Server</Badge>
-                <Anchor
-                  href="http://localhost:8096"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  size="sm"
-                >
-                  Open Jellyfin
-                  <IconExternalLink size="0.8rem" style={{ marginLeft: '4px' }} />
-                </Anchor>
-              </Group>
-              <Text size="sm" c="dimmed">
-                A free media system that puts you in control of your media. Streams music and videos 
-                to any device with rich metadata, artwork, and cross-device synchronization.
-              </Text>
-            </div>
-          </Group>
-
-          <Group align="flex-start" gap="md">
-            <IconPlayerPlay size="2rem" color="green" />
-            <div style={{ flex: 1 }}>
-              <Group gap="sm" mb="xs">
-                <Text fw={600} size="lg">slskd</Text>
-                <Badge color="green" variant="light">Download Client</Badge>
-                <Anchor
-                  href="http://localhost:5030"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  size="sm"
-                >
-                  Open slskd Web
-                  <IconExternalLink size="0.8rem" style={{ marginLeft: '4px' }} />
-                </Anchor>
-              </Group>
-              <Text size="sm" c="dimmed">
-                A web-based Soulseek client for downloading music from the Soulseek network. 
-                Enables music discovery and downloading from a vast peer-to-peer music community.
-              </Text>
-            </div>
-          </Group>
-
-          <Group align="flex-start" gap="md">
-            <IconApi size="2rem" color="violet" />
-            <div style={{ flex: 1 }}>
-              <Group gap="sm" mb="xs">
-                <Text fw={600} size="lg">FastAPI Backend</Text>
-                <Badge color="violet" variant="light">API Server</Badge>
-                <Anchor
-                  href="http://localhost:8000/docs"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  size="sm"
-                >
-                  API Documentation
-                  <IconExternalLink size="0.8rem" style={{ marginLeft: '4px' }} />
-                </Anchor>
-              </Group>
-              <Text size="sm" c="dimmed">
-                The orchestration layer that connects all services together. Provides automation, 
-                configuration management, and API endpoints for music downloading and library management.
-              </Text>
-            </div>
-          </Group>
+          <ServiceInfo service={serviceInfoData.navidrome} />
+          <ServiceInfo service={serviceInfoData.jellyfin} />
+          <ServiceInfo service={serviceInfoData.slskd} />
+          <ServiceInfo service={serviceInfoData.api} />
         </Stack>
       </Paper>
 
