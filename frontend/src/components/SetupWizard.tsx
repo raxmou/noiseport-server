@@ -171,12 +171,16 @@ export default function SetupWizard() {
         <LoadingOverlay visible={loading || saving} />
         
         <Title order={1} mb="xl" ta="center">
-          Noiseport Setup Wizard
+          Noiseport Server Setup Wizard
         </Title>
         
         <Text size="lg" c="dimmed" ta="center" mb="xl">
-          Configure your Noiseport client stack in a few simple steps.
-          If you encounter any issues, please refer to the documentation or seek help on our support channels. 
+          You are a few steps away from completing the setup of Noiseport Server.
+          This server is meant to run on a dedicated machine, such as a Raspberry Pi or a home server, to make your music accessible anytime and anywhere.
+          If you don't have a dedicated machine, consider setting up a virtual machine on a cloud provider like DigitalOcean, Hetzner or OVH.
+            <br />
+            <br />
+          If you encounter any issues, you can always contact me directly on the Noiseport Discord server.
           You can revisit this wizard anytime to update your settings.
           
         </Text>

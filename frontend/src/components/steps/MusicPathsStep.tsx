@@ -104,9 +104,8 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
         Music Folder Configuration
       </Title>
       <Text c="dimmed" mb="xl">
-        Configure the base music folder on your host system. The system will automatically create 
-        "downloads" and "complete" subdirectories for organizing your music files. 
-        These folders will be mounted into the Docker containers for the services to access.
+        Configure the base music folder on your host system. The system will create necessary subdirectories for downloads and completed music files.
+
       </Text>
 
       <Paper p="md" withBorder mb="md">
@@ -118,7 +117,18 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
           Specify the base folder on your computer where music will be stored. 
           The system will automatically create "downloads" and "complete" subdirectories within this folder.
         </Text>
-
+        <Alert color="blue" variant="light" mt="md">
+          <Text size="sm"  mb="md">
+          Since we're setting up a dedicated music server, it's important to make sure the path you're providing can handle large volumes of music files. 
+          Consequently, using external drives or network-attached storage (NAS) is highly recommended for optimal performance and storage capacity.
+          If you do so, make sure the drive is properly mounted and accessible by the system before proceeding. Don't hesitate to reach out on the Noiseport Discord server if you need any assistance with this setup.
+        </Text>
+          <Text size="sm">
+            <strong>📁 Directory Structure:</strong><br/>
+            • <code>{config.musicPaths?.hostMusicPath || './music'}/downloads/</code> - For files being downloaded<br/>
+            • <code>{config.musicPaths?.hostMusicPath || './music'}/complete/</code> - For your organized music library
+          </Text>
+        </Alert>
         <TextInput
           label="Host Music Path"
           placeholder="./music"
@@ -129,25 +139,9 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
           description="Base folder on your computer for music storage (e.g., /home/user/music or ./music)"
         />
         
-        <Alert color="blue" variant="light" mt="md">
-          <Text size="sm">
-            <strong>📁 Directory Structure:</strong><br/>
-            • <code>{config.musicPaths?.hostMusicPath || './music'}/downloads/</code> - For files being downloaded<br/>
-            • <code>{config.musicPaths?.hostMusicPath || './music'}/complete/</code> - For your organized music library
-          </Text>
-        </Alert>
+        
       </Paper>
 
-      <Alert color="green" variant="light" mb="md">
-        <Text size="sm">
-          <strong>🎯 New Workflow:</strong><br/>
-          1. Configure your music base path below ✅<br/>
-          2. <strong>Save configuration</strong> to generate docker-compose files<br/>
-          3. Launch all music services with your configured path<br/>
-          4. Access services and create accounts<br/>
-          5. Return to wizard to configure authentication
-        </Text>
-      </Alert>
 
       {configSaved && (
         <Alert color="blue" variant="light" mb="md">
@@ -155,58 +149,22 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
             <IconCheck size="1.2rem" color="blue" />
             <div>
               <Text fw={600} c="blue">Configuration Saved!</Text>
-              <Text size="sm" c="dimmed">Docker Compose files generated with your music base path. Ready to launch services.</Text>
+              <Text size="sm" c="dimmed">Configuration files correctly generated, ready to launch services!</Text>
             </div>
           </Group>
         </Alert>
       )}
 
-      {servicesLaunched && serviceStatus && (
-        <Paper p="md" withBorder mb="md" bg="green.0">
-          <Group gap="md" mb="md">
-            <IconRocket size="1.5rem" color="green" />
-            <div>
-              <Text fw={600} c="green">Services Launched Successfully!</Text>
-              <Text size="sm" c="dimmed">All services are running with your configured music path</Text>
-            </div>
-          </Group>
-          
-          <Text fw={500} mb="sm">Access your services:</Text>
-          <Group gap="md">
-            {Object.entries(serviceStatus).map(([name, service]: [string, any]) => (
-              <Button
-                key={name}
-                component="a"
-                href={service.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="outline"
-                size="sm"
-                leftSection={service.running ? <IconCheck size="1rem" color="green" /> : <IconX size="1rem" color="red" />}
-                rightSection={<IconExternalLink size="1rem" />}
-                color={service.running ? "green" : "red"}
-              >
-                {name.charAt(0).toUpperCase() + name.slice(1)}
-              </Button>
-            ))}
-          </Group>
-        </Paper>
-      )}
+      
 
-      <Alert color="blue" variant="light" mb="md">
-        <Text size="sm">
-          <strong>🐳 Docker Compose Integration:</strong><br/>
-          When you save this configuration, a docker-compose.full.yml file will be generated 
-          that mounts your music folder into the containers with appropriate subdirectories. You can then launch all services with the button below.
-        </Text>
-      </Alert>
+      
 
       <Paper p="md" withBorder mb="md">
         <Group justify="space-between" align="center" mb="md">
           <div>
             <Text fw={600} mb="xs">Step 1: Save Configuration</Text>
             <Text size="sm" c="dimmed">
-              Save your music base path to generate Docker Compose files with subdirectory mounting.
+              Save your music base path to generate correct config files.
             </Text>
           </div>
           <Button
@@ -249,22 +207,40 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
             </Group>
           </Alert>
         )}
+        {servicesLaunched && serviceStatus && (
+        <Paper p="md" withBorder mb="md" bg="green.0">
+          <Group gap="md" mb="md">
+            <IconRocket size="1.5rem" color="green" />
+            <div>
+              <Text fw={600} c="green">Services Launched Successfully!</Text>
+              <Text size="sm" c="dimmed">All services are running with your configured music path</Text>
+            </div>
+          </Group>
+          
+          <Text fw={500} mb="sm">Access your services:</Text>
+          <Group gap="md">
+            {Object.entries(serviceStatus).map(([name, service]: [string, any]) => (
+              <Button
+                key={name}
+                component="a"
+                href={service.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="outline"
+                size="sm"
+                leftSection={service.running ? <IconCheck size="1rem" color="green" /> : <IconX size="1rem" color="red" />}
+                rightSection={<IconExternalLink size="1rem" />}
+                color={service.running ? "green" : "red"}
+              >
+                {name.charAt(0).toUpperCase() + name.slice(1)}
+              </Button>
+            ))}
+          </Group>
+        </Paper>
+      )}
       </Paper>
 
-      <Alert color="blue" variant="light">
-        <Text size="sm">
-          <strong>Path Guidelines:</strong>
-          <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-            <li><strong>Base path</strong> can be relative (./music) or absolute (/home/user/music)</li>
-            <li>Make sure you have read/write permissions for the music folder</li>
-            <li>The system will automatically create downloads/ and complete/ subdirectories</li>
-            <li>downloads/ folder is for temporary files during processing</li>
-            <li>complete/ folder is for your final organized music library</li>
-            <li>Subdirectories will be automatically created if they don't exist</li>
-            <li>Choose a location with enough storage space for your music collection</li>
-          </ul>
-        </Text>
-      </Alert>
+      
     </>
   );
 }

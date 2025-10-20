@@ -149,7 +149,7 @@ export default function TailscaleStep({ config, onUpdate, onValidation }: Props)
       </Title>
       
       <Text c="dimmed" mb="xl">
-        Tailscale creates a secure, private network that lets you access your music library from anywhere.
+        Tailscale creates a secure, private network that lets you access your NoisePort servers from anywhere.
         With Tailscale, you can stream your music remotely while keeping everything secure and private.
       </Text>
 
@@ -158,7 +158,7 @@ export default function TailscaleStep({ config, onUpdate, onValidation }: Props)
           <Text fw={500}>What is Tailscale?</Text>
           <Text size="sm">
             Tailscale is a zero-config VPN that creates a secure mesh network between your devices.
-            It makes your music services accessible from anywhere without exposing them to the internet.
+            It makes your NoisePort servers accessible from anywhere without exposing them to the internet.
           </Text>
         </Stack>
       </Alert>
@@ -169,22 +169,20 @@ export default function TailscaleStep({ config, onUpdate, onValidation }: Props)
         <List spacing="md" withPadding>
           <List.Item>
             <Text fw={500} mb="xs">Install Tailscale on this machine:</Text>
-            <Group gap="xs" mb="sm">
-              <Anchor
-                href="https://tailscale.com/download"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Download Tailscale
-                <IconExternalLink size="0.8rem" style={{ marginLeft: '4px' }} />
-              </Anchor>
-            </Group>
+            <Text size="sm" c="dimmed">
+              Spin up a new terminal on the remote machine and if Tailscale is not installed, run the following command:
+            </Text>
+            
             <Code block mb="sm">
               {`# Linux/macOS
-curl -fsSL https://tailscale.com/install.sh | sh
-
-# Windows: Download from website above`}
+curl -fsSL https://tailscale.com/install.sh | sh`}
             </Code>
+            <Text size="sm" c="dimmed">
+              If you use Windows, download the installer from the{' '}
+              <Anchor href="https://tailscale.com/download" target="_blank" rel="noopener noreferrer">
+                Tailscale Downloads Page <IconExternalLink size="0.8rem" style={{ display: 'inline-block', verticalAlign: 'middle' }} />
+              </Anchor>
+            </Text>
           </List.Item>
 
           <List.Item>
@@ -192,6 +190,7 @@ curl -fsSL https://tailscale.com/install.sh | sh
             <Code block mb="sm">sudo tailscale up</Code>
             <Text size="sm" c="dimmed">
               This will open a browser window to authenticate with your Tailscale account.
+              From experience, redirection link once authenticated may fail on first try. If you authenticate but you still see the authentication URL in the terminal, simply abort and rerun the command to get the connection established.
             </Text>
           </List.Item>
 
@@ -202,17 +201,7 @@ curl -fsSL https://tailscale.com/install.sh | sh
             </Text>
           </List.Item>
 
-          <List.Item>
-            <Text fw={500} mb="xs">Access your services remotely:</Text>
-            <Text size="sm" c="dimmed" mb="xs">
-              Once connected, you can access your music services using the Tailscale IP address from any device on your network.
-            </Text>
-            <Alert color="green" variant="light" mt="sm">
-              <Text size="sm">
-                <strong>Example:</strong> If your Tailscale IP is 100.64.1.2, access Navidrome at http://100.64.1.2:4533
-              </Text>
-            </Alert>
-          </List.Item>
+          
         </List>
       </Paper>
 
@@ -253,7 +242,7 @@ curl -fsSL https://tailscale.com/install.sh | sh
         
         {connectionStatus === 'error' && (
           <Alert icon={<IconX size="1rem" />} color="red" variant="light" mt="md">
-            Tailscale is not detected or not connected. Please follow the installation steps above.
+            Tailscale is not detected or not connected. Please follow the installation steps above or contact support on the Noiseport Discord server.
             {connectionMessage && (
               <Text mt="xs" size="sm" c="red">
                 {connectionMessage}
