@@ -31,6 +31,7 @@ class SlskdService:
     def __init__(self, host: str = None, username: str = None, password: str = None) -> None:
         """Initialize SLSKD service with optional host, username, and password."""
         self._host = host
+        
         self._username = username
         self._password = password
         self._client: SlskdClient | None = None
@@ -38,11 +39,13 @@ class SlskdService:
     @property
     def client(self) -> SlskdClient:
         """Get SLSKD client instance."""
+        print("Accessing SLSKD client")
         if self._client is None:
             try:
                 host = self._host if self._host is not None else settings.slskd_host
                 username = self._username if self._username is not None else settings.slskd_username
                 password = self._password if self._password is not None else settings.slskd_password
+                print(f"Connecting to SLSKD at {host} with user {username}")
                 self._client = SlskdClient(
                     host,
                     username=username,
