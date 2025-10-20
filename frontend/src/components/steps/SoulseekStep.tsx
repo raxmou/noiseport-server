@@ -26,8 +26,9 @@ interface Props {
 export default function SoulseekStep({ config, onUpdate, onValidation }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'success' | 'error'>('idle');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
-  const { testConnection, saveSoulseekConfig } = useWizardConfig();
+  const [saving, setSaving] = useState(false);
+  const [configSaved, setConfigSaved] = useState(false);
+  const { testConnection } = useWizardConfig();
 
   useEffect(() => {
     const isValid = !config.soulseek.enabled || 
@@ -70,14 +71,28 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
   };
 
   const handleSaveConfig = async () => {
-    setSaveStatus('saving');
+    setSaving(true);
+    console.log('Saving configuration:', config);
     try {
-      await saveSoulseekConfig();
-      setSaveStatus('success');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch {
-      setSaveStatus('error');
+      const response = await fetch('/api/v1/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(config),
+      });
+      
+      if (response.ok) {
+        setConfigSaved(true);
+        const result = await response.json();
+        console.log('Configuration saved:', result);
+      } else {
+        console.error('Failed to save configuration');
+      }
+    } catch (error) {
+      console.error('Error saving configuration:', error);
     }
+    setSaving(false);
   };
 
   const restartSlskdContainer = async () => {
@@ -207,11 +222,13 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
             </Button>
             <Button
               onClick={handleSaveConfig}
-              loading={saveStatus === 'saving'}
+              loading={saving}
+              leftSection={<IconCheck size="1rem" />}
               disabled={!isFormValid}
-              variant="outline"
+              color={configSaved ? "green" : "blue"}
+            variant={configSaved ? "light" : "filled"}
             >
-              Save Config
+              {saving ? "Saving..." : configSaved ? "Saved ✓" : "Save Configuration"}
             </Button>
           </Group>
 
@@ -226,7 +243,7 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
                 Connection failed. Please check your slskd configuration.
               </Alert>
             )}
-            {saveStatus === 'success' && (
+            {/* {saveStatus === 'success' && (
               <Alert icon={<IconCheck size="1rem" />} color="blue" variant="light">
                 Soulseek configuration saved successfully!
               </Alert>
@@ -235,7 +252,7 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
               <Alert icon={<IconX size="1rem" />} color="red" variant="light">
                 Failed to save configuration. Please try again.
               </Alert>
-            )}
+            )} */}
           </Stack>
 
           {connectionStatus === 'success' && (

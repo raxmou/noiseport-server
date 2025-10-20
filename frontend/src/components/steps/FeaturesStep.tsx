@@ -11,9 +11,9 @@ import {
   Collapse,
   Group,
 } from '@mantine/core';
-import { IconInfoCircle, IconCheck, IconX } from '@tabler/icons-react';
+import { IconInfoCircle, IconCheck,  } from '@tabler/icons-react';
 import { WizardConfiguration } from '../../types/wizard';
-import { useWizardConfig } from '../../hooks/useWizardConfig';
+
 
 interface Props {
   config: WizardConfiguration;
@@ -22,8 +22,9 @@ interface Props {
 }
 
 export default function FeaturesStep({ config, onUpdate, onValidation }: Props) {
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
-  const { saveFeaturesConfig } = useWizardConfig();
+  const [saving, setSaving] = useState(false);
+  const [configSaved, setConfigSaved] = useState(false);
+  
 
   useEffect(() => {
     onValidation(true);
@@ -42,16 +43,30 @@ export default function FeaturesStep({ config, onUpdate, onValidation }: Props) 
   };
 
   const handleSaveConfig = async () => {
-    setSaveStatus('saving');
+    setSaving(true);
+    console.log('Saving configuration:', config);
     try {
-      await saveFeaturesConfig();
-      setSaveStatus('success');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch {
-      setSaveStatus('error');
+      const response = await fetch('/api/v1/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(config),
+      });
+      
+      if (response.ok) {
+        setConfigSaved(true);
+        const result = await response.json();
+        console.log('Configuration saved:', result);
+      } else {
+        console.error('Failed to save configuration');
+      }
+    } catch (error) {
+      console.error('Error saving configuration:', error);
     }
+    setSaving(false);
   };
-
+  const isFormValid = !config.features.scrobbling || (config.features.scrobbling && config.features.lastfmApiKey.trim() !== '');
   return (
     <>
       <Title order={2} mb="md">
@@ -98,25 +113,17 @@ export default function FeaturesStep({ config, onUpdate, onValidation }: Props) 
           <Group mt="md">
             <Button
               onClick={handleSaveConfig}
-              loading={saveStatus === 'saving'}
-              variant="outline"
+              loading={saving}
+              leftSection={<IconCheck size="1rem" />}
+              disabled={!isFormValid}
+              color={configSaved ? "green" : "blue"}
+            variant={configSaved ? "light" : "filled"}
             >
-              Save Config
+              {saving ? "Saving..." : configSaved ? "Saved ✓" : "Save Configuration"}
             </Button>
           </Group>
 
-          <Stack gap="xs">
-            {saveStatus === 'success' && (
-              <Alert icon={<IconCheck size="1rem" />} color="blue" variant="light">
-                Features configuration saved successfully!
-              </Alert>
-            )}
-            {saveStatus === 'error' && (
-              <Alert icon={<IconX size="1rem" />} color="red" variant="light">
-                Failed to save configuration. Please try again.
-              </Alert>
-            )}
-          </Stack>
+          
         </Stack>
       </Paper>
     </>

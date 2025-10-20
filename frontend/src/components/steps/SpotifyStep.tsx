@@ -25,8 +25,10 @@ interface Props {
 
 export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
-  const { testConnection, saveSpotifyConfig } = useWizardConfig();
+  
+  const [saving, setSaving] = useState(false);
+  const [configSaved, setConfigSaved] = useState(false);
+  const { testConnection,  } = useWizardConfig();
 
   useEffect(() => {
     onValidation(true);
@@ -55,16 +57,30 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
   };
 
   const handleSaveConfig = async () => {
-    setSaveStatus('saving');
+    setSaving(true);
+    console.log('Saving configuration:', config);
     try {
-      await saveSpotifyConfig();
-      setSaveStatus('success');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch {
-      setSaveStatus('error');
+      const response = await fetch('/api/v1/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(config),
+      });
+      
+      if (response.ok) {
+        setConfigSaved(true);
+        const result = await response.json();
+        console.log('Configuration saved:', result);
+      } else {
+        console.error('Failed to save configuration');
+      }
+    } catch (error) {
+      console.error('Error saving configuration:', error);
     }
+    setSaving(false);
   };
-
+  const isFormValid = config.spotify.clientId.trim() !== '' && config.spotify.clientSecret.trim() !== '';
   return (
     <>
       <Title order={2} mb="md">
@@ -122,11 +138,13 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
             </Button>
             <Button
               onClick={handleSaveConfig}
-              loading={saveStatus === 'saving'}
-              disabled={!config.spotify.clientId || !config.spotify.clientSecret}
-              variant="outline"
+              loading={saving}
+              leftSection={<IconCheck size="1rem" />}
+              disabled={!isFormValid}
+              color={configSaved ? "green" : "blue"}
+            variant={configSaved ? "light" : "filled"}
             >
-              Save Config
+              {saving ? "Saving..." : configSaved ? "Saved ✓" : "Save Configuration"}
             </Button>
           </Group>
 
@@ -141,16 +159,7 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
                 Connection failed. Please check your credentials.
               </Alert>
             )}
-            {saveStatus === 'success' && (
-              <Alert icon={<IconCheck size="1rem" />} color="blue" variant="light">
-                Spotify configuration saved successfully!
-              </Alert>
-            )}
-            {saveStatus === 'error' && (
-              <Alert icon={<IconX size="1rem" />} color="red" variant="light">
-                Failed to save configuration. Please try again.
-              </Alert>
-            )}
+            
           </Stack>
 
           <Alert color="yellow" variant="light">
