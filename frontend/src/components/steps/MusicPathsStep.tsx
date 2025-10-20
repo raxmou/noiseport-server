@@ -16,6 +16,15 @@ import { WizardConfiguration } from '../../types/wizard';
 import { ServiceInfo } from '../ServiceInfo';
 import { serviceInfoData } from '../../data/services';
 
+interface ServiceStatus {
+  url: string;
+  running: boolean;
+}
+
+interface ServiceStatusMap {
+  [serviceName: string]: ServiceStatus;
+}
+
 interface Props {
   config: WizardConfiguration;
   onUpdate: (updates: Partial<WizardConfiguration>) => void;
@@ -25,7 +34,7 @@ interface Props {
 export default function MusicPathsStep({ config, onUpdate, onValidation }: Props) {
   const [servicesLaunched, setServicesLaunched] = useState(false);
   const [launching, setLaunching] = useState(false);
-  const [serviceStatus, setServiceStatus] = useState<any>(null);
+  const [serviceStatus, setServiceStatus] = useState<ServiceStatusMap | null>(null);
   const [configSaved, setConfigSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   
@@ -230,8 +239,10 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
           </Alert>
 
           <Stack gap="xl">
-            {Object.entries(serviceStatus).map(([serviceName, service]: [string, any]) => {
+            {Object.entries(serviceStatus).map(([serviceName, service]: [string, ServiceStatus], index) => {
               const serviceInfo = serviceInfoData[serviceName];
+              const isLastService = index === Object.entries(serviceStatus).length - 1;
+              
               if (!serviceInfo) {
                 return (
                   <Group key={serviceName} gap="md">
@@ -262,7 +273,7 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
                     isRunning={service.running}
                     showAccountInstructions={true}
                   />
-                  {serviceName !== 'api' && <Divider my="xl" />}
+                  {!isLastService && <Divider my="xl" />}
                 </div>
               );
             })}
