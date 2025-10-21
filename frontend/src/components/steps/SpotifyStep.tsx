@@ -80,7 +80,9 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
     }
     setSaving(false);
   };
-  const isFormValid = config.spotify.clientId.trim() !== '' && config.spotify.clientSecret.trim() !== '';
+  const isFormValid =
+    config.spotify?.clientId?.trim() !== '' &&
+    config.spotify?.clientSecret?.trim() !== '';
   return (
     <>
       <Title order={2} mb="md">

@@ -8,9 +8,22 @@ import {
   Group,
   Button,
   Loader,
+  Stack,
+  Divider,
 } from '@mantine/core';
-import { IconFolder, IconDeviceDesktop, IconRocket, IconCheck, IconX, IconExternalLink } from '@tabler/icons-react';
+import { IconFolder, IconDeviceDesktop, IconRocket, IconCheck, IconX, IconExternalLink, IconUserPlus } from '@tabler/icons-react';
 import { WizardConfiguration } from '../../types/wizard';
+import { ServiceInfo } from '../ServiceInfo';
+import { serviceInfoData } from '../../data/services';
+
+interface ServiceStatus {
+  url: string;
+  running: boolean;
+}
+
+interface ServiceStatusMap {
+  [serviceName: string]: ServiceStatus;
+}
 
 interface Props {
   config: WizardConfiguration;
@@ -21,7 +34,7 @@ interface Props {
 export default function MusicPathsStep({ config, onUpdate, onValidation }: Props) {
   const [servicesLaunched, setServicesLaunched] = useState(false);
   const [launching, setLaunching] = useState(false);
-  const [serviceStatus, setServiceStatus] = useState<any>(null);
+  const [serviceStatus, setServiceStatus] = useState<ServiceStatusMap | null>(null);
   const [configSaved, setConfigSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   
@@ -208,34 +221,71 @@ export default function MusicPathsStep({ config, onUpdate, onValidation }: Props
           </Alert>
         )}
         {servicesLaunched && serviceStatus && (
-        <Paper p="md" withBorder mb="md" bg="green.0">
-          <Group gap="md" mb="md">
+        <Paper p="xl" withBorder mb="md" bg="green.0">
+          <Group gap="md" mb="xl">
             <IconRocket size="1.5rem" color="green" />
             <div>
-              <Text fw={600} c="green">Services Launched Successfully!</Text>
-              <Text size="sm" c="dimmed">All services are running with your configured music path</Text>
+              <Text fw={600} c="green" size="lg">🎉 Services Launched Successfully!</Text>
+              <Text size="sm" c="dimmed">All services are running with your configured music path. Time to set up your accounts!</Text>
             </div>
           </Group>
-          
-          <Text fw={500} mb="sm">Access your services:</Text>
-          <Group gap="md">
-            {Object.entries(serviceStatus).map(([name, service]: [string, any]) => (
-              <Button
-                key={name}
-                component="a"
-                href={service.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="outline"
-                size="sm"
-                leftSection={service.running ? <IconCheck size="1rem" color="green" /> : <IconX size="1rem" color="red" />}
-                rightSection={<IconExternalLink size="1rem" />}
-                color={service.running ? "green" : "red"}
-              >
-                {name.charAt(0).toUpperCase() + name.slice(1)}
-              </Button>
-            ))}
-          </Group>
+
+          <Alert color="blue" variant="light" mb="xl" icon={<IconUserPlus size="1rem" />}>
+            <Text fw={500} mb="xs">🚀 Next Steps: Account Setup</Text>
+            <Text size="sm">
+              Your music services are now running! Click on each service below to create accounts and complete the setup. 
+              Once you've created accounts, return to this wizard to finish the configuration.
+            </Text>
+          </Alert>
+
+          <Stack gap="xl">
+            {Object.entries(serviceStatus).map(([serviceName, service]: [string, ServiceStatus], index) => {
+              const serviceInfo = serviceInfoData[serviceName];
+              const isLastService = index === Object.entries(serviceStatus).length - 1;
+              
+              if (!serviceInfo) {
+                return (
+                  <Group key={serviceName} gap="md">
+                    <Button
+                      component="a"
+                      href={service.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="outline"
+                      size="sm"
+                      leftSection={service.running ? <IconCheck size="1rem" color="green" /> : <IconX size="1rem" color="red" />}
+                      rightSection={<IconExternalLink size="1rem" />}
+                      color={service.running ? "green" : "red"}
+                    >
+                      {serviceName.charAt(0).toUpperCase() + serviceName.slice(1)}
+                    </Button>
+                  </Group>
+                );
+              }
+
+              return (
+                <div key={serviceName}>
+                  <ServiceInfo 
+                    service={{
+                      ...serviceInfo,
+                      url: service.url
+                    }}
+                    isRunning={service.running}
+                    showAccountInstructions={true}
+                  />
+                  {!isLastService && <Divider my="xl" />}
+                </div>
+              );
+            })}
+          </Stack>
+
+          <Alert color="orange" variant="light" mt="xl">
+            <Text fw={500} mb="xs">💡 After Account Setup</Text>
+            <Text size="sm">
+              Once you've created accounts in Navidrome and Jellyfin, return to this wizard to continue with the configuration. 
+              The next steps will help you connect these services for seamless music management and streaming.
+            </Text>
+          </Alert>
         </Paper>
       )}
       </Paper>

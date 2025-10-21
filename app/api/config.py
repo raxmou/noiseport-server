@@ -576,8 +576,10 @@ async def restart_slskd() -> JSONResponse:
         import subprocess
         
         # Try to restart the slskd container using docker compose
+        # Use the full docker-compose file if it exists
+        compose_args = ["-f", "docker-compose.full.yml"] if os.path.exists("docker-compose.full.yml") else []
         result = subprocess.run(
-            ["docker", "compose", "restart", "slskd"],
+            ["docker", "compose"] + compose_args + ["restart", "slskd"],
             capture_output=True,
             text=True,
             timeout=30
