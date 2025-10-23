@@ -90,7 +90,8 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
       </Title>
       <Text c="dimmed" mb="md">
         Connect to Spotify to enhance music discovery and metadata enrichment.
-        This step is optional but recommended for better music recommendations.
+        Don't worry, you don't need a premium account to use the API.
+        We only require basic API access for fetching track and artist information.
       </Text>
 
       <Alert icon={<IconAlertCircle size="1rem" />} color="blue" mb="md">
