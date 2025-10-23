@@ -1,8 +1,11 @@
 """Core application initialization."""
 
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from prometheus_client import Counter, Histogram
 from pydantic import ValidationError
 
@@ -49,8 +52,24 @@ def create_app() -> FastAPI:
     # Add exception handlers
     _add_exception_handlers(app)
 
-    # Include routers
+    # Include API routers
     app.include_router(api_router)
+    
+    # Serve static files for the React frontend
+    frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")
+    
+    
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist_path, "assets")), name="assets")
+    
+    # Serve the React app for wizard routes
+    @app.get("/wizard")
+    @app.get("/setup")
+    async def serve_wizard():
+        """Serve the setup wizard React app."""
+        index_path = os.path.join(frontend_dist_path, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        return {"message": "Setup wizard not available. Please build the frontend first."}
 
     # Add root endpoint
     @app.get("/", tags=["Root"])
@@ -60,6 +79,7 @@ def create_app() -> FastAPI:
             "message": f"Welcome to {settings.app_name}",
             "version": settings.app_version,
             "docs": "/docs",
+            "wizard": "/wizard",
         }
 
     logger.info("FastAPI application initialized successfully")

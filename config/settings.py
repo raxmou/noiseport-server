@@ -38,6 +38,28 @@ class Settings(BaseSettings):
     slskd_username: str = Field(default="slskd", description="SLSKD username")
     slskd_password: str = Field(default="slskd", description="SLSKD password")
 
+    # Navidrome
+    navidrome_enabled: bool = Field(default=False, description="Enable Navidrome integration")
+    navidrome_url: str = Field(default="", description="Navidrome server URL")
+    navidrome_username: str = Field(default="", description="Navidrome username")
+    navidrome_password: str = Field(default="", description="Navidrome password")
+
+    # Jellyfin
+    jellyfin_enabled: bool = Field(default=False, description="Enable Jellyfin integration")
+    jellyfin_url: str = Field(default="", description="Jellyfin server URL")
+    jellyfin_username: str = Field(default="", description="Jellyfin username")
+    jellyfin_password: str = Field(default="", description="Jellyfin password")
+
+    # Spotify API
+    spotify_enabled: bool = Field(default=False, description="Enable Spotify integration")
+    spotify_client_id: str = Field(default="", description="Spotify Client ID")
+    spotify_client_secret: str = Field(default="", description="Spotify Client Secret")
+
+    # Features
+    scrobbling_enabled: bool = Field(default=False, description="Enable scrobbling")
+    downloads_enabled: bool = Field(default=True, description="Enable downloads")
+    discovery_enabled: bool = Field(default=False, description="Enable music discovery")
+
     # Security
     secret_key: str = Field(
         default="your-secret-key-here-change-in-production",
@@ -67,11 +89,8 @@ class Settings(BaseSettings):
     metrics_path: str = Field(default="/metrics", description="Metrics endpoint path")
 
     # File Storage
-    download_path: str = Field(
-        default="/music/downloads", description="Download directory path"
-    )
-    complete_path: str = Field(
-        default="/music/complete", description="Complete files directory path"
+    host_music_path: str = Field(
+        default="./music", description="Host system music directory path (downloads and complete subdirectories will be created)"
     )
 
     @field_validator("log_level")

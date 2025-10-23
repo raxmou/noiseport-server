@@ -1,7 +1,22 @@
-# Multi-stage production Dockerfile for FastAPI application
+# Multi-stage production Dockerfile for FastAPI application with React frontend
 
-# Build stage
-FROM python:3.11-slim as builder
+# Frontend build stage
+FROM node:18-alpine as frontend-builder
+
+WORKDIR /app/frontend
+
+# Copy package files
+COPY frontend/package*.json ./
+RUN npm ci --only=production
+
+# Copy frontend source
+COPY frontend/ ./
+
+# Build frontend
+RUN npm run build
+
+# Backend build stage
+FROM python:3.11-slim as backend-builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -52,18 +67,31 @@ WORKDIR /app
 RUN chown -R appuser:appuser /app
 
 # Copy virtual environment from builder stage
-COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
+COPY --from=backend-builder --chown=appuser:appuser /app/.venv /app/.venv
 
 # Copy application code
 COPY --chown=appuser:appuser . .
+
+# Copy frontend dist from frontend builder
+COPY --from=frontend-builder --chown=appuser:appuser /app/frontend/dist /app/frontend/dist
 
 # Create directories for file storage
 RUN mkdir -p /music/downloads /music/complete && \
     chown -R appuser:appuser /music
 
 # Switch to non-root user
+RUN apt-get update && \
+    apt-get install -y ca-certificates curl gnupg && \
+    install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
+    chmod a+r /etc/apt/keyrings/docker.gpg && \
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+      $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" | \
+      tee /etc/apt/sources.list.d/docker.list > /dev/null && \
+    apt-get update && \
+    apt-get install -y docker-ce-cli docker-compose-plugin
 USER appuser
-
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/api/v1/system/health || exit 1

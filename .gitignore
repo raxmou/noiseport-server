@@ -1,4 +1,12 @@
+# Ignore generated Soulseek config with credentials
+slskd/slskd.yml
+sandbox.py
 slskd/data/*
+navidrome/*
+navidrome_data/*
+jellyfin/*
+docker-compose.full.yml
+start-music-stack.sh
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
