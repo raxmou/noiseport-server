@@ -224,34 +224,24 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                     f.write(f"{key}={value}\n")
         
         
-        # Save Soulseek credentials to slskd.yml
+        # Generate slskd.yml from template with Soulseek credentials
         try:
-            import yaml
             import os
-            
+            slskd_template_path = "slskd/slskd.yml.template"
             slskd_config_path = "slskd/slskd.yml"
-            if os.path.exists(slskd_config_path):
-                # Read existing slskd config
-                with open(slskd_config_path, 'r') as f:
-                    slskd_config = yaml.safe_load(f)
-                
-                # Update soulseek credentials if provided
-                if config.soulseek.soulseekUsername and config.soulseek.soulseekPassword:
-                    if 'soulseek' not in slskd_config:
-                        slskd_config['soulseek'] = {}
-                    
-                    slskd_config['soulseek']['username'] = config.soulseek.soulseekUsername
-                    slskd_config['soulseek']['password'] = config.soulseek.soulseekPassword
-                    
-                    # Write back to slskd config
-                    with open(slskd_config_path, 'w') as f:
-                        yaml.dump(slskd_config, f, default_flow_style=False)
-                    
-                    logger.info("Updated slskd.yml with Soulseek credentials")
+            if os.path.exists(slskd_template_path):
+                with open(slskd_template_path, "r") as f:
+                    template = f.read()
+                # Replace placeholders
+                config_content = template.replace("{{SOULSEEK_USERNAME}}", config.soulseek.soulseekUsername or "")
+                config_content = config_content.replace("{{SOULSEEK_PASSWORD}}", config.soulseek.soulseekPassword or "")
+                with open(slskd_config_path, "w") as f:
+                    f.write(config_content)
+                logger.info("Generated slskd.yml from template with Soulseek credentials")
             else:
-                logger.warning("slskd.yml not found, skipping Soulseek credential update")
+                logger.warning("slskd.yml.template not found, skipping slskd.yml generation")
         except Exception as e:
-            logger.warning(f"Failed to update slskd.yml: {e}")
+            logger.warning(f"Failed to generate slskd.yml: {e}")
         
         logger.info("Configuration saved successfully")
         
