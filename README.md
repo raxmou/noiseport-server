@@ -1,11 +1,24 @@
-# Downloader API
+# NoisePort Server
 
 [![CI/CD Pipeline](https://github.com/maxenceroux/downloader/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/maxenceroux/downloader/actions/workflows/ci-cd.yml)
 [![codecov](https://codecov.io/gh/maxenceroux/downloader/branch/main/graph/badge.svg)](https://codecov.io/gh/maxenceroux/downloader)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.117+-green.svg)](https://fastapi.tiangolo.com)
 
-A production-ready FastAPI application for music downloading and management, featuring comprehensive testing, security, monitoring, and deployment capabilities.
+Noiseport Server is the self-hosted backend that powers the Noiseport ecosystem.
+It manages music downloads, metadata, and playback integration — bridging your local library with services like Soulseek, Spotify, Navidrome, and Jellyfin.
+
+🎧 Overview
+
+Noiseport Server is a production-ready FastAPI application designed for personal music hosting and management.
+It automates acquisition, organization, and serving of your music collection, while remaining fully open-source and self-hosted.
+
+It forms the backend foundation for:
+
+Component	Description
+Noiseport (app)	The desktop and mobile clients to explore and stream your library.
+Noiseport Server	The backend service (this project). Handles downloads, metadata, configuration, and API access.
+Noiseport Commons	The public manifesto and documentation site.
 
 ## Features
 
