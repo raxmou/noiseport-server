@@ -1,0 +1,121 @@
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Kode+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles for the commons design system */
+@layer base {
+  html {
+    @apply antialiased min-h-screen;
+  }
+  
+  body {
+    @apply bg-neutral-950 text-neutral-100 font-syne min-h-screen;
+    /* Support light mode via prefers-color-scheme */
+    @media (prefers-color-scheme: light) {
+      @apply bg-neutral-100 text-neutral-950;
+    }
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-kode;
+  }
+  
+  .font-kode {
+    @apply font-kode;
+  }
+}
+
+@layer components {
+  /* Modern button styles */
+  .btn-primary {
+    @apply bg-primary hover:bg-opacity-90 focus:bg-opacity-90 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50;
+  }
+  
+  .btn-secondary {
+    @apply bg-transparent border border-neutral-600 hover:border-neutral-500 focus:border-neutral-500 text-neutral-100 font-medium px-6 py-3 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:ring-opacity-50;
+    @media (prefers-color-scheme: light) {
+      @apply border-neutral-400 hover:border-neutral-500 focus:border-neutral-500 text-neutral-950;
+    }
+  }
+  
+  .btn-outline {
+    @apply bg-transparent border border-primary hover:bg-primary hover:text-white focus:bg-primary focus:text-white text-primary font-medium px-6 py-3 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50;
+  }
+  
+  /* Card styles */
+  .card {
+    @apply bg-neutral-900 border border-neutral-800 rounded-xl p-6;
+    @media (prefers-color-scheme: light) {
+      @apply bg-white border-neutral-200;
+    }
+  }
+  
+  /* Input styles */
+  .input {
+    @apply bg-neutral-900 border border-neutral-700 rounded-lg px-4 py-3 text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200;
+    @media (prefers-color-scheme: light) {
+      @apply bg-white border-neutral-300 text-neutral-950 placeholder-neutral-500;
+    }
+  }
+  
+  /* Alert styles */
+  .alert {
+    @apply rounded-lg p-4 border;
+  }
+  
+  .alert-info {
+    @apply bg-blue-900/20 border-blue-700/30 text-blue-200;
+    @media (prefers-color-scheme: light) {
+      @apply bg-blue-50 border-blue-200 text-blue-900;
+    }
+  }
+  
+  .alert-error {
+    @apply bg-red-900/20 border-red-700/30 text-red-200;
+    @media (prefers-color-scheme: light) {
+      @apply bg-red-50 border-red-200 text-red-900;
+    }
+  }
+  
+  .alert-success {
+    @apply bg-green-900/20 border-green-700/30 text-green-200;
+    @media (prefers-color-scheme: light) {
+      @apply bg-green-50 border-green-200 text-green-900;
+    }
+  }
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-neutral-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-neutral-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-neutral-600;
+}
+
+@media (prefers-color-scheme: light) {
+  ::-webkit-scrollbar-track {
+    @apply bg-neutral-100;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-neutral-300;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-neutral-400;
+  }
+}

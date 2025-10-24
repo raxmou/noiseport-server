@@ -7,6 +7,8 @@ navidrome_data/*
 jellyfin/*
 docker-compose.full.yml
 start-music-stack.sh
+
+node_modules*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
