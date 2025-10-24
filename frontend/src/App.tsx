@@ -1,15 +1,12 @@
-import { MantineProvider } from '@mantine/core';
-import { Notifications } from '@mantine/notifications';
 import SetupWizard from './components/SetupWizard';
-import '@mantine/core/styles.css';
-import '@mantine/notifications/styles.css';
+import Header from './components/Header';
 
 function App() {
   return (
-    <MantineProvider>
-      <Notifications />
+    <div className="min-h-screen bg-neutral-950 text-neutral-100">
+      <Header />
       <SetupWizard />
-    </MantineProvider>
+    </div>
   );
 }
 
