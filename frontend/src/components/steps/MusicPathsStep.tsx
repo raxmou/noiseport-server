@@ -3,14 +3,11 @@ import { WizardConfiguration } from "../../types/wizard";
 import { ServiceInfo } from "../ServiceInfo";
 import { serviceInfoData } from "../../data/services";
 import { Button, TextInput, Paper, Alert } from "../ui";
-
-interface ServiceStatus {
-  url: string;
-  running: boolean;
-}
+import { ApiService } from "../../utils/api";
+import type { ServiceInfo as ApiServiceInfo } from "../../utils/api";
 
 interface ServiceStatusMap {
-  [serviceName: string]: ServiceStatus;
+  [serviceName: string]: ApiServiceInfo;
 }
 
 interface Props {
@@ -31,6 +28,9 @@ export default function MusicPathsStep({
   );
   const [configSaved, setConfigSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [containerLogs, setContainerLogs] = useState<{ [key: string]: string }>({});
+  const [showLogs, setShowLogs] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     const isValid = Boolean(config.musicPaths?.hostMusicPath);
@@ -92,14 +92,76 @@ export default function MusicPathsStep({
   };
 
   const checkServiceStatus = async () => {
+    setCheckingStatus(true);
     try {
-      const response = await fetch("/api/v1/config/service-status");
-      if (response.ok) {
-        const result = await response.json();
-        setServiceStatus(result.services);
-      }
+      const result = await ApiService.getServiceStatus();
+      setServiceStatus(result.services);
     } catch (error) {
       console.error("Error checking service status:", error);
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
+
+  const fetchContainerLogs = async (containerName: string) => {
+    try {
+      const result = await ApiService.getContainerLogs(containerName);
+      setContainerLogs(prev => ({ ...prev, [containerName]: result.logs }));
+    } catch (error) {
+      console.error(`Error fetching logs for ${containerName}:`, error);
+      setContainerLogs(prev => ({ ...prev, [containerName]: "Failed to fetch logs" }));
+    }
+  };
+
+  const toggleLogs = async (containerName: string) => {
+    const isCurrentlyShown = showLogs[containerName];
+    setShowLogs(prev => ({ ...prev, [containerName]: !isCurrentlyShown }));
+    
+    // Fetch logs if opening and not already fetched
+    if (!isCurrentlyShown && !containerLogs[containerName]) {
+      await fetchContainerLogs(containerName);
+    }
+  };
+
+  const getStateColor = (state?: string) => {
+    switch (state) {
+      case "running":
+        return "text-green-400";
+      case "creating":
+      case "restarting":
+        return "text-yellow-400";
+      case "exited":
+        return "text-red-400";
+      default:
+        return "text-gray-400";
+    }
+  };
+
+  const getStateIcon = (state?: string, running?: boolean) => {
+    if (running) {
+      return (
+        <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+            clipRule="evenodd"
+          />
+        </svg>
+      );
+    } else if (state === "creating" || state === "restarting") {
+      return (
+        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
+      );
+    } else {
+      return (
+        <svg className="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+            clipRule="evenodd"
+          />
+        </svg>
+      );
     }
   };
 
@@ -253,14 +315,58 @@ export default function MusicPathsStep({
 
           {launching && (
             <Alert variant="info" className="mt-4">
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
-                <p className="text-sm">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+                  <p className="text-sm font-semibold">
+                    Starting music stack...
+                  </p>
+                </div>
+                <p className="text-sm text-neutral-400">
                   Stopping wizard container and starting full music stack with
-                  your configured music path...
+                  your configured music path.
                 </p>
+                <Alert variant="warning" className="mt-2">
+                  <p className="text-sm">
+                    <strong>⏱️ First Launch Notice:</strong> If this is your first time launching,
+                    Docker will need to download container images (Navidrome, Jellyfin, slskd).
+                    This process may take several minutes depending on your internet connection.
+                    The wizard will show you when services are ready.
+                  </p>
+                </Alert>
               </div>
             </Alert>
+          )}
+
+          {servicesLaunched && (
+            <div className="mt-4">
+              <div className="flex justify-between items-center mb-2">
+                <p className="text-sm font-semibold">Service Status</p>
+                <Button
+                  onClick={checkServiceStatus}
+                  loading={checkingStatus}
+                  variant="outline"
+                  size="xs"
+                  leftSection={
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  }
+                >
+                  {checkingStatus ? "Checking..." : "Check Status"}
+                </Button>
+              </div>
+              <Alert variant="info" className="text-xs">
+                <p>
+                  Click "Check Status" to manually refresh the current state of your containers.
+                  This is especially useful during the initial setup when images are being downloaded.
+                </p>
+              </Alert>
+            </div>
           )}
         </div>
 
@@ -276,11 +382,10 @@ export default function MusicPathsStep({
               </svg>
               <div>
                 <p className="font-semibold text-green-200 text-lg">
-                  🎉 Services Launched Successfully!
+                  🎉 Services Launch In Progress
                 </p>
                 <p className="text-sm text-neutral-400">
-                  All services are running with your configured music path. Time
-                  to set up your accounts!
+                  Containers are starting up. Check the status below to see progress.
                 </p>
               </div>
             </div>
@@ -299,7 +404,7 @@ export default function MusicPathsStep({
 
             <div className="space-y-6">
               {Object.entries(serviceStatus).map(
-                ([serviceName, service]: [string, ServiceStatus], index) => {
+                ([serviceName, service]: [string, ApiServiceInfo], index) => {
                   const serviceInfo = serviceInfoData[serviceName];
                   const isLastService =
                     index === Object.entries(serviceStatus).length - 1;
@@ -308,61 +413,111 @@ export default function MusicPathsStep({
                     return (
                       <div
                         key={serviceName}
-                        className="flex items-center gap-3"
+                        className="space-y-2"
                       >
-                        <a
-                          href={service.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-outline flex items-center gap-2"
-                        >
-                          {service.running ? (
-                            <svg
-                              className="w-4 h-4 text-green-400"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {getStateIcon(service.state, service.running)}
+                            <span className="font-semibold">
+                              {serviceName.charAt(0).toUpperCase() + serviceName.slice(1)}
+                            </span>
+                            <span className={`text-xs ${getStateColor(service.state)}`}>
+                              ({service.state || "unknown"})
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              onClick={() => toggleLogs(serviceName)}
+                              variant="outline"
+                              size="xs"
                             >
-                              <path
-                                fillRule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          ) : (
-                            <svg
-                              className="w-4 h-4 text-red-400"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
+                              {showLogs[serviceName] ? "Hide Logs" : "Show Logs"}
+                            </Button>
+                            <a
+                              href={service.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn-outline flex items-center gap-2 text-xs px-2 py-1"
                             >
-                              <path
-                                fillRule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          )}
-                          {serviceName.charAt(0).toUpperCase() +
-                            serviceName.slice(1)}
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                            />
-                          </svg>
-                        </a>
+                              Open
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                />
+                              </svg>
+                            </a>
+                          </div>
+                        </div>
+                        {service.status && (
+                          <p className="text-xs text-neutral-400 ml-6">
+                            Status: {service.status}
+                          </p>
+                        )}
+                        {showLogs[serviceName] && (
+                          <div className="ml-6 mt-2">
+                            <div className="bg-neutral-900 rounded p-3 text-xs font-mono max-h-64 overflow-y-auto">
+                              {containerLogs[serviceName] ? (
+                                <pre className="whitespace-pre-wrap text-neutral-300">
+                                  {containerLogs[serviceName]}
+                                </pre>
+                              ) : (
+                                <p className="text-neutral-500">Loading logs...</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   }
 
                   return (
                     <div key={serviceName}>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {getStateIcon(service.state, service.running)}
+                            <span className="font-semibold">
+                              {serviceName.charAt(0).toUpperCase() + serviceName.slice(1)}
+                            </span>
+                            <span className={`text-xs ${getStateColor(service.state)}`}>
+                              ({service.state || "unknown"})
+                            </span>
+                          </div>
+                          <Button
+                            onClick={() => toggleLogs(serviceName)}
+                            variant="outline"
+                            size="xs"
+                          >
+                            {showLogs[serviceName] ? "Hide Logs" : "Show Logs"}
+                          </Button>
+                        </div>
+                        {service.status && (
+                          <p className="text-xs text-neutral-400 ml-6">
+                            Status: {service.status}
+                          </p>
+                        )}
+                        {showLogs[serviceName] && (
+                          <div className="ml-6 mb-4">
+                            <div className="bg-neutral-900 rounded p-3 text-xs font-mono max-h-64 overflow-y-auto">
+                              {containerLogs[serviceName] ? (
+                                <pre className="whitespace-pre-wrap text-neutral-300">
+                                  {containerLogs[serviceName]}
+                                </pre>
+                              ) : (
+                                <p className="text-neutral-500">Loading logs...</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                       <ServiceInfo
                         service={{
                           ...serviceInfo,

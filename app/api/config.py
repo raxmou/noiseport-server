@@ -792,19 +792,89 @@ async def restart_containers() -> JSONResponse:
         )
 
 
-@router.get("/config/service-status")
-async def get_service_status() -> JSONResponse:
-    """Check the status of all services."""
-    try:        
-        # Check which containers are running
+@router.get("/config/docker-events")
+async def get_docker_events() -> JSONResponse:
+    """Get recent Docker events related to image pulling and container startup."""
+    try:
+        # Get recent Docker events (last 30 seconds)
         result = subprocess.run(
-            ["docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Ports}}"],
+            ["docker", "events", "--since", "30s", "--until", "0s", "--format", "{{.Type}}\t{{.Action}}\t{{.Actor.Attributes.name}}\t{{.Time}}"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
+        events = []
+        if result.returncode == 0 and result.stdout.strip():
+            for line in result.stdout.strip().split('\n'):
+                if not line:
+                    continue
+                parts = line.split('\t')
+                if len(parts) >= 3:
+                    events.append({
+                        "type": parts[0],
+                        "action": parts[1],
+                        "name": parts[2] if len(parts) > 2 else "",
+                        "timestamp": parts[3] if len(parts) > 3 else ""
+                    })
+        
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"events": events}
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to get Docker events: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Failed to get Docker events", "events": []}
+        )
+
+
+@router.get("/config/container-logs/{container_name}")
+async def get_container_logs(container_name: str) -> JSONResponse:
+    """Get recent logs from a specific container."""
+    try:
+        # Validate container name to prevent command injection
+        allowed_containers = ["navidrome", "jellyfin", "slskd", "fastapi"]
+        if container_name not in allowed_containers:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"message": f"Invalid container name. Allowed: {', '.join(allowed_containers)}"}
+            )
+        
+        # Get last 50 lines of logs
+        result = subprocess.run(
+            ["docker", "logs", "--tail", "50", container_name],
             capture_output=True,
             text=True,
             timeout=10
         )
-        print(result.stdout)
+        
+        logs = result.stdout + result.stderr  # Docker logs can be in stderr too
+        
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"container": container_name, "logs": logs}
+        )
+        
+    except subprocess.TimeoutExpired:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": "Timeout getting container logs"}
+        )
+    except Exception as e:
+        logger.error(f"Failed to get container logs for {container_name}: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": f"Failed to get container logs: {str(e)}"}
+        )
 
+
+@router.get("/config/service-status")
+async def get_service_status() -> JSONResponse:
+    """Check the status of all services with detailed state information."""
+    try:        
         # Get TAILSCALE_IP from .env if available
         tailscale_ip = None
         try:
@@ -820,23 +890,80 @@ async def get_service_status() -> JSONResponse:
             return f"http://{ip}:{port}" if ip else f"http://localhost:{port}"
 
         services = {
-            "navidrome": {"running": False, "url": url(tailscale_ip, 4533)},
-            "jellyfin": {"running": False, "url": url(tailscale_ip, 8096)},
-            "slskd": {"running": False, "url": url(tailscale_ip, 5030)},
-            "fastapi": {"running": False, "url": url(tailscale_ip, 8000)}
+            "navidrome": {"running": False, "url": url(tailscale_ip, 4533), "state": "unknown", "status": ""},
+            "jellyfin": {"running": False, "url": url(tailscale_ip, 8096), "state": "unknown", "status": ""},
+            "slskd": {"running": False, "url": url(tailscale_ip, 5030), "state": "unknown", "status": ""},
+            "fastapi": {"running": False, "url": url(tailscale_ip, 8000), "state": "unknown", "status": ""}
         }
         
+        # Check running containers with detailed status
+        result = subprocess.run(
+            ["docker", "ps", "-a", "--format", "{{.Names}}\t{{.State}}\t{{.Status}}"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
         if result.returncode == 0:
-            output_lines = result.stdout.split('\n')
+            output_lines = result.stdout.strip().split('\n')
             for line in output_lines:
-                if 'navidrome' in line.lower():
-                    services["navidrome"]["running"] = True
-                elif 'jellyfin' in line.lower():
-                    services["jellyfin"]["running"] = True
-                elif 'slskd' in line.lower():
-                    services["slskd"]["running"] = True
-                elif 'fastapi' in line.lower():
-                    services["fastapi"]["running"] = True
+                if not line:
+                    continue
+                parts = line.split('\t')
+                if len(parts) >= 3:
+                    container_name = parts[0].lower()
+                    state = parts[1].lower()
+                    status_text = parts[2]
+                    
+                    # Determine if running and detailed state
+                    is_running = state == "running"
+                    detailed_state = "running" if is_running else state
+                    
+                    if 'navidrome' in container_name:
+                        services["navidrome"]["running"] = is_running
+                        services["navidrome"]["state"] = detailed_state
+                        services["navidrome"]["status"] = status_text
+                    elif 'jellyfin' in container_name:
+                        services["jellyfin"]["running"] = is_running
+                        services["jellyfin"]["state"] = detailed_state
+                        services["jellyfin"]["status"] = status_text
+                    elif 'slskd' in container_name:
+                        services["slskd"]["running"] = is_running
+                        services["slskd"]["state"] = detailed_state
+                        services["slskd"]["status"] = status_text
+                    elif 'fastapi' in container_name and 'wizard' not in container_name:
+                        services["fastapi"]["running"] = is_running
+                        services["fastapi"]["state"] = detailed_state
+                        services["fastapi"]["status"] = status_text
+        
+        # Check if any images are being pulled (look for image pull progress)
+        try:
+            # Check docker compose ps to see if services are in "creating" state
+            compose_result = subprocess.run(
+                ["docker", "compose", "-f", "docker-compose.full.yml", "ps", "-a", "--format", "json"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            
+            if compose_result.returncode == 0 and compose_result.stdout.strip():
+                import json
+                try:
+                    for line in compose_result.stdout.strip().split('\n'):
+                        if not line:
+                            continue
+                        container_info = json.loads(line)
+                        service_name = container_info.get("Service", "").lower()
+                        state = container_info.get("State", "").lower()
+                        
+                        if service_name in services:
+                            # Update state if it shows creating/restarting
+                            if state in ["creating", "restarting"]:
+                                services[service_name]["state"] = state
+                except json.JSONDecodeError:
+                    pass  # Ignore JSON parsing errors
+        except Exception:
+            pass  # Ignore errors in this additional check
         
         return JSONResponse(
             status_code=status.HTTP_200_OK,

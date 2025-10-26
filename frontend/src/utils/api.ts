@@ -18,6 +18,8 @@ export interface RestartContainersResponse {
 export interface ServiceInfo {
   running: boolean;
   url: string;
+  state?: string;
+  status?: string;
 }
 
 export interface ServiceStatusResponse {
@@ -27,6 +29,22 @@ export interface ServiceStatusResponse {
     slskd: ServiceInfo;
     fastapi: ServiceInfo;
   };
+}
+
+export interface ContainerLogsResponse {
+  container: string;
+  logs: string;
+}
+
+export interface DockerEvent {
+  type: string;
+  action: string;
+  name: string;
+  timestamp: string;
+}
+
+export interface DockerEventsResponse {
+  events: DockerEvent[];
 }
 
 export class ApiService {
@@ -102,6 +120,24 @@ export class ApiService {
     
     if (!response.ok) {
       throw new Error('Failed to get service status');
+    }
+    return response.json();
+  }
+
+  static async getContainerLogs(containerName: string): Promise<ContainerLogsResponse> {
+    const response = await fetch(`${API_BASE}/config/container-logs/${containerName}`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to get container logs');
+    }
+    return response.json();
+  }
+
+  static async getDockerEvents(): Promise<DockerEventsResponse> {
+    const response = await fetch(`${API_BASE}/config/docker-events`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to get Docker events');
     }
     return response.json();
   }

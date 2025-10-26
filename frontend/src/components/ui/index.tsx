@@ -4,12 +4,14 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline';
   loading?: boolean;
   leftSection?: React.ReactNode;
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 export function Button({ 
   variant = 'primary', 
   loading = false, 
   leftSection,
+  size = 'md',
   children, 
   className = '', 
   disabled,
@@ -21,9 +23,17 @@ export function Button({
     ? 'btn-secondary' 
     : 'btn-outline';
   
+  const sizeClass = size === 'xs'
+    ? 'px-2 py-1 text-xs'
+    : size === 'sm'
+    ? 'px-3 py-1.5 text-sm'
+    : size === 'lg'
+    ? 'px-6 py-3 text-lg'
+    : 'px-4 py-2';
+  
   return (
     <button
-      className={`${baseClass} ${className} ${disabled || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`${baseClass} ${sizeClass} ${className} ${disabled || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
       disabled={disabled || loading}
       {...props}
     >
