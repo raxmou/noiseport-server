@@ -25,6 +25,10 @@ from config import settings
 from pydantic import BaseModel
 import requests
 
+# Constants
+DOCKER_COMPOSE_FULL_FILE = "docker-compose.full.yml"
+DOCKER_COMPOSE_DEV_FILE = "docker-compose.dev.yml"
+
 class ConnectionTestRequest(BaseModel):
     service: str
     config: dict
@@ -260,7 +264,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             import os
             
             # Read the template
-            template_path = "docker-compose.full.yml.template"
+            template_path = f"{DOCKER_COMPOSE_FULL_FILE}.template"
             if os.path.exists(template_path):
                 with open(template_path, "r") as f:
                     compose_template = f.read()
@@ -272,7 +276,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 )
                 
                 # Write the full docker-compose file
-                with open("docker-compose.full.yml", "w") as f:
+                with open(DOCKER_COMPOSE_FULL_FILE, "w") as f:
                     f.write(compose_content)
                 
                 # Create directories with proper permissions
@@ -298,7 +302,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                             dir_path = os.path.join(root, d)
                             os.chmod(dir_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
                 
-                logger.info(f"Generated docker-compose.full.yml with user music path: {host_music_path}")
+                logger.info(f"Generated {DOCKER_COMPOSE_FULL_FILE} with user music path: {host_music_path}")
                 
                 # Create a startup script
                 startup_script = f"""#!/bin/bash
@@ -311,7 +315,7 @@ echo "🛑 Stopping wizard container..."
 docker compose down
 
 echo "🚀 Starting full music stack..."
-docker compose -f docker-compose.full.yml up -d
+docker compose -f {DOCKER_COMPOSE_FULL_FILE} up -d
 
 echo ""
 echo "✅ Music stack is starting up!"
@@ -331,7 +335,7 @@ echo "⏳ Please wait a few moments for services to fully start before accessing
                 os.chmod("start-music-stack.sh", stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
                 
             else:
-                logger.warning("docker-compose.full.yml.template not found")
+                logger.warning(f"{DOCKER_COMPOSE_FULL_FILE}.template not found")
         except Exception as e:
             logger.warning(f"Failed to generate docker-compose file: {e}")
         
@@ -577,7 +581,7 @@ async def restart_slskd() -> JSONResponse:
         
         # Try to restart the slskd container using docker compose
         # Use the full docker-compose file if it exists
-        compose_args = ["-f", "docker-compose.full.yml"] if os.path.exists("docker-compose.full.yml") else []
+        compose_args = ["-f", DOCKER_COMPOSE_FULL_FILE] if os.path.exists(DOCKER_COMPOSE_FULL_FILE) else []
         result = subprocess.run(
             ["docker", "compose"] + compose_args + ["restart", "slskd"],
             capture_output=True,
@@ -628,7 +632,7 @@ async def launch_services() -> JSONResponse:
     import os
     
     # Check if the full docker-compose file exists
-    if not os.path.exists("docker-compose.full.yml"):
+    if not os.path.exists(DOCKER_COMPOSE_FULL_FILE):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Configuration not saved yet. Please save your configuration first."
@@ -642,7 +646,7 @@ async def launch_services() -> JSONResponse:
                 if os.path.exists("start-music-stack.sh"):
                     process = subprocess.Popen(["bash", "start-music-stack.sh"], stdout=log, stderr=log)
                 else:
-                    process = subprocess.Popen(["docker", "compose", "-f", "docker-compose.full.yml", "up", "--build", "-d"], stdout=log, stderr=log)
+                    process = subprocess.Popen(["docker", "compose", "-f", DOCKER_COMPOSE_FULL_FILE, "up", "--build", "-d"], stdout=log, stderr=log)
                 process.wait()
         except Exception as e:
             with open(log_file, "a") as log:
@@ -708,10 +712,10 @@ async def restart_containers() -> JSONResponse:
         # Get current compose configuration
         # Check if we're in dev mode or full mode
         compose_files = []
-        if os.path.exists("docker-compose.dev.yml"):
-            compose_files = ["-f", "docker-compose.dev.yml"]
-        elif os.path.exists("docker-compose.full.yml"):
-            compose_files = ["-f", "docker-compose.full.yml"]
+        if os.path.exists(DOCKER_COMPOSE_DEV_FILE):
+            compose_files = ["-f", DOCKER_COMPOSE_DEV_FILE]
+        elif os.path.exists(DOCKER_COMPOSE_FULL_FILE):
+            compose_files = ["-f", DOCKER_COMPOSE_FULL_FILE]
         else:
             compose_files = []  # Use default docker-compose.yml
         
@@ -940,14 +944,13 @@ async def get_service_status() -> JSONResponse:
         try:
             # Check docker compose ps to see if services are in "creating" state
             compose_result = subprocess.run(
-                ["docker", "compose", "-f", "docker-compose.full.yml", "ps", "-a", "--format", "json"],
+                ["docker", "compose", "-f", DOCKER_COMPOSE_FULL_FILE, "ps", "-a", "--format", "json"],
                 capture_output=True,
                 text=True,
                 timeout=5
             )
             
             if compose_result.returncode == 0 and compose_result.stdout.strip():
-                import json
                 try:
                     for line in compose_result.stdout.strip().split('\n'):
                         if not line:
