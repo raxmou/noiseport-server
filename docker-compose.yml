@@ -1,23 +1,27 @@
 ---
 services:
   fastapi:
-    build: .
+    image: maxenceroux/noiseport-server:latest
     container_name: fastapi-wizard
+    # network_mode: host
+    user: root
     ports:
       - "8000:80"
     environment:
       - WIZARD_MODE=true
+      - PYTHONPATH=/app
     volumes:
       # Mount current directory for configuration file persistence
       - .:/app/workspace
+      - ./config:/app/config
+      
+      - /usr/bin/tailscale:/usr/bin/tailscale
+      - /var/run/tailscale/tailscaled.sock:/var/run/tailscale/tailscaled.sock
+      - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /app/workspace
     restart: unless-stopped
-    networks:
-      - music-net
-    volumes:
-      - ./:/workspace
-      - ./app/api/config.py:/app/api/config.py
-      
+
+    
 
     labels:
       glance.name: Music Stack Setup Wizard
