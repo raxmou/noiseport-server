@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
 import { WizardConfiguration } from '../../types/wizard';
 import { useWizardConfig } from '../../hooks/useWizardConfig';
-import { ApiService } from '../../utils/api';
 import { Button, Checkbox, TextInput, Paper, Alert, Anchor, Code } from '../ui';
-
-const RESTART_STATUS_CHECK_DELAY = 3000;
 
 interface Props {
   config: WizardConfiguration;
@@ -15,9 +12,6 @@ interface Props {
 export default function TailscaleStep({ config, onUpdate, onValidation }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
-  const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'success' | 'error'>('idle');
-  const [restartMessage, setRestartMessage] = useState<string | null>(null);
-  const [showRestartSection, setShowRestartSection] = useState(false);
   const { saveConfig } = useWizardConfig();
 
   useEffect(() => {
@@ -25,83 +19,42 @@ export default function TailscaleStep({ config, onUpdate, onValidation }: Props)
     onValidation(isValid);
   }, [config.tailscale.enabled, config.tailscale.ip, onValidation]);
 
-  const extractTailscaleIP = (message: string): string | null => {
-    const ipRegex = /Your IP: ((?:100\.6[4-9]|100\.[7-9]\d|100\.1[0-1]\d|100\.12[0-7])\.\d{1,3}\.\d{1,3})/;
-    const match = message.match(ipRegex);
-    return match ? match[1] : null;
-  };
+  const testTailscaleConnection = async () => {
+    if (!config.tailscale.ip) {
+      setConnectionStatus('error');
+      setConnectionMessage('Please enter your Tailscale IP address first');
+      return;
+    }
 
-  const checkTailscaleStatus = async () => {
     setConnectionStatus('testing');
     setConnectionMessage(null);
     try {
-      const response = await fetch('/api/v1/config/test-connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service: 'tailscale',
-          config: {}
-        })
+      const healthUrl = `http://${config.tailscale.ip}:8000/api/v1/system/health`;
+      const response = await fetch(healthUrl, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000)
       });
-      const result = await response.json();
       
-      if (result.success) {
+      if (response.ok) {
         setConnectionStatus('success');
-        setConnectionMessage(result.message || null);
-        
-        const tailscaleIP = extractTailscaleIP(result.message || '');
-        if (tailscaleIP) {
-          onUpdate({
-            tailscale: { 
-              enabled: true, 
-              ip: tailscaleIP 
-            }
-          });
-        }
+        setConnectionMessage('Connection successful! Your Tailscale IP is working correctly.');
         
         try {
           await saveConfig();
         } catch (err) {
           console.error('Failed to auto-save config after Tailscale test:', err);
         }
-
-        if (!showRestartSection) {
-          setShowRestartSection(true);
-        }
       } else {
         setConnectionStatus('error');
-        setConnectionMessage(result.message || null);
-        setShowRestartSection(false);
-      }
-    } catch {
-      setConnectionStatus('error');
-      setConnectionMessage(null);
-      setShowRestartSection(false);
-    }
-  };
-
-  const restartContainers = async () => {
-    setRestartStatus('restarting');
-    setRestartMessage(null);
-    
-    try {
-      const result = await ApiService.restartContainers();
-      
-      if (result.overall_status === 'success') {
-        setRestartStatus('success');
-        setRestartMessage('Development containers restarted successfully! Tailscale integration is now active.');
-        
-        setTimeout(() => {
-          checkTailscaleStatus();
-        }, RESTART_STATUS_CHECK_DELAY);
-      } else {
-        setRestartStatus('error');
-        setRestartMessage(result.message || 'Some containers failed to restart. Check the logs for details.');
+        setConnectionMessage(`Connection failed: Server returned status ${response.status}`);
       }
     } catch (error) {
-      setRestartStatus('error');
-      setRestartMessage('Failed to restart containers. Please check your Docker setup.');
-      console.error('Container restart error:', error);
+      setConnectionStatus('error');
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        setConnectionMessage('Connection timed out. Make sure the server is running and accessible via Tailscale.');
+      } else {
+        setConnectionMessage('Failed to connect. Please verify your Tailscale IP and ensure the server is running.');
+      }
     }
   };
 
@@ -189,150 +142,77 @@ curl -fsSL https://tailscale.com/install.sh | sh`}
           className="mb-4"
         />
         
-        <div className="flex justify-between items-center">
-          <div>
-            <p className="font-medium">Check Tailscale Status</p>
-            <p className="text-sm text-neutral-400">
-              Verify that Tailscale is installed and running on this machine
-            </p>
-          </div>
-          <Button
-            onClick={checkTailscaleStatus}
-            loading={connectionStatus === 'testing'}
-            variant="secondary"
-          >
-            Check Status
-          </Button>
-        </div>
+        {config.tailscale.enabled && (
+          <div className="space-y-4">
+            <Alert variant="info" icon={
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            }>
+              <div className="space-y-2">
+                <p className="font-medium">Get Your Tailscale IP Address</p>
+                <p className="text-sm">
+                  Open a terminal on your server and run the following command:
+                </p>
+                <Code block>tailscale status</Code>
+                <p className="text-sm">
+                  Look for your machine's IP address in the output. It will be in the format 100.x.x.x
+                </p>
+              </div>
+            </Alert>
 
-        {connectionStatus === 'success' && (
+            <TextInput
+              label="Tailscale IP Address"
+              placeholder="100.64.1.2"
+              value={config.tailscale.ip}
+              onChange={(event) => handleIPChange(event.currentTarget.value)}
+              description="Enter the IP address you got from running 'tailscale status'"
+              required
+            />
+
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="font-medium">Test Connection</p>
+                <p className="text-sm text-neutral-400">
+                  Verify that your server is accessible via the Tailscale IP
+                </p>
+              </div>
+              <Button
+                onClick={testTailscaleConnection}
+                loading={connectionStatus === 'testing'}
+                variant="secondary"
+                disabled={!config.tailscale.ip}
+              >
+                Test Connection
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {connectionStatus === 'success' && config.tailscale.enabled && (
           <Alert variant="success" icon={
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
           } className="mt-4">
             <div>
-              Tailscale is installed and connected! Your machine is ready for remote access.
-              {connectionMessage && (
-                <p className="mt-2 text-sm text-green-200">
-                  {connectionMessage}
-                </p>
-              )}
+              {connectionMessage}
             </div>
           </Alert>
         )}
         
-        {connectionStatus === 'error' && (
+        {connectionStatus === 'error' && config.tailscale.enabled && (
           <Alert variant="error" icon={
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
           } className="mt-4">
             <div>
-              Tailscale is not detected or not connected. Please follow the installation steps above or contact support on the Noiseport Discord server.
-              {connectionMessage && (
-                <p className="mt-2 text-sm text-red-200">
-                  {connectionMessage}
-                </p>
-              )}
+              {connectionMessage || 'Unable to connect to the server. Please verify your Tailscale IP and ensure the server is running.'}
             </div>
           </Alert>
         )}
       </Paper>
-
-      {showRestartSection && connectionStatus === 'success' && (
-        <Paper className="bg-blue-900/20 border-blue-700/30 mb-6">
-          <Alert variant="info" icon={
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-          } className="mb-4">
-            <div className="space-y-2">
-              <p className="font-medium">Container Restart Required</p>
-              <p className="text-sm">
-                For Tailscale integration to work properly, the development containers need to be restarted 
-                to mount the Tailscale socket and network configuration.
-              </p>
-            </div>
-          </Alert>
-
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="font-medium">Restart Development Containers</p>
-              <p className="text-sm text-neutral-400">
-                This will restart the FastAPI and other containers to enable Tailscale integration
-              </p>
-            </div>
-            <Button
-              onClick={restartContainers}
-              loading={restartStatus === 'restarting'}
-              variant="primary"
-              leftSection={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              }
-            >
-              {restartStatus === 'restarting' ? 'Restarting...' : 'Restart Containers'}
-            </Button>
-          </div>
-
-          {restartStatus === 'restarting' && (
-            <div className="bg-neutral-900 rounded p-4 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                <p className="text-sm">Restarting containers...</p>
-              </div>
-              <div className="mt-2 w-full bg-neutral-800 rounded-full h-2">
-                <div className="bg-primary h-2 rounded-full animate-pulse" style={{width: '100%'}}></div>
-              </div>
-            </div>
-          )}
-
-          {restartStatus === 'success' && (
-            <Alert variant="success" icon={
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            } className="mt-4">
-              <div>
-                <p className="font-medium">Containers Restarted Successfully!</p>
-                <p className="mt-2 text-sm">
-                  {restartMessage}
-                </p>
-              </div>
-            </Alert>
-          )}
-          
-          {restartStatus === 'error' && (
-            <Alert variant="error" icon={
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            } className="mt-4">
-              <div>
-                <p className="font-medium">Container Restart Failed</p>
-                <p className="mt-2 text-sm">
-                  {restartMessage}
-                </p>
-              </div>
-            </Alert>
-          )}
-        </Paper>
-      )}
-
-      {config.tailscale.enabled && (
-        <Paper className="mb-6">
-          <TextInput
-            label="Tailscale IP Address"
-            placeholder="100.64.1.2"
-            value={config.tailscale.ip}
-            onChange={(event) => handleIPChange(event.currentTarget.value)}
-            description="Your Tailscale IP address (automatically detected if status check succeeds)"
-            required
-          />
-        </Paper>
-      )}
 
       <Alert variant="warning" icon={
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
