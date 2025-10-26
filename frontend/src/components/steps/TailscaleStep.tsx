@@ -17,7 +17,8 @@ export default function TailscaleStep({ config, onUpdate, onValidation }: Props)
   useEffect(() => {
     const isValid = !config.tailscale.enabled || (config.tailscale.enabled && !!config.tailscale.ip);
     onValidation(isValid);
-  }, [config.tailscale.enabled, config.tailscale.ip, onValidation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.tailscale.enabled, config.tailscale.ip]);
 
   const testTailscaleConnection = async () => {
     if (!config.tailscale.ip) {
