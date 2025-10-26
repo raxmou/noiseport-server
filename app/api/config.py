@@ -28,6 +28,18 @@ import requests
 # Constants
 DOCKER_COMPOSE_FULL_FILE = "docker-compose.full.yml"
 DOCKER_COMPOSE_DEV_FILE = "docker-compose.dev.yml"
+ALLOWED_CONTAINER_NAMES = ["navidrome", "jellyfin", "slskd", "fastapi"]
+
+
+def get_compose_file_args():
+    """Get the appropriate docker-compose file arguments based on what exists."""
+    if os.path.exists(DOCKER_COMPOSE_DEV_FILE):
+        return ["-f", DOCKER_COMPOSE_DEV_FILE]
+    elif os.path.exists(DOCKER_COMPOSE_FULL_FILE):
+        return ["-f", DOCKER_COMPOSE_FULL_FILE]
+    else:
+        return []  # Use default docker-compose.yml
+
 
 class ConnectionTestRequest(BaseModel):
     service: str
@@ -580,8 +592,7 @@ async def restart_slskd() -> JSONResponse:
         import subprocess
         
         # Try to restart the slskd container using docker compose
-        # Use the full docker-compose file if it exists
-        compose_args = ["-f", DOCKER_COMPOSE_FULL_FILE] if os.path.exists(DOCKER_COMPOSE_FULL_FILE) else []
+        compose_args = get_compose_file_args()
         result = subprocess.run(
             ["docker", "compose"] + compose_args + ["restart", "slskd"],
             capture_output=True,
@@ -710,14 +721,7 @@ async def restart_containers() -> JSONResponse:
         logger.info("Starting container restart for Tailscale integration")
         
         # Get current compose configuration
-        # Check if we're in dev mode or full mode
-        compose_files = []
-        if os.path.exists(DOCKER_COMPOSE_DEV_FILE):
-            compose_files = ["-f", DOCKER_COMPOSE_DEV_FILE]
-        elif os.path.exists(DOCKER_COMPOSE_FULL_FILE):
-            compose_files = ["-f", DOCKER_COMPOSE_FULL_FILE]
-        else:
-            compose_files = []  # Use default docker-compose.yml
+        compose_files = get_compose_file_args()
         
         # First, restart the containers that need Tailscale integration
         containers_to_restart = ["fastapi"]  # Start with FastAPI, add others as needed
@@ -840,11 +844,10 @@ async def get_container_logs(container_name: str) -> JSONResponse:
     """Get recent logs from a specific container."""
     try:
         # Validate container name to prevent command injection
-        allowed_containers = ["navidrome", "jellyfin", "slskd", "fastapi"]
-        if container_name not in allowed_containers:
+        if container_name not in ALLOWED_CONTAINER_NAMES:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content={"message": f"Invalid container name. Allowed: {', '.join(allowed_containers)}"}
+                content={"message": f"Invalid container name. Allowed: {', '.join(ALLOWED_CONTAINER_NAMES)}"}
             )
         
         # Get last 50 lines of logs
@@ -943,8 +946,10 @@ async def get_service_status() -> JSONResponse:
         # Check if any images are being pulled (look for image pull progress)
         try:
             # Check docker compose ps to see if services are in "creating" state
+            compose_args = get_compose_file_args()
+            cmd = ["docker", "compose"] + compose_args + ["ps", "-a", "--format", "json"]
             compose_result = subprocess.run(
-                ["docker", "compose", "-f", DOCKER_COMPOSE_FULL_FILE, "ps", "-a", "--format", "json"],
+                cmd,
                 capture_output=True,
                 text=True,
                 timeout=5
