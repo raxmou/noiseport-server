@@ -226,7 +226,7 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
                   </svg>
                 ) : undefined}
               >
-                {saving ? "Saving..." : configSaved ? "Saved ✓" : "Save Configuration"}
+                {saving ? "Saving..." : configSaved ? "Saved" : "Save Configuration"}
               </Button>
             </div>
 

@@ -164,7 +164,7 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
                   </svg>
                 ) : undefined}
               >
-                {saving ? "Saving..." : configSaved ? "Saved ✓" : "Save Configuration"}
+                {saving ? "Saving..." : configSaved ? "Saved" : "Save Configuration"}
               </Button>
               {configSaved && (
                 <Button
@@ -181,7 +181,7 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
                     </svg>
                   )}
                 >
-                  {restarting ? "Restarting..." : restartSuccess ? "Restarted ✓" : "Restart FastAPI"}
+                  {restarting ? "Restarting..." : restartSuccess ? "Restarted" : "Restart FastAPI"}
                 </Button>
               )}
             </div>

@@ -281,7 +281,7 @@ export default function MusicPathsStep({
               {saving
                 ? "Saving..."
                 : configSaved
-                ? "Saved ✓"
+                ? "Saved"
                 : "Save Configuration"}
             </Button>
           </div>

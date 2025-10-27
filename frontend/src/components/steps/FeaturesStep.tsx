@@ -159,7 +159,7 @@ export default function FeaturesStep({ config, onUpdate, onValidation }: Props) 
                 </svg>
               ) : undefined}
             >
-              {saving ? "Saving..." : configSaved ? "Saved ✓" : "Save Configuration"}
+              {saving ? "Saving..." : configSaved ? "Saved" : "Save Configuration"}
             </Button>
             
             {configSaved && config.features.scrobbling && (
@@ -177,7 +177,7 @@ export default function FeaturesStep({ config, onUpdate, onValidation }: Props) 
                   </svg>
                 )}
               >
-                {restarting ? "Restarting..." : restartSuccess ? "Restarted ✓" : "Restart Navidrome"}
+                {restarting ? "Restarting..." : restartSuccess ? "Restarted" : "Restart Navidrome"}
               </Button>
             )}
           </div>
