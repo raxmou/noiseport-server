@@ -1,21 +1,19 @@
 # Multi-stage production Dockerfile for FastAPI application with React frontend
 
-# Frontend build stage
-FROM node:18-alpine as frontend-builder
 
+# Frontend build stage
+FROM node:20.19-bullseye-slim AS frontend-builder
 WORKDIR /app/frontend
 
-# Copy package files
-COPY frontend/package*.json ./
-RUN npm ci --only=production
+COPY frontend/package.json frontend/package-lock.json ./
 
-# Copy frontend source
+# Ensure dev deps + optional deps are installed (no --only=production, no --no-optional)
+ENV NODE_ENV=development
+ENV NPM_CONFIG_PRODUCTION=false
+RUN npm ci --include=dev
+
 COPY frontend/ ./
-
-# Build frontend
 RUN npm run build
-
-# Backend build stage
 FROM python:3.11-slim as backend-builder
 
 # Install system dependencies

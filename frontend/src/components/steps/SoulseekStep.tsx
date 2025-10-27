@@ -1,21 +1,7 @@
 import { useEffect, useState } from 'react';
-import {
-  Title,
-  Text,
-  Checkbox,
-  TextInput,
-  PasswordInput,
-  Button,
-  Group,
-  Alert,
-  Collapse,
-  Paper,
-  Divider,
-  Stack,
-} from '@mantine/core';
-import { IconCheck, IconX, IconInfoCircle } from '@tabler/icons-react';
 import { WizardConfiguration } from '../../types/wizard';
 import { useWizardConfig } from '../../hooks/useWizardConfig';
+import { Button, Checkbox, TextInput, PasswordInput, Paper, Alert } from '../ui';
 
 interface Props {
   config: WizardConfiguration;
@@ -119,182 +105,204 @@ export default function SoulseekStep({ config, onUpdate, onValidation }: Props) 
 
   return (
     <>
-      <Title order={2} mb="md">
+      <h2 className="text-2xl font-kode mb-4">
         Soulseek/slskd Configuration
-      </Title>
-      <Text c="dimmed" mb="md">
+      </h2>
+      <p className="text-neutral-400 mb-4">
         Configure your Soulseek connection for music downloading. This is the core 
         component for finding and downloading music from the Soulseek network.
-      </Text>
+      </p>
 
-      <Alert icon={<IconInfoCircle size="1rem" />} color="blue" variant="light" mb="xl">
-        <Stack gap="xs">
-          <Text fw={500}>Understanding slskd vs Soulseek</Text>
-          <Text size="sm">
+      <Alert variant="info" icon={
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+        </svg>
+      } className="mb-6">
+        <div className="space-y-2">
+          <p className="font-medium">Understanding slskd vs Soulseek</p>
+          <p className="text-sm">
             <strong>slskd</strong> is the daemon/server that runs on your machine and provides a web interface for Soulseek.
             It requires its own credentials (slskd username/password) to access the web interface.
-          </Text>
-          <Text size="sm">
+          </p>
+          <p className="text-sm">
             <strong>Soulseek</strong> is the actual peer-to-peer network where you share and download music.
             You need a Soulseek account (Soulseek username/password) to connect to the network and download files.
-          </Text>
-        </Stack>
+          </p>
+        </div>
       </Alert>
 
-      <Paper p="md" withBorder>
+      <Paper>
         <Checkbox
           label="Enable Soulseek/slskd Integration"
           checked={config.soulseek.enabled}
           onChange={(event) => handleSoulseekToggle(event.currentTarget.checked)}
-          mb="md"
+          className="mb-6"
         />
         
-        <Collapse in={config.soulseek.enabled}>
-          <Title order={4} mb="md">slskd Daemon Configuration</Title>
-          <Text size="sm" c="dimmed" mb="md">
-            These credentials are for accessing the slskd web interface (the daemon that manages Soulseek connections).
-          </Text>
-          
-          <TextInput
-            label="slskd Host URL"
-            placeholder="http://slskd:5030"
-            value={config.soulseek.host}
-            onChange={(event) => handleSoulseekChange('host', event.currentTarget.value)}
-            mb="md"
-            required
-            description={config.tailscale.enabled && config.tailscale.ip ? 
-              `Automatically set using Tailscale IP: ${config.tailscale.ip}` : 
-              "The URL where your slskd instance is running"}
-          />
-          
-          <Group grow mb="md">
-            <TextInput
-              label="slskd Username"
-              placeholder="slskd"
-              value={config.soulseek.username}
-              onChange={(event) => handleSoulseekChange('username', event.currentTarget.value)}
-              required
-              description="Username for the slskd web interface"
-            />
-            <PasswordInput
-              label="slskd Password"
-              placeholder="slskd"
-              value={config.soulseek.password}
-              onChange={(event) => handleSoulseekChange('password', event.currentTarget.value)}
-              required
-              description="Password for the slskd web interface"
-            />
-          </Group>
+        {config.soulseek.enabled && (
+          <div className="space-y-6">
+            <div>
+              <h4 className="text-lg font-kode mb-2">slskd Daemon Configuration</h4>
+              <p className="text-sm text-neutral-400 mb-4">
+                These credentials are for accessing the slskd web interface (the daemon that manages Soulseek connections).
+              </p>
+              
+              <TextInput
+                label="slskd Host URL"
+                placeholder="http://slskd:5030"
+                value={config.soulseek.host}
+                onChange={(event) => handleSoulseekChange('host', event.currentTarget.value)}
+                required
+                description={config.tailscale.enabled && config.tailscale.ip ? 
+                  `Automatically set using Tailscale IP: ${config.tailscale.ip}` : 
+                  "The URL where your slskd instance is running"}
+              />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <TextInput
+                  label="slskd Username"
+                  placeholder="slskd"
+                  value={config.soulseek.username}
+                  onChange={(event) => handleSoulseekChange('username', event.currentTarget.value)}
+                  required
+                  description="Username for the slskd web interface"
+                />
+                <PasswordInput
+                  label="slskd Password"
+                  placeholder="slskd"
+                  value={config.soulseek.password}
+                  onChange={(event) => handleSoulseekChange('password', event.currentTarget.value)}
+                  required
+                  description="Password for the slskd web interface"
+                />
+              </div>
+            </div>
 
-          <Divider my="xl" />
+            <hr className="border-neutral-700" />
 
-          <Title order={4} mb="md">Soulseek Network Configuration</Title>
-          <Text size="sm" c="dimmed" mb="md">
-            These credentials are for your Soulseek network account (the actual P2P network for downloading music).
-          </Text>
+            <div>
+              <h4 className="text-lg font-kode mb-2">Soulseek Network Configuration</h4>
+              <p className="text-sm text-neutral-400 mb-4">
+                These credentials are for your Soulseek network account (the actual P2P network for downloading music).
+              </p>
 
-          <Group grow mb="md">
-            <TextInput
-              label="Soulseek Username"
-              placeholder="your_soulseek_username"
-              value={config.soulseek.soulseekUsername}
-              onChange={(event) => handleSoulseekChange('soulseekUsername', event.currentTarget.value)}
-              required
-              description="Your Soulseek network username"
-            />
-            <PasswordInput
-              label="Soulseek Password"
-              placeholder="your_soulseek_password"
-              value={config.soulseek.soulseekPassword}
-              onChange={(event) => handleSoulseekChange('soulseekPassword', event.currentTarget.value)}
-              required
-              description="Your Soulseek network password"
-            />
-          </Group>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <TextInput
+                  label="Soulseek Username"
+                  placeholder="your_soulseek_username"
+                  value={config.soulseek.soulseekUsername}
+                  onChange={(event) => handleSoulseekChange('soulseekUsername', event.currentTarget.value)}
+                  required
+                  description="Your Soulseek network username"
+                />
+                <PasswordInput
+                  label="Soulseek Password"
+                  placeholder="your_soulseek_password"
+                  value={config.soulseek.soulseekPassword}
+                  onChange={(event) => handleSoulseekChange('soulseekPassword', event.currentTarget.value)}
+                  required
+                  description="Your Soulseek network password"
+                />
+              </div>
+            </div>
 
-          <Group mb="md">
-            <Button
-              onClick={testSoulseekConnection}
-              loading={connectionStatus === 'testing'}
-              disabled={!isFormValid}
-            >
-              Test Connection
-            </Button>
-            <Button
-              onClick={handleSaveConfig}
-              loading={saving}
-              leftSection={<IconCheck size="1rem" />}
-              disabled={!isFormValid}
-              color={configSaved ? "green" : "blue"}
-            variant={configSaved ? "light" : "filled"}
-            >
-              {saving ? "Saving..." : configSaved ? "Saved ✓" : "Save Configuration"}
-            </Button>
-          </Group>
+            <div className="flex gap-2">
+              <Button
+                onClick={testSoulseekConnection}
+                loading={connectionStatus === 'testing'}
+                disabled={!isFormValid}
+                variant="secondary"
+              >
+                Test Connection
+              </Button>
+              <Button
+                onClick={handleSaveConfig}
+                loading={saving}
+                disabled={!isFormValid}
+                variant={configSaved ? "outline" : "primary"}
+                leftSection={configSaved ? (
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                ) : undefined}
+              >
+                {saving ? "Saving..." : configSaved ? "Saved ✓" : "Save Configuration"}
+              </Button>
+            </div>
 
-          <Stack gap="xs" mb="md">
             {connectionStatus === 'success' && (
-              <Alert icon={<IconCheck size="1rem" />} color="green" variant="light">
+              <Alert variant="success" icon={
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              }>
                 slskd connection successful!
               </Alert>
             )}
+            
             {connectionStatus === 'error' && (
-              <Alert icon={<IconX size="1rem" />} color="red" variant="light">
+              <Alert variant="error" icon={
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              }>
                 Connection failed. Please check your slskd configuration.
               </Alert>
             )}
-            {/* {saveStatus === 'success' && (
-              <Alert icon={<IconCheck size="1rem" />} color="blue" variant="light">
-                Soulseek configuration saved successfully!
-              </Alert>
-            )}
-            {saveStatus === 'error' && (
-              <Alert icon={<IconX size="1rem" />} color="red" variant="light">
-                Failed to save configuration. Please try again.
-              </Alert>
-            )} */}
-          </Stack>
 
-          {connectionStatus === 'success' && (
-            <Paper p="md" withBorder bg="green.0" mt="md">
-              <Group justify="space-between" align="center">
-                <div>
-                  <Text fw={500}>Restart slskd Container</Text>
-                  <Text size="sm" c="dimmed">
-                    Restart the slskd container to apply your Soulseek network credentials
-                  </Text>
+            {connectionStatus === 'success' && (
+              <Paper className="bg-green-900/20 border-green-700/30">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium">Restart slskd Container</p>
+                    <p className="text-sm text-neutral-400">
+                      Restart the slskd container to apply your Soulseek network credentials
+                    </p>
+                  </div>
+                  <Button
+                    onClick={restartSlskdContainer}
+                    loading={restartStatus === 'restarting'}
+                    variant="primary"
+                  >
+                    Restart slskd
+                  </Button>
                 </div>
-                <Button
-                  onClick={restartSlskdContainer}
-                  loading={restartStatus === 'restarting'}
-                  color="green"
-                >
-                  Restart slskd
-                </Button>
-              </Group>
 
-              {restartStatus === 'success' && (
-                <Alert icon={<IconCheck size="1rem" />} color="green" variant="light" mt="md">
-                  slskd container restarted successfully! Soulseek credentials have been applied.
-                </Alert>
-              )}
-              
-              {restartStatus === 'error' && (
-                <Alert icon={<IconX size="1rem" />} color="red" variant="light" mt="md">
-                  Failed to restart slskd container. Please restart manually or check the logs.
-                </Alert>
-              )}
-            </Paper>
-          )}
+                {restartStatus === 'success' && (
+                  <Alert variant="success" icon={
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  } className="mt-4">
+                    slskd container restarted successfully! Soulseek credentials have been applied.
+                  </Alert>
+                )}
+                
+                {restartStatus === 'error' && (
+                  <Alert variant="error" icon={
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  } className="mt-4">
+                    Failed to restart slskd container. Please restart manually or check the logs.
+                  </Alert>
+                )}
+              </Paper>
+            )}
 
-          <Alert color="blue" variant="light" mt="md">
-            <Text size="sm">
-              <strong>Note:</strong> Make sure your slskd instance is running and accessible 
-              at the specified URL. The Soulseek network credentials will be saved to the slskd 
-              configuration and applied when you restart the container.
-            </Text>
-          </Alert>
-        </Collapse>
+            <Alert variant="info" icon={
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            }>
+              <p className="text-sm">
+                <strong>Note:</strong> Make sure your slskd instance is running and accessible 
+                at the specified URL. The Soulseek network credentials will be saved to the slskd 
+                configuration and applied when you restart the container.
+              </p>
+            </Alert>
+          </div>
+        )}
       </Paper>
     </>
   );

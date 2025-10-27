@@ -18,7 +18,7 @@ services:
       - ./shared:/shared
     restart: unless-stopped
     networks:
-      - music-net
+      - noiseport
     labels:
       glance.name: slskd
       glance.hide: false
@@ -30,7 +30,7 @@ services:
     build: .
     container_name: fastapi
     ports:
-      - "8000:80"
+      - "8010:80"
     environment:
       - SLSKD_HOST=http://slskd:5030
       - NAVIDROME_URL=http://navidrome:4533
@@ -42,7 +42,7 @@ services:
       - slskd
     restart: unless-stopped
     networks:
-      - music-net
+      - noiseport
     labels:
       glance.name: Music Stack API & Wizard
       glance.hide: false
@@ -74,7 +74,7 @@ services:
       glance.url: http://localhost:4533
       glance.description: "Music Streaming Server"
     networks:
-      - music-net
+      - noiseport
 
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
@@ -97,8 +97,8 @@ services:
       glance.description: "Media Streaming Server"
     restart: unless-stopped
     networks:
-      - music-net
+      - noiseport
 
 networks:
-  music-net:
+  noiseport:
     driver: bridge
