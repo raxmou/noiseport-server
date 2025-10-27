@@ -1,9 +1,11 @@
 ---
+# Docker Compose file for wizard service (production mode)
+# Uses pre-built image maxenceroux/noiseport-server-wizard
+
 services:
-  fastapi:
-    image: maxenceroux/noiseport-server:latest
-    container_name: fastapi-wizard
-    # network_mode: host
+  wizard:
+    image: maxenceroux/noiseport-server-wizard:latest
+    container_name: noiseport-wizard
     user: root
     ports:
       - "8000:80"
@@ -11,26 +13,26 @@ services:
       - WIZARD_MODE=true
       - PYTHONPATH=/app
     volumes:
-      # Mount current directory for configuration file persistence
+      # Mount configuration output directory
       - .:/app/workspace
+      # Mount config directory for persistence
       - ./config:/app/config
-      
-      - /usr/bin/tailscale:/usr/bin/tailscale
-      - /var/run/tailscale/tailscaled.sock:/var/run/tailscale/tailscaled.sock
+      # Mount Docker socket for compose runner
       - /var/run/docker.sock:/var/run/docker.sock
+      # Optional: Mount Tailscale binaries and socket if available
+      - /usr/bin/tailscale:/usr/bin/tailscale:ro
+      - /var/run/tailscale/tailscaled.sock:/var/run/tailscale/tailscaled.sock:ro
     working_dir: /app/workspace
     restart: unless-stopped
-
     
-
     labels:
-      glance.name: Music Stack Setup Wizard
+      glance.name: Noiseport Setup Wizard
       glance.hide: false
       glance.icon: si:fastapi
-          
       glance.url: http://localhost:8000/wizard
       glance.description: "Setup wizard - configure paths before launching other services"
 
 networks:
-  music-net:
+  default:
+    name: noiseport-wizard
     driver: bridge

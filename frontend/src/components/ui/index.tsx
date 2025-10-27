@@ -33,7 +33,7 @@ export function Button({
   
   return (
     <button
-      className={`${baseClass} ${className} ${disabled || loading ? 'opacity-50 cursor-not-allowed' : ''} inline-flex items-center justify-center gap-2`}
+      className={`${baseClass} ${sizeClass} ${className} ${disabled || loading ? 'opacity-50 cursor-not-allowed' : ''} inline-flex items-center justify-center gap-2`}
       disabled={disabled || loading}
       {...props}
     >
