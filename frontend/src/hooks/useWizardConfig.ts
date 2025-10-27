@@ -40,6 +40,7 @@ const defaultConfig: WizardConfiguration = {
     downloads: true,
     discovery: false,
     lastfmApiKey: '',
+    lastfmSecret: '',
   },
 };
 
