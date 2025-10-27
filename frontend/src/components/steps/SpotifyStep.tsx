@@ -14,6 +14,8 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
   
   const [saving, setSaving] = useState(false);
   const [configSaved, setConfigSaved] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+  const [restartSuccess, setRestartSuccess] = useState(false);
   const { testConnection } = useWizardConfig();
 
   useEffect(() => {
@@ -65,6 +67,26 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
       console.error('Error saving configuration:', error);
     }
     setSaving(false);
+  };
+
+  const handleRestartFastAPI = async () => {
+    setRestarting(true);
+    setRestartSuccess(false);
+    try {
+      const response = await fetch('/api/v1/config/restart-fastapi', {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        setRestartSuccess(true);
+        console.log('FastAPI container restarted successfully');
+      } else {
+        console.error('Failed to restart FastAPI container');
+      }
+    } catch (error) {
+      console.error('Error restarting FastAPI container:', error);
+    }
+    setRestarting(false);
   };
   
   const isFormValid =
@@ -144,6 +166,24 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
               >
                 {saving ? "Saving..." : configSaved ? "Saved ✓" : "Save Configuration"}
               </Button>
+              {configSaved && (
+                <Button
+                  onClick={handleRestartFastAPI}
+                  loading={restarting}
+                  variant="secondary"
+                  leftSection={restartSuccess ? (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                >
+                  {restarting ? "Restarting..." : restartSuccess ? "Restarted ✓" : "Restart FastAPI"}
+                </Button>
+              )}
             </div>
 
             {connectionStatus === 'success' && (
@@ -163,6 +203,16 @@ export default function SpotifyStep({ config, onUpdate, onValidation }: Props) {
                 </svg>
               }>
                 Connection failed. Please check your credentials.
+              </Alert>
+            )}
+            
+            {restartSuccess && (
+              <Alert variant="success" icon={
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              }>
+                FastAPI container restarted successfully with new Spotify credentials!
               </Alert>
             )}
 

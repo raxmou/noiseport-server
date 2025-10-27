@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     scrobbling_enabled: bool = Field(default=False, description="Enable scrobbling")
     downloads_enabled: bool = Field(default=True, description="Enable downloads")
     discovery_enabled: bool = Field(default=False, description="Enable music discovery")
+    
+    # Last.fm
+    lastfm_api_key: str = Field(default="", description="Last.fm API Key")
+    lastfm_secret: str = Field(default="", description="Last.fm API Secret")
 
     # Security
     secret_key: str = Field(

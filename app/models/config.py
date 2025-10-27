@@ -50,6 +50,8 @@ class FeaturesConfig(BaseModel):
     scrobbling: bool = Field(default=False, description="Enable scrobbling")
     downloads: bool = Field(default=True, description="Enable downloads")
     discovery: bool = Field(default=False, description="Enable music discovery")
+    lastfmApiKey: str = Field(default="", description="Last.fm API Key")
+    lastfmSecret: str = Field(default="", description="Last.fm API Secret")
 
 
 class TailscaleConfig(BaseModel):

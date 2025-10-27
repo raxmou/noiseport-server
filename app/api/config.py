@@ -99,6 +99,8 @@ async def get_current_config() -> WizardConfiguration:
                 "scrobbling": settings.scrobbling_enabled,
                 "downloads": settings.downloads_enabled,
                 "discovery": settings.discovery_enabled,
+                "lastfmApiKey": settings.lastfm_api_key,
+                "lastfmSecret": settings.lastfm_secret,
             },
         )
         
@@ -156,6 +158,8 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             "SCROBBLING_ENABLED": str(config.features.scrobbling).lower(),
             "DOWNLOADS_ENABLED": str(config.features.downloads).lower(),
             "DISCOVERY_ENABLED": str(config.features.discovery).lower(),
+            "LASTFM_API_KEY": config.features.lastfmApiKey,
+            "LASTFM_SECRET": config.features.lastfmSecret,
         }
         
         # Read existing .env file if it exists
@@ -234,6 +238,10 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             for key in ["SCROBBLING_ENABLED", "DOWNLOADS_ENABLED", "DISCOVERY_ENABLED"]:
                 f.write(f"{key}={existing_vars[key]}\n")
             
+            f.write("\n# Last.fm\n")
+            for key in ["LASTFM_API_KEY", "LASTFM_SECRET"]:
+                f.write(f"{key}={existing_vars.get(key, '')}\n")
+            
             # Update written keys set
             written_keys = {
                 "TAILSCALE_ENABLED", "TAILSCALE_IP",
@@ -243,6 +251,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 "SLSKD_HOST", "SLSKD_USERNAME", "SLSKD_PASSWORD", "SOULSEEK_USERNAME", "SOULSEEK_PASSWORD",
                 "HOST_MUSIC_PATH", "DOWNLOAD_PATH", "COMPLETE_PATH",
                 "SCROBBLING_ENABLED", "DOWNLOADS_ENABLED", "DISCOVERY_ENABLED",
+                "LASTFM_API_KEY", "LASTFM_SECRET",
             }
             
             f.write("\n# Other Settings\n")
@@ -618,6 +627,126 @@ async def restart_slskd() -> JSONResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to restart slskd container"
+        )
+
+
+@router.post("/config/restart-fastapi")
+async def restart_fastapi() -> JSONResponse:
+    """Restart the FastAPI container using ComposeRunner."""
+    try:
+        runner = ComposeRunner()
+        success, message = runner.restart_service("fastapi")
+        if success:
+            logger.info("FastAPI container restarted successfully")
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={
+                    "message": "FastAPI container restarted successfully",
+                    "output": message
+                }
+            )
+        else:
+            logger.error(f"Failed to restart FastAPI container: {message}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={
+                    "message": "Failed to restart FastAPI container",
+                    "error": message
+                }
+            )
+    except Exception as e:
+        logger.error(f"Failed to restart FastAPI: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to restart FastAPI container"
+        )
+
+
+@router.post("/config/restart-navidrome")
+async def restart_navidrome() -> JSONResponse:
+    """Restart the Navidrome container using ComposeRunner."""
+    try:
+        runner = ComposeRunner()
+        success, message = runner.restart_service("navidrome")
+        if success:
+            logger.info("Navidrome container restarted successfully")
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={
+                    "message": "Navidrome container restarted successfully",
+                    "output": message
+                }
+            )
+        else:
+            logger.error(f"Failed to restart Navidrome container: {message}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={
+                    "message": "Failed to restart Navidrome container",
+                    "error": message
+                }
+            )
+    except Exception as e:
+        logger.error(f"Failed to restart Navidrome: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to restart Navidrome container"
+        )
+
+
+@router.get("/config/spotify-token")
+async def get_spotify_token() -> JSONResponse:
+    """Get Spotify access token using stored credentials."""
+    try:
+        # Read credentials from settings
+        client_id = settings.spotify_client_id
+        client_secret = settings.spotify_client_secret
+        
+        if not client_id or not client_secret:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Spotify credentials not configured. Please configure in the wizard."
+            )
+        
+        # Request token from Spotify
+        token_url = "https://accounts.spotify.com/api/token"
+        data = {
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret,
+        }
+        
+        response = requests.post(token_url, data=data, timeout=10)
+        
+        if response.status_code == 200:
+            token_data = response.json()
+            logger.info("Successfully retrieved Spotify access token")
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={
+                    "access_token": token_data.get("access_token"),
+                    "token_type": token_data.get("token_type", "Bearer"),
+                    "expires_in": token_data.get("expires_in", 3600)
+                }
+            )
+        else:
+            logger.error(f"Failed to get Spotify token: {response.status_code} - {response.text}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to retrieve Spotify token: {response.text}"
+            )
+            
+    except requests.RequestException as e:
+        logger.error(f"Request error while getting Spotify token: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to connect to Spotify API"
+        )
+    except Exception as e:
+        logger.error(f"Error getting Spotify token: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve Spotify token"
         )
 
 
