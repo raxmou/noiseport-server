@@ -1,0 +1,42 @@
+---
+# Docker Compose file for wizard service (development mode)
+# Builds wizard from Dockerfile.wizard and mounts frontend dist for development
+
+services:
+  wizard:
+    build:
+      context: .
+      dockerfile: Dockerfile.wizard
+    container_name: noiseport-wizard-dev
+    user: root
+    ports:
+      - "8000:80"
+    environment:
+      - WIZARD_MODE=true
+      - PYTHONPATH=/app
+    volumes:
+      # Mount source code for hot reload
+      - ./app:/app/app
+      - ./config:/app/config
+      # Mount frontend dist for development
+      - ./frontend/dist:/app/frontend/dist
+      # Mount configuration output directory
+      - .:/app/workspace
+      # Mount Docker socket for compose runner
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Optional: Mount Tailscale socket if available
+      - /var/run/tailscale/tailscaled.sock:/var/run/tailscale/tailscaled.sock:ro
+    working_dir: /app/workspace
+    restart: unless-stopped
+    
+    labels:
+      glance.name: Noiseport Setup Wizard (Development)
+      glance.hide: false
+      glance.icon: si:fastapi
+      glance.url: http://localhost:8000/wizard
+      glance.description: "Setup wizard - development mode with hot reload"
+
+networks:
+  default:
+    name: noiseport-wizard-dev
+    driver: bridge

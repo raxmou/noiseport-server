@@ -27,7 +27,7 @@ from pydantic import BaseModel
 import requests
 
 # Constants
-DOCKER_COMPOSE_FULL_FILE = "docker-compose.full.yml"
+DOCKER_COMPOSE_STACK_FILE = "docker-compose.stack.yml"
 DOCKER_COMPOSE_DEV_FILE = "docker-compose.dev.yml"
 ALLOWED_CONTAINER_NAMES = ["navidrome", "jellyfin", "slskd", "fastapi"]
 
@@ -36,8 +36,8 @@ def get_compose_file_args():
     """Get the appropriate docker-compose file arguments based on what exists."""
     if os.path.exists(DOCKER_COMPOSE_DEV_FILE):
         return ["-f", DOCKER_COMPOSE_DEV_FILE]
-    elif os.path.exists(DOCKER_COMPOSE_FULL_FILE):
-        return ["-f", DOCKER_COMPOSE_FULL_FILE]
+    elif os.path.exists(DOCKER_COMPOSE_STACK_FILE):
+        return ["-f", DOCKER_COMPOSE_STACK_FILE]
     else:
         return []  # Use default docker-compose.yml
 
@@ -277,7 +277,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             import os
             
             # Read the template
-            template_path = f"{DOCKER_COMPOSE_FULL_FILE}.template"
+            template_path = f"{DOCKER_COMPOSE_STACK_FILE}.template"
             if os.path.exists(template_path):
                 with open(template_path, "r") as f:
                     compose_template = f.read()
@@ -289,7 +289,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 )
                 
                 # Write the full docker-compose file
-                with open(DOCKER_COMPOSE_FULL_FILE, "w") as f:
+                with open(DOCKER_COMPOSE_STACK_FILE, "w") as f:
                     f.write(compose_content)
                 
                 # Create directories with proper permissions
@@ -315,7 +315,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                             dir_path = os.path.join(root, d)
                             os.chmod(dir_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
                 
-                logger.info(f"Generated {DOCKER_COMPOSE_FULL_FILE} with user music path: {host_music_path}")
+                logger.info(f"Generated {DOCKER_COMPOSE_STACK_FILE} with user music path: {host_music_path}")
                 
                 # Create a startup script
                 startup_script = f"""#!/bin/bash
@@ -328,7 +328,7 @@ echo "🛑 Stopping wizard container..."
 docker compose down
 
 echo "🚀 Starting full music stack..."
-docker compose -f {DOCKER_COMPOSE_FULL_FILE} up -d
+docker compose -f {DOCKER_COMPOSE_STACK_FILE} up -d
 
 echo ""
 echo "✅ Music stack is starting up!"
@@ -348,7 +348,7 @@ echo "⏳ Please wait a few moments for services to fully start before accessing
                 os.chmod("start-music-stack.sh", stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
                 
             else:
-                logger.warning(f"{DOCKER_COMPOSE_FULL_FILE}.template not found")
+                logger.warning(f"{DOCKER_COMPOSE_STACK_FILE}.template not found")
         except Exception as e:
             logger.warning(f"Failed to generate docker-compose file: {e}")
         
@@ -646,7 +646,7 @@ async def launch_services() -> JSONResponse:
     the stack without requiring manual Docker Desktop file sharing configuration.
     """
     # Check if the full docker-compose file exists
-    if not os.path.exists(DOCKER_COMPOSE_FULL_FILE):
+    if not os.path.exists(DOCKER_COMPOSE_STACK_FILE):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Configuration not saved yet. Please save your configuration first."
@@ -657,7 +657,7 @@ async def launch_services() -> JSONResponse:
         runner = ComposeRunner()
         
         # Run preflight checks
-        checks_passed, issues = runner.preflight_checks(DOCKER_COMPOSE_FULL_FILE)
+        checks_passed, issues = runner.preflight_checks(DOCKER_COMPOSE_STACK_FILE)
         if not checks_passed:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -669,7 +669,7 @@ async def launch_services() -> JSONResponse:
             )
         
         # Validate compose configuration
-        config_valid, config_msg = runner.compose_config(DOCKER_COMPOSE_FULL_FILE)
+        config_valid, config_msg = runner.compose_config(DOCKER_COMPOSE_STACK_FILE)
         if not config_valid:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -684,7 +684,7 @@ async def launch_services() -> JSONResponse:
         def run_stack():
             try:
                 success, message = runner.compose_up(
-                    compose_file=DOCKER_COMPOSE_FULL_FILE,
+                    compose_file=DOCKER_COMPOSE_STACK_FILE,
                     build=False,
                     detach=True
                 )
@@ -775,13 +775,13 @@ async def stop_stack() -> JSONResponse:
         runner = ComposeRunner()
         
         # Check if compose file exists
-        if not os.path.exists(DOCKER_COMPOSE_FULL_FILE):
+        if not os.path.exists(DOCKER_COMPOSE_STACK_FILE):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Compose file not found. Cannot stop stack."
             )
         
-        success, message = runner.compose_down(DOCKER_COMPOSE_FULL_FILE)
+        success, message = runner.compose_down(DOCKER_COMPOSE_STACK_FILE)
         
         if success:
             return JSONResponse(
@@ -818,7 +818,7 @@ async def pull_stack_images() -> JSONResponse:
         runner = ComposeRunner()
         
         # Check if compose file exists
-        if not os.path.exists(DOCKER_COMPOSE_FULL_FILE):
+        if not os.path.exists(DOCKER_COMPOSE_STACK_FILE):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Compose file not found. Cannot pull images."
@@ -827,7 +827,7 @@ async def pull_stack_images() -> JSONResponse:
         # Pull images in background thread
         def pull_images():
             try:
-                success, message = runner.compose_pull(DOCKER_COMPOSE_FULL_FILE)
+                success, message = runner.compose_pull(DOCKER_COMPOSE_STACK_FILE)
                 if success:
                     logger.info(f"Images pulled successfully: {message}")
                 else:

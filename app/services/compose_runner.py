@@ -133,7 +133,7 @@ class ComposeRunner:
             logger.error(f"Error running compose command: {e}")
             return 1, "", str(e)
     
-    def compose_config(self, compose_file: str = "docker-compose.full.yml") -> Tuple[bool, str]:
+    def compose_config(self, compose_file: str = "docker-compose.stack.yml") -> Tuple[bool, str]:
         """
         Validate compose configuration.
         
@@ -154,7 +154,7 @@ class ComposeRunner:
         else:
             return False, f"Compose configuration error: {stderr}"
     
-    def compose_pull(self, compose_file: str = "docker-compose.full.yml") -> Tuple[bool, str]:
+    def compose_pull(self, compose_file: str = "docker-compose.stack.yml") -> Tuple[bool, str]:
         """
         Pull images for the stack.
         
@@ -178,7 +178,7 @@ class ComposeRunner:
     
     def compose_up(
         self,
-        compose_file: str = "docker-compose.full.yml",
+        compose_file: str = "docker-compose.stack.yml",
         build: bool = False,
         detach: bool = True,
         log_file: str = "launch_services.log"
@@ -221,7 +221,7 @@ class ComposeRunner:
     
     def compose_down(
         self,
-        compose_file: str = "docker-compose.full.yml",
+        compose_file: str = "docker-compose.stack.yml",
         remove_volumes: bool = False
     ) -> Tuple[bool, str]:
         """
@@ -287,7 +287,7 @@ class ComposeRunner:
                 'error': str(e)
             }
     
-    def preflight_checks(self, compose_file: str = "docker-compose.full.yml") -> Tuple[bool, List[str]]:
+    def preflight_checks(self, compose_file: str = "docker-compose.stack.yml") -> Tuple[bool, List[str]]:
         """
         Run preflight checks before launching the stack.
         
