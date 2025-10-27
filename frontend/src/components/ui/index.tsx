@@ -23,7 +23,7 @@ export function Button({
   
   return (
     <button
-      className={`${baseClass} ${className} ${disabled || loading ? 'opacity-50 cursor-not-allowed' : ''} flex items-center justify-center gap-2`}
+      className={`${baseClass} ${className} ${disabled || loading ? 'opacity-50 cursor-not-allowed' : ''} inline-flex items-center justify-center gap-2`}
       disabled={disabled || loading}
       {...props}
     >
@@ -34,7 +34,7 @@ export function Button({
         </svg>
       )}
       {leftSection && <span className="flex-shrink-0">{leftSection}</span>}
-      <span className="whitespace-nowrap">{children}</span>
+      {children}
     </button>
   );
 }
