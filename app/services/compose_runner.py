@@ -12,7 +12,7 @@ from docker.errors import DockerException, NotFound
 logger = logging.getLogger(__name__)
 
 # Constants
-COMPOSE_IMAGE = "docker/compose:2"
+COMPOSE_IMAGE = "docker/compose:latest"
 COMPOSE_PROJECT_NAME = "noiseport"
 
 
@@ -180,16 +180,18 @@ class ComposeRunner:
         self,
         compose_file: str = "docker-compose.full.yml",
         build: bool = False,
-        detach: bool = True
+        detach: bool = True,
+        log_file: str = "launch_services.log"
     ) -> Tuple[bool, str]:
         """
-        Bring up the stack.
+        Bring up the stack and write logs to a file.
         
         Args:
             compose_file: Path to compose file (relative to project root)
             build: Whether to build images before starting
             detach: Whether to run in detached mode
-            
+            log_file: Path to log file for service launch logs
+        
         Returns:
             Tuple of (success, message)
         """
@@ -201,12 +203,21 @@ class ComposeRunner:
         if detach:
             args.append('-d')
         
-        exit_code, stdout, stderr = self._run_compose_command(args, capture_output=False)
+        exit_code, stdout, stderr = self._run_compose_command(args, capture_output=True)
+        # Write logs to file
+        try:
+            with open(log_file, "a") as f:
+                f.write("==== Service Launch Log ====" + "\n")
+                f.write(stdout)
+                if stderr:
+                    f.write("\n[ERROR]\n" + stderr)
+        except Exception as e:
+            logger.error(f"Failed to write launch log: {e}")
         
         if exit_code == 0:
-            return True, f"Stack started successfully with project name '{COMPOSE_PROJECT_NAME}'"
+            return True, f"Stack started successfully with project name '{COMPOSE_PROJECT_NAME}'. Logs written to {log_file}"
         else:
-            return False, f"Failed to start stack: {stderr}"
+            return False, f"Failed to start stack: {stderr}. See {log_file} for details."
     
     def compose_down(
         self,
