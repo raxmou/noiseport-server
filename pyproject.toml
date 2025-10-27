@@ -21,6 +21,7 @@ classifiers = [
 dependencies = [
     "click>=8.3.0",
     "discogs-client>=2.3.0",
+    "docker>=7.0.0",
     "fastapi[standard]>=0.117.1",
     "pylast>=5.5.0",
     "requests>=2.32.5",

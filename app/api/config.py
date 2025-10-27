@@ -9,7 +9,7 @@ import subprocess
 import threading
 
 from fastapi import APIRouter, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.core.logging import get_logger
 from app.models.config import (
@@ -19,6 +19,7 @@ from app.models.config import (
     ConnectionTestResponse,
     ValidationError,
 )
+from app.services.compose_runner import ComposeRunner
 from config import settings
 
 
@@ -638,63 +639,219 @@ import threading
 
 @router.post("/config/launch-services")
 async def launch_services() -> JSONResponse:
-    """Launch the full music stack with configured paths asynchronously."""
-    import subprocess
-    import os
+    """
+    Launch the full music stack using compose-runner.
     
+    This endpoint uses Docker-in-Docker with the docker/compose:2 image to launch
+    the stack without requiring manual Docker Desktop file sharing configuration.
+    """
     # Check if the full docker-compose file exists
     if not os.path.exists(DOCKER_COMPOSE_FULL_FILE):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Configuration not saved yet. Please save your configuration first."
         )
-
-    log_file = "launch_services.log"
-
-    def run_stack():
-        try:
-            with open(log_file, "w") as log:
-                if os.path.exists("start-music-stack.sh"):
-                    process = subprocess.Popen(["bash", "start-music-stack.sh"], stdout=log, stderr=log)
-                else:
-                    process = subprocess.Popen(["docker", "compose", "-f", DOCKER_COMPOSE_FULL_FILE, "up", "--build", "-d"], stdout=log, stderr=log)
-                process.wait()
-        except Exception as e:
-            with open(log_file, "a") as log:
-                log.write(f"\nERROR: {e}\n")
-
-    # Start the stack in a background thread
-    thread = threading.Thread(target=run_stack, daemon=True)
-    thread.start()
-
-
-    # Try to get TAILSCALE_IP from .env
-    tailscale_ip = None
+    
     try:
-        with open('.env', 'r') as f:
-            for line in f:
-                if line.startswith('TAILSCALE_IP='):
-                    tailscale_ip = line.strip().split('=', 1)[1]
-                    break
-    except Exception:
-        pass
-
-    def url(ip, port):
-        return f"http://{ip}:{port}" if ip else f"http://localhost:{port}"
-
-    return JSONResponse(
-        status_code=status.HTTP_202_ACCEPTED,
-        content={
-            "message": "Music stack launch started in background. Check progress via /config/launch-status.",
-            "logFile": log_file,
-            "services": {
-                "navidrome": url(tailscale_ip, 4533),
-                "jellyfin": url(tailscale_ip, 8096),
-                "slskd": url(tailscale_ip, 5030),
-                "fastapi": url(tailscale_ip, 8000)
+        # Initialize compose runner
+        runner = ComposeRunner()
+        
+        # Run preflight checks
+        checks_passed, issues = runner.preflight_checks(DOCKER_COMPOSE_FULL_FILE)
+        if not checks_passed:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "success": False,
+                    "message": "Preflight checks failed",
+                    "issues": issues
+                }
+            )
+        
+        # Validate compose configuration
+        config_valid, config_msg = runner.compose_config(DOCKER_COMPOSE_FULL_FILE)
+        if not config_valid:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "success": False,
+                    "message": "Invalid compose configuration",
+                    "error": config_msg
+                }
+            )
+        
+        # Launch the stack in background thread
+        def run_stack():
+            try:
+                success, message = runner.compose_up(
+                    compose_file=DOCKER_COMPOSE_FULL_FILE,
+                    build=False,
+                    detach=True
+                )
+                if success:
+                    logger.info(f"Stack launched successfully: {message}")
+                else:
+                    logger.error(f"Stack launch failed: {message}")
+            except Exception as e:
+                logger.error(f"Error launching stack: {e}")
+        
+        thread = threading.Thread(target=run_stack, daemon=True)
+        thread.start()
+        
+        # Get TAILSCALE_IP from .env if available
+        tailscale_ip = None
+        try:
+            with open('.env', 'r') as f:
+                for line in f:
+                    if line.startswith('TAILSCALE_IP='):
+                        tailscale_ip = line.strip().split('=', 1)[1]
+                        break
+        except Exception:
+            pass
+        
+        def url(ip, port):
+            return f"http://{ip}:{port}" if ip else f"http://localhost:{port}"
+        
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content={
+                "success": True,
+                "message": "Music stack launch started. Use /config/stack-status to check progress.",
+                "project": "noiseport",
+                "hostPath": runner.host_project_path,
+                "services": {
+                    "navidrome": url(tailscale_ip, 4533),
+                    "jellyfin": url(tailscale_ip, 8096),
+                    "slskd": url(tailscale_ip, 5030),
+                    "fastapi": url(tailscale_ip, 8000)
+                }
             }
-        }
-    )
+        )
+    except Exception as e:
+        logger.error(f"Failed to launch services: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to launch services: {str(e)}"
+        )
+
+
+@router.get("/config/stack-status")
+async def get_stack_status() -> JSONResponse:
+    """
+    Get the current status of the music stack.
+    
+    Returns detailed information about containers in the 'noiseport' project.
+    """
+    try:
+        runner = ComposeRunner()
+        status_info = runner.get_stack_status()
+        
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=status_info
+        )
+    except Exception as e:
+        logger.error(f"Failed to get stack status: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "project": "noiseport",
+                "services": {},
+                "count": 0,
+                "error": str(e)
+            }
+        )
+
+
+@router.post("/config/stack-stop")
+async def stop_stack() -> JSONResponse:
+    """
+    Stop the music stack.
+    
+    This stops all containers in the 'noiseport' project without affecting
+    the wizard container.
+    """
+    try:
+        runner = ComposeRunner()
+        
+        # Check if compose file exists
+        if not os.path.exists(DOCKER_COMPOSE_FULL_FILE):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Compose file not found. Cannot stop stack."
+            )
+        
+        success, message = runner.compose_down(DOCKER_COMPOSE_FULL_FILE)
+        
+        if success:
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={
+                    "success": True,
+                    "message": message
+                }
+            )
+        else:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={
+                    "success": False,
+                    "message": message
+                }
+            )
+    except Exception as e:
+        logger.error(f"Failed to stop stack: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to stop stack: {str(e)}"
+        )
+
+
+@router.post("/config/stack-pull")
+async def pull_stack_images() -> JSONResponse:
+    """
+    Pull images for the music stack.
+    
+    This pre-downloads all required images to speed up the launch process.
+    """
+    try:
+        runner = ComposeRunner()
+        
+        # Check if compose file exists
+        if not os.path.exists(DOCKER_COMPOSE_FULL_FILE):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Compose file not found. Cannot pull images."
+            )
+        
+        # Pull images in background thread
+        def pull_images():
+            try:
+                success, message = runner.compose_pull(DOCKER_COMPOSE_FULL_FILE)
+                if success:
+                    logger.info(f"Images pulled successfully: {message}")
+                else:
+                    logger.error(f"Image pull failed: {message}")
+            except Exception as e:
+                logger.error(f"Error pulling images: {e}")
+        
+        thread = threading.Thread(target=pull_images, daemon=True)
+        thread.start()
+        
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content={
+                "success": True,
+                "message": "Image pull started in background. This may take several minutes."
+            }
+        )
+    except Exception as e:
+        logger.error(f"Failed to start image pull: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to start image pull: {str(e)}"
+        )
+
 
 @router.get("/config/launch-status")
 async def launch_status() -> JSONResponse:
