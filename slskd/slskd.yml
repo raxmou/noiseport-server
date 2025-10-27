@@ -21,6 +21,6 @@ shares:
   - \.DS_Store$
 soulseek:
   address: vps.slsknet.org
-  password: 123mappy
+  password: 
   port: 2271
-  username: maxzgan
+  username: 
