@@ -17,6 +17,22 @@ COMPOSE_PROJECT_NAME = "noiseport"
 
 
 class ComposeRunner:
+    def restart_service(self, service_name: str, compose_file: str = "docker-compose.full.yml") -> Tuple[bool, str]:
+        """
+        Restart a single service in the stack using docker-compose.
+        Args:
+            service_name: Name of the service to restart (e.g., 'slskd')
+            compose_file: Path to compose file (relative to project root)
+        Returns:
+            Tuple of (success, message)
+        """
+        logger.info(f"Restarting service '{service_name}' from {compose_file}")
+        args = ['-f', compose_file, '-p', COMPOSE_PROJECT_NAME, 'restart', service_name]
+        exit_code, stdout, stderr = self._run_compose_command(args, capture_output=True)
+        if exit_code == 0:
+            return True, f"Service '{service_name}' restarted successfully"
+        else:
+            return False, f"Failed to restart service '{service_name}': {stderr}"
     """
     Manages Docker Compose operations from within a container using the docker/compose image.
     

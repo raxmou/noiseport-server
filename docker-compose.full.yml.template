@@ -1,9 +1,8 @@
 ---
+version: "3.8"
 services:
   slskd:
-    build:  
-      context: .
-      dockerfile: Dockerfile.slskd 
+    image: maxenceroux/noiseport-server-slskd:latest
     container_name: slskd
     ports:
       - "5030:5030"
@@ -27,7 +26,7 @@ services:
       glance.description: "Soudlseek file sharing network app"
 
   fastapi:
-    build: .
+    image: maxenceroux/noiseport-server:latest
     container_name: fastapi
     ports:
       - "8010:80"
