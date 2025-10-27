@@ -30,7 +30,7 @@ services:
     build: .
     container_name: fastapi
     ports:
-      - "8000:80"
+      - "8010:80"
     environment:
       - SLSKD_HOST=http://slskd:5030
       - NAVIDROME_URL=http://navidrome:4533
