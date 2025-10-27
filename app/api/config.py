@@ -9,7 +9,7 @@ import subprocess
 import threading
 
 from fastapi import APIRouter, HTTPException, status
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 
 from app.core.logging import get_logger
 from app.models.config import (
@@ -23,7 +23,6 @@ from app.services.compose_runner import ComposeRunner
 from config import settings
 
 
-from pydantic import BaseModel
 import requests
 
 # Constants
@@ -40,16 +39,6 @@ def get_compose_file_args():
         return ["-f", DOCKER_COMPOSE_STACK_FILE]
     else:
         return []  # Use default docker-compose.yml
-
-
-class ConnectionTestRequest(BaseModel):
-    service: str
-    config: dict
-
-
-class ConnectionTestResponse(BaseModel):
-    success: bool
-    message: str
 
 
 logger = get_logger(__name__)
