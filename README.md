@@ -296,6 +296,79 @@ When running in development mode, access the interactive API documentation:
 
 ## Docker Deployment
 
+Noiseport Server uses a two-stage Docker Compose setup:
+
+### 1. Wizard Service (Initial Setup)
+
+The wizard service runs standalone and helps configure the main stack:
+
+**Development Mode:**
+```bash
+# Start wizard in development mode with hot reload
+docker compose -f docker-compose.dev.yml up
+
+# Or using the wizard-specific file
+docker compose -f docker-compose.wizard.dev.yml up
+```
+
+**Production Mode:**
+```bash
+# Start wizard using pre-built image
+docker compose up
+
+# Or using the wizard-specific file
+docker compose -f docker-compose.wizard.yml up
+```
+
+The wizard will be available at `http://localhost:8000/wizard`
+
+### 2. Main Stack (After Configuration)
+
+Once you've configured the wizard, it can launch the main stack which includes:
+- **FastAPI** (`maxenceroux/noiseport-server`) - Main API service (not wizard)
+- **slskd** (`maxenceroux/noiseport-server-slskd`) - Soulseek client
+- **Navidrome** - Music streaming server
+- **Jellyfin** - Media server
+
+The wizard automatically:
+1. Generates `docker-compose.stack.yml` from the template
+2. Creates necessary directories with proper permissions
+3. Launches the stack using Docker-in-Docker compose runner
+
+**Manual Launch (Alternative):**
+```bash
+# Pull all images
+docker compose -f docker-compose.stack.yml pull
+
+# Start the stack
+docker compose -f docker-compose.stack.yml up -d
+
+# View logs
+docker compose -f docker-compose.stack.yml logs -f
+
+# Stop the stack
+docker compose -f docker-compose.stack.yml down
+```
+
+### Docker Images
+
+- **Wizard**: `maxenceroux/noiseport-server-wizard:latest`
+- **Main App**: `maxenceroux/noiseport-server:latest`
+- **slskd**: `maxenceroux/noiseport-server-slskd:latest`
+
+### Building Custom Images
+
+```bash
+# Build wizard image
+docker build -f Dockerfile.wizard -t noiseport-wizard:latest .
+
+# Build main app image
+docker build -t noiseport-server:latest .
+
+# Build slskd image
+docker build -f Dockerfile.slskd -t noiseport-slskd:latest .
+```
+
 ### Using Docker Compose
 
 ```bash
