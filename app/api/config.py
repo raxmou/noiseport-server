@@ -299,16 +299,18 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 host_music_path = env_vars["HOST_MUSIC_PATH"]
                 download_path = f"{host_music_path}/downloads"
                 complete_path = f"{host_music_path}/complete"
+                incomplete_path = f"{host_music_path}/incomplete"
                 
                 # Create directories if they don't exist
                 os.makedirs(download_path, exist_ok=True)
                 os.makedirs(complete_path, exist_ok=True)
-                os.makedirs(f"{complete_path}/navidrome_data", exist_ok=True)
-                os.makedirs(f"{complete_path}/jellyfin_config", exist_ok=True)
-                os.makedirs(f"{complete_path}/jellyfin_cache", exist_ok=True)
+                os.makedirs(incomplete_path, exist_ok=True)
+                os.makedirs(f"{host_music_path}/navidrome", exist_ok=True)
+                os.makedirs(f"{host_music_path}/jellyfin/config", exist_ok=True)
+                os.makedirs(f"{host_music_path}/jellyfin/cache", exist_ok=True)
                 
                 # Set permissions (readable/writable for user and group)
-                for path in [host_music_path, download_path, complete_path]:
+                for path in [host_music_path, download_path, complete_path, incomplete_path]:
                     os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
                     for root, dirs, files in os.walk(path):
                         for d in dirs:
@@ -586,46 +588,31 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
         return ConnectionTestResponse(success=False, message=f"Connection test failed: {e}")
 
 
+
 @router.post("/config/restart-slskd")
 async def restart_slskd() -> JSONResponse:
-    """Restart the slskd container."""
+    """Restart the slskd container using ComposeRunner."""
     try:
-        import subprocess
-        
-        # Try to restart the slskd container using docker compose
-        compose_args = get_compose_file_args()
-        result = subprocess.run(
-            ["docker", "compose"] + compose_args + ["restart", "slskd"],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        
-        if result.returncode == 0:
+        runner = ComposeRunner()
+        success, message = runner.restart_service("slskd")
+        if success:
             logger.info("slskd container restarted successfully")
             return JSONResponse(
                 status_code=status.HTTP_200_OK,
                 content={
                     "message": "slskd container restarted successfully",
-                    "output": result.stdout
+                    "output": message
                 }
             )
         else:
-            logger.error(f"Failed to restart slskd container: {result.stderr}")
+            logger.error(f"Failed to restart slskd container: {message}")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={
                     "message": "Failed to restart slskd container",
-                    "error": result.stderr
+                    "error": message
                 }
             )
-            
-    except subprocess.TimeoutExpired:
-        logger.error("slskd restart timed out")
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"message": "slskd restart timed out"}
-        )
     except Exception as e:
         logger.error(f"Failed to restart slskd: {e}")
         raise HTTPException(

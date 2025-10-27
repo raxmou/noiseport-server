@@ -1,3 +1,22 @@
+# Individual build commands
+build-server: ## Build noiseport-server image
+	docker build -t maxenceroux/noiseport-server:latest -f Dockerfile .
+
+build-slskd: ## Build noiseport-server-slskd image
+	docker build -t maxenceroux/noiseport-server-slskd:latest -f Dockerfile.slskd .
+
+build-wizard: ## Build noiseport-server-wizard image
+	docker build -t maxenceroux/noiseport-server-wizard:latest -f Dockerfile.wizard .
+
+# Individual push commands
+push-server: ## Push noiseport-server image
+	docker push maxenceroux/noiseport-server:latest
+
+push-slskd: ## Push noiseport-server-slskd image
+	docker push maxenceroux/noiseport-server-slskd:latest
+
+push-wizard: ## Push noiseport-server-wizard image
+	docker push maxenceroux/noiseport-server-wizard:latest
 # Production-ready FastAPI Makefile
 
 .PHONY: help install install-dev lint format test test-unit test-integration coverage build run clean docker-build docker-run docker-compose-up docker-compose-down dev-compose dev-compose-bg dev-logs dev-stop pre-commit-install pre-commit-run security audit docs serve-docs
@@ -95,6 +114,7 @@ dev-frontend: ## Start frontend in development mode with hot reload
 
 dev-backend: ## Start backend in development mode with hot reload
 	$(UV) run uvicorn $(APP_MODULE) --reload --host 0.0.0.0 --port $(PORT)
+
 
 dev-compose: ## Start both frontend and backend with Docker Compose and hot reload
 	@echo "🚀 Starting development environment with hot reload..."
@@ -222,11 +242,7 @@ build-wizard: ## Build the React setup wizard frontend
 	@echo "Access it at http://localhost:$(PORT)/wizard"
 
 wizard: ## Open the setup wizard (requires server to be running)
-	@echo "Opening setup wizard at http://localhost:$(PORT)/wizard"
-	@echo "Make sure the server is running with 'make dev' or 'make run'"
-	@command -v open >/dev/null 2>&1 && open http://localhost:$(PORT)/wizard || \
-	command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:$(PORT)/wizard || \
-	echo "Please open http://localhost:$(PORT)/wizard in your browser"
+	docker compose -f docker-compose.wizard.yml up --build
 
 wizard-dev: ## Start development server and open wizard
 	@echo "🎵 Starting development server and wizard..."
@@ -247,11 +263,21 @@ setup: install-dev pre-commit-install build-wizard ## Set up development environ
 	@echo "Run 'make wizard-dev' to start server and access the setup wizard"
 	@echo "Or run 'make dev' to start the development server"
 
-# Build targets
 build: ## Build the application
 	$(UV) build
 
-build-docker: docker-build ## Build Docker image
+# Build Docker images for main app, slskd, and wizard
+
+build-docker: ## Build all Docker images with :latest tag
+	docker build -t maxenceroux/noiseport-server:latest -f Dockerfile .
+	docker build -t maxenceroux/noiseport-server-slskd:latest -f Dockerfile.slskd .
+	docker build -t maxenceroux/noiseport-server-wizard:latest -f Dockerfile.wizard .
+
+# Push Docker images to registry
+push-docker: ## Push all Docker images with :latest tag
+	docker push maxenceroux/noiseport-server:latest
+	docker push maxenceroux/noiseport-server-slskd:latest
+	docker push maxenceroux/noiseport-server-wizard:latest
 
 # Quick checks
 check: lint typecheck test ## Run quick checks (lint, typecheck, test)
