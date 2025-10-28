@@ -2,6 +2,7 @@
 
 import uvicorn
 
+from app.core.app import app  # noqa: F401
 from config import settings
 
 
