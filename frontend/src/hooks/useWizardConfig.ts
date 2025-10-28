@@ -89,6 +89,11 @@ export const useWizardConfig = () => {
         ...prev.features,
         ...(updates.features || {}),
       },
+      spotify: {
+        ...prev.spotify,
+        ...(updates.spotify || {}),
+      },
+      
       // Add similar merging for other nested objects if needed
     }));
   }, []);
