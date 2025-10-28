@@ -193,27 +193,27 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
 
             f.write("\n# Tailscale\n")
             for key in ["TAILSCALE_ENABLED", "TAILSCALE_IP"]:
-                f.write(f"{key}={existing_vars[key]}\n")
+                f.write(f"{key}={existing_vars.get(key, '')}\n")
 
             f.write("\n# Navidrome\n")
             for key in ["NAVIDROME_ENABLED", "NAVIDROME_URL", "NAVIDROME_USERNAME", "NAVIDROME_PASSWORD"]:
-                f.write(f"{key}={existing_vars[key]}\n")
+                f.write(f"{key}={existing_vars.get(key, '')}\n")
 
             f.write("\n# Jellyfin\n")
             for key in ["JELLYFIN_ENABLED", "JELLYFIN_URL", "JELLYFIN_USERNAME", "JELLYFIN_PASSWORD"]:
-                f.write(f"{key}={existing_vars[key]}\n")
+                f.write(f"{key}={existing_vars.get(key, '')}\n")
 
             f.write("\n# Spotify\n")
             for key in ["SPOTIFY_ENABLED", "SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET"]:
-                f.write(f"{key}={existing_vars[key]}\n")
+                f.write(f"{key}={existing_vars.get(key, '')}\n")
 
             f.write("\n# Soulseek/slskd\n")
             for key in ["SLSKD_HOST", "SLSKD_USERNAME", "SLSKD_PASSWORD", "SOULSEEK_USERNAME", "SOULSEEK_PASSWORD"]:
-                f.write(f"{key}={existing_vars[key]}\n")
+                f.write(f"{key}={existing_vars.get(key, '')}\n")
 
             # Host Paths
             for key in ["HOST_MUSIC_PATH"]:
-                f.write(f"{key}={existing_vars[key]}\n")
+                f.write(f"{key}={existing_vars.get(key, '')}\n")
 
             f.write("\n# Container Paths\n")
             f.write("# Automatically derived from HOST_MUSIC_PATH\n")
@@ -222,7 +222,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
 
             f.write("\n# Features\n")
             for key in ["SCROBBLING_ENABLED", "DOWNLOADS_ENABLED", "DISCOVERY_ENABLED"]:
-                f.write(f"{key}={existing_vars[key]}\n")
+                f.write(f"{key}={existing_vars.get(key, '')}\n")
 
             f.write("\n# Last.fm\n")
             for key in ["LASTFM_API_KEY", "LASTFM_SECRET"]:
