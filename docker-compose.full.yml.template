@@ -34,6 +34,8 @@ services:
       - SLSKD_HOST=http://slskd:5030
       - NAVIDROME_URL=http://navidrome:4533
       - JELLYFIN_URL=http://jellyfin:8096
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
     volumes:
       - {{HOST_MUSIC_PATH}}/downloads:/music/downloads
       - {{HOST_MUSIC_PATH}}/complete:/music/complete
@@ -60,8 +62,8 @@ services:
       ND_LOGLEVEL: info  
       ND_SESSIONTIMEOUT: 24h
       ND_BASEURL: ""
-      ND_LASTFM_APIKEY: "ba4d1d6a559025928f35ab4499e8bd9a"
-      ND_LASTFM_SECRET: "66fe381a44a991e76623b24177994947"
+      ND_LASTFM_APIKEY: ${LASTFM_API_KEY}
+      ND_LASTFM_SECRET: ${LASTFM_SECRET}
       ND_LASTFM_LANGUAGE: "en"
     volumes:
       - {{HOST_MUSIC_PATH}}/complete:/music:ro

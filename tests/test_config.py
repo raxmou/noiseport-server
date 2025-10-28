@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from config import Settings
-from app.models.config import WizardConfiguration, MusicPathsConfig
+from app.models.config import WizardConfiguration, MusicPathsConfig, FeaturesConfig
 
 
 @pytest.mark.unit
@@ -25,7 +25,7 @@ def test_music_paths_config():
     # Test default value
     config = MusicPathsConfig()
     assert config.hostMusicPath == "./music"
-    
+
     # Test custom value
     config = MusicPathsConfig(hostMusicPath="/home/user/music")
     assert config.hostMusicPath == "/home/user/music"
@@ -36,12 +36,45 @@ def test_wizard_configuration_music_paths():
     """Test WizardConfiguration with new music paths structure."""
     config = WizardConfiguration()
     assert config.musicPaths.hostMusicPath == "./music"
-    
+
     # Test with custom path
     config = WizardConfiguration(
         musicPaths=MusicPathsConfig(hostMusicPath="/custom/music/path")
     )
     assert config.musicPaths.hostMusicPath == "/custom/music/path"
+
+
+@pytest.mark.unit
+def test_features_config_lastfm():
+    """Test FeaturesConfig with Last.fm credentials."""
+    # Test default values
+    config = FeaturesConfig()
+    assert config.lastfmApiKey == ""
+    assert config.lastfmSecret == ""
+
+    # Test custom values
+    config = FeaturesConfig(
+        lastfmApiKey="test_api_key",
+        lastfmSecret="test_secret"
+    )
+    assert config.lastfmApiKey == "test_api_key"
+    assert config.lastfmSecret == "test_secret"
+
+
+@pytest.mark.unit
+def test_settings_lastfm():
+    """Test Settings with Last.fm credentials."""
+    settings = Settings()
+    assert settings.lastfm_api_key == ""
+    assert settings.lastfm_secret == ""
+
+    # Test custom values
+    settings = Settings(
+        lastfm_api_key="test_api_key",
+        lastfm_secret="test_secret"
+    )
+    assert settings.lastfm_api_key == "test_api_key"
+    assert settings.lastfm_secret == "test_secret"
 
 
 @pytest.mark.unit
@@ -82,3 +115,4 @@ def test_settings_properties():
     prod_settings = Settings(environment="production")
     assert prod_settings.is_development is False
     assert prod_settings.is_production is True
+
