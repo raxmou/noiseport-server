@@ -15,7 +15,9 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-@router.get("/searches/no-results", response_model=NoResultsStatsResponse, tags=["Statistics"])
+@router.get(
+    "/searches/no-results", response_model=NoResultsStatsResponse, tags=["Statistics"]
+)
 async def get_searches_without_results() -> NoResultsStatsResponse:
     """
     Get statistics for searches that returned no results.
@@ -40,7 +42,9 @@ async def get_searches_without_results() -> NoResultsStatsResponse:
         )
 
 
-@router.get("/downloads/stats", response_model=DownloadStatsResponse, tags=["Statistics"])
+@router.get(
+    "/downloads/stats", response_model=DownloadStatsResponse, tags=["Statistics"]
+)
 async def get_download_statistics() -> DownloadStatsResponse:
     """
     Get comprehensive download statistics.
@@ -66,7 +70,9 @@ async def get_download_statistics() -> DownloadStatsResponse:
         )
 
 
-@router.get("/downloads/albums", response_model=DownloadedAlbumsResponse, tags=["Statistics"])
+@router.get(
+    "/downloads/albums", response_model=DownloadedAlbumsResponse, tags=["Statistics"]
+)
 async def get_downloaded_albums() -> DownloadedAlbumsResponse:
     """
     Get list of all downloaded albums.

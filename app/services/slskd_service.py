@@ -28,10 +28,12 @@ logger = get_logger(__name__)
 class SlskdService:
     """Service for interacting with SLSKD API."""
 
-    def __init__(self, host: str = None, username: str = None, password: str = None) -> None:
+    def __init__(
+        self, host: str = None, username: str = None, password: str = None
+    ) -> None:
         """Initialize SLSKD service with optional host, username, and password."""
         self._host = host
-        
+
         self._username = username
         self._password = password
         self._client: SlskdClient | None = None
@@ -43,8 +45,16 @@ class SlskdService:
         if self._client is None:
             try:
                 host = self._host if self._host is not None else settings.slskd_host
-                username = self._username if self._username is not None else settings.slskd_username
-                password = self._password if self._password is not None else settings.slskd_password
+                username = (
+                    self._username
+                    if self._username is not None
+                    else settings.slskd_username
+                )
+                password = (
+                    self._password
+                    if self._password is not None
+                    else settings.slskd_password
+                )
                 print(f"Connecting to SLSKD at {host} with user {username}")
                 self._client = SlskdClient(
                     host,
@@ -106,9 +116,7 @@ class SlskdService:
                     for file in files
                 ]
 
-                users.append(
-                    UserFilesResponse(username=username, files=file_infos)
-                )
+                users.append(UserFilesResponse(username=username, files=file_infos))
 
             return SearchResult(
                 search_id=search_id,
@@ -123,9 +131,7 @@ class SlskdService:
                 raise
             raise DownloadError(f"Search operation failed: {e}")
 
-    def _wait_for_search_completion(
-        self, search_id: str, timeout: int
-    ) -> list[dict]:
+    def _wait_for_search_completion(self, search_id: str, timeout: int) -> list[dict]:
         """Wait for search to complete and return responses."""
         searches: SearchesApi = self.client.searches
         start_time = time.time()
@@ -137,9 +143,7 @@ class SlskdService:
                 status = state.get("status")
                 responses = state.get("responses", [])
 
-                logger.debug(
-                    f"Search status: {status}, responses: {len(responses)}"
-                )
+                logger.debug(f"Search status: {status}, responses: {len(responses)}")
 
                 if status == "Completed":
                     break
@@ -165,6 +169,7 @@ class SlskdService:
         albums: dict[str, list[FileInfo]] = {}
         for file in files:
             import os
+
             album_key = os.path.dirname(file.filename)
             albums.setdefault(album_key, []).append(file)
         return albums
@@ -190,9 +195,7 @@ class SlskdService:
         # 3. None found
         return None
 
-    def enqueue_download(
-        self, username: str, files: list[FileInfo]
-    ) -> bool:
+    def enqueue_download(self, username: str, files: list[FileInfo]) -> bool:
         """Enqueue files for download."""
         try:
             transfers: TransfersApi = self.client.transfers
@@ -268,11 +271,11 @@ class SlskdService:
 
             no_result_searches = []
             for search in all_searches:
-                if search.get('responseCount', 0) == 0:
-                    search_text = search.get('searchText', '')
+                if search.get("responseCount", 0) == 0:
+                    search_text = search.get("searchText", "")
                     # Try to parse "artist - title" format
-                    if ' - ' in search_text:
-                        parts = search_text.split(' - ', 1)
+                    if " - " in search_text:
+                        parts = search_text.split(" - ", 1)
                         artist = parts[0].strip()
                         title = parts[1].strip()
                     else:
@@ -282,15 +285,12 @@ class SlskdService:
 
                     no_result_searches.append(
                         SearchWithoutResults(
-                            artist=artist,
-                            title=title,
-                            search_text=search_text
+                            artist=artist, title=title, search_text=search_text
                         )
                     )
 
             return NoResultsStatsResponse(
-                count=len(no_result_searches),
-                searches=no_result_searches
+                count=len(no_result_searches), searches=no_result_searches
             )
 
         except Exception as e:
@@ -321,10 +321,7 @@ class SlskdService:
                         elif state == "Queued, Remotely":
                             track_stats.queued += 1
 
-            return DownloadStatsResponse(
-                albums=album_stats,
-                tracks=track_stats
-            )
+            return DownloadStatsResponse(albums=album_stats, tracks=track_stats)
 
         except Exception as e:
             logger.error(f"Failed to get download stats: {e}")
@@ -387,13 +384,12 @@ class SlskdService:
                             username=username,
                             track_count=len(files),
                             completed_tracks=completed_tracks,
-                            total_size=total_size
+                            total_size=total_size,
                         )
                     )
 
             return DownloadedAlbumsResponse(
-                count=len(downloaded_albums),
-                albums=downloaded_albums
+                count=len(downloaded_albums), albums=downloaded_albums
             )
 
         except Exception as e:

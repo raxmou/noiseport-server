@@ -2,7 +2,6 @@
 
 import uvicorn
 
-from app.core.app import app
 from config import settings
 
 
