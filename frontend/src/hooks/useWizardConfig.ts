@@ -40,6 +40,7 @@ const defaultConfig: WizardConfiguration = {
     downloads: true,
     discovery: false,
     lastfmApiKey: '',
+    lastfmSecret: '',
   },
 };
 
@@ -88,6 +89,11 @@ export const useWizardConfig = () => {
         ...prev.features,
         ...(updates.features || {}),
       },
+      spotify: {
+        ...prev.spotify,
+        ...(updates.spotify || {}),
+      },
+      
       // Add similar merging for other nested objects if needed
     }));
   }, []);
