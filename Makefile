@@ -1,3 +1,12 @@
+# Multi-arch build and push for Raspberry Pi (ARM) and AMD64
+buildx-server: ## Build multi-arch noiseport-server image (amd64, arm64)
+	docker buildx build --platform linux/amd64,linux/arm64 -t maxenceroux/noiseport-server:latest -f Dockerfile . --push
+
+buildx-slskd: ## Build multi-arch noiseport-server-slskd image (amd64, arm64)
+	docker buildx build --platform linux/amd64,linux/arm64 -t maxenceroux/noiseport-server-slskd:latest -f Dockerfile.slskd . --push
+
+buildx-wizard: ## Build multi-arch noiseport-server-wizard image (amd64, arm64)
+	docker buildx build --platform linux/amd64,linux/arm64 -t maxenceroux/noiseport-server-wizard:latest -f Dockerfile.wizard . --push
 # Individual build commands
 build-server: ## Build noiseport-server image
 	docker build -t maxenceroux/noiseport-server:latest -f Dockerfile .
