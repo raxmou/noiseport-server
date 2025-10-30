@@ -1,19 +1,19 @@
-# Production-ready FastAPI Makefile
 
-.PHONY: help install install-dev lint format test test-unit test-integration coverage build run clean docker-build docker-run docker-compose-up docker-compose-down dev-compose dev-compose-bg dev-logs dev-stop pre-commit-install pre-commit-run security audit buildx-server buildx-slskd
-
-# Default target
-.DEFAULT_GOAL := help
-
-# Variables
+# === Variables ===
 PYTHON := python
 UV := uv
 APP_MODULE := app.main:app
 PORT := 8010
 COVERAGE_MIN := 80
 
+# === Default Target ===
+.DEFAULT_GOAL := help
+
+# === PHONY Targets ===
+.PHONY: help install install-dev lint lint-fix format format-check typecheck test test-unit test-integration test-fast coverage coverage-report security audit run run-prod dev dev-frontend dev-backend dev-compose dev-compose-bg dev-logs dev-stop clean clean-all build build-server build-slskd build-wizard buildx-server buildx-slskd buildx-wizard push push-server push-slskd push-wizard ci-lint ci-test ci-security ci setup
+
 help: ## Show this help message
-	@echo "🎵 Downloader API - Music Client Management"
+	@echo "🎵 NoisePort Server"
 	@echo ""
 	@echo "🚀 Quick Start:"
 	@echo "  make setup          # Set up development environment"
@@ -27,14 +27,21 @@ help: ## Show this help message
 	@echo "Available commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-# Installation targets
+
+# === Setup & Install ===
 install: ## Install production dependencies
 	$(UV) sync --frozen
 
 install-dev: ## Install development dependencies
 	$(UV) sync --frozen --all-extras
 
-# Code quality targets
+setup: install-dev pre-commit-install build-wizard ## Set up development environment
+	@echo "Development environment setup complete!"
+	@echo "Setup wizard frontend built!"
+	@echo "Run 'make dev' to start the development server"
+
+
+# === Code Quality ===
 lint: ## Run linting with ruff
 	$(UV) run ruff check .
 
@@ -50,7 +57,8 @@ format-check: ## Check code formatting
 typecheck: ## Run type checking with mypy
 	$(UV) run mypy app config
 
-# Testing targets
+
+# === Testing & Coverage ===
 test: ## Run all tests
 	$(UV) run pytest
 
@@ -70,7 +78,8 @@ coverage-report: ## Generate coverage report
 	$(UV) run coverage html
 	@echo "Coverage report generated in htmlcov/index.html"
 
-# Security targets
+
+# === Security ===
 security: ## Run security checks
 	$(UV) run bandit -r app config
 
@@ -79,7 +88,8 @@ audit: ## Audit dependencies for vulnerabilities
 
 security-all: security audit ## Run all security checks
 
-# Application targets
+
+# === Application & Dev ===
 run: ## Run the application in development mode
 	$(UV) run uvicorn $(APP_MODULE) --reload --host 0.0.0.0 --port $(PORT)
 
@@ -145,7 +155,8 @@ dev-full: ## Start both frontend and backend in development mode (requires 2 ter
 	@echo ""
 	@echo "✨ Both backend and frontend will auto-reload on changes!"
 
-# Docker targets
+
+# === Docker Compose & Container ===
 docker-build: ## Build Docker image
 	docker build -t downloader:latest .
 
@@ -161,7 +172,8 @@ docker-compose-down: ## Stop services with docker-compose
 docker-logs: ## View docker-compose logs
 	docker compose logs -f
 
-# Pre-commit targets
+
+# === Pre-commit ===
 pre-commit-install: ## Install pre-commit hooks
 	$(UV) run pre-commit install
 
@@ -171,7 +183,8 @@ pre-commit-run: ## Run pre-commit on all files
 pre-commit-update: ## Update pre-commit hooks
 	$(UV) run pre-commit autoupdate
 
-# Cleaning targets
+
+# === Cleaning ===
 clean: ## Clean up generated files
 	rm -rf .coverage
 	rm -rf htmlcov/
@@ -185,7 +198,8 @@ clean: ## Clean up generated files
 clean-all: clean ## Clean up everything including venv
 	rm -rf .venv/
 
-# CI/CD targets
+
+# === CI/CD ===
 ci-lint: ## CI linting
 	$(UV) run ruff check .
 	$(UV) run ruff format . --check
@@ -215,20 +229,38 @@ docs: ## Generate API documentation
 serve-docs: ## Serve documentation locally
 	$(UV) run mkdocs serve
 
-# Setup Wizard targets
-build-wizard: ## Build the React setup wizard frontend
-	cd frontend && npm install && npm run build
-	@echo "Setup wizard built successfully!"
-	@echo "Access it at http://localhost:$(PORT)/wizard"
 
-# Environment setup
-setup: install-dev pre-commit-install build-wizard ## Set up development environment
-	@echo "Development environment setup complete!"
-	@echo "Setup wizard frontend built!"
-	@echo "Run 'make dev' to start the development server"
+# === Build Targets ===
+build: build-server build-slskd build-wizard ## Build all images (native)
 
-build: ## Build the application
-	$(UV) build
+build-server: ## Build noiseport-server image (native)
+	docker build -t maxenceroux/noiseport-server:latest -f Dockerfile .
+
+build-slskd: ## Build noiseport-server-slskd image (native)
+	docker build -t maxenceroux/noiseport-server-slskd:latest -f Dockerfile.slskd .
+
+build-wizard: ## Build noiseport-server-wizard image (native)
+	docker build -t maxenceroux/noiseport-server-wizard:latest -f Dockerfile.wizard .
+
+buildx-server: ## Build multi-arch noiseport-server image (amd64, arm64)
+	docker buildx build --platform linux/amd64,linux/arm64 -t maxenceroux/noiseport-server:latest -f Dockerfile . --push
+
+buildx-slskd: ## Build multi-arch noiseport-server-slskd image (amd64, arm64)
+	docker buildx build --platform linux/amd64,linux/arm64 -t maxenceroux/noiseport-server-slskd:latest -f Dockerfile.slskd . --push
+
+buildx-wizard: ## Build multi-arch noiseport-server-wizard image (amd64, arm64)
+	docker buildx build --platform linux/amd64,linux/arm64 -t maxenceroux/noiseport-server-wizard:latest -f Dockerfile.wizard . --push
+
+push: push-server push-slskd push-wizard ## Push all images
+
+push-server:
+	docker push maxenceroux/noiseport-server:latest
+
+push-slskd:
+	docker push maxenceroux/noiseport-server-slskd:latest
+
+push-wizard:
+	docker push maxenceroux/noiseport-server-wizard:latest
 
 # Multi-arch Docker build and push
 buildx-server: ## Build and push multi-arch noiseport-server image (amd64, arm64)
@@ -239,7 +271,17 @@ buildx-slskd: ## Build and push multi-arch noiseport-server-slskd image (amd64, 
 
 buildx-all: buildx-server buildx-slskd ## Build and push all multi-arch Docker images
 
-# Quick checks
-check: lint typecheck test ## Run quick checks (lint, typecheck, test)
 
-check-all: lint typecheck test security ## Run all checks
+# === Help Target ===
+help: ## Show this help message
+	@echo "🎵 Downloader API - Music Client Management"
+	@echo ""
+	@echo "🚀 Quick Start:"
+	@echo "  make setup          # Set up development environment"
+	@echo "  make build          # Build all Docker images"
+	@echo "  make push           # Push all Docker images"
+	@echo "  make lint           # Run linting"
+	@echo "  make test           # Run all tests"
+	@echo ""
+	@echo "Available commands:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
