@@ -1,6 +1,5 @@
 """Application configuration module."""
 
-
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -32,26 +31,30 @@ class Settings(BaseSettings):
     workers: int = Field(default=1, description="Number of workers", ge=1)
 
     # SLSKD
-    slskd_host: str = Field(
-        default="http://slskd:5030", description="SLSKD server URL"
-    )
+    slskd_host: str = Field(default="http://slskd:5030", description="SLSKD server URL")
     slskd_username: str = Field(default="slskd", description="SLSKD username")
     slskd_password: str = Field(default="slskd", description="SLSKD password")
 
     # Navidrome
-    navidrome_enabled: bool = Field(default=False, description="Enable Navidrome integration")
+    navidrome_enabled: bool = Field(
+        default=False, description="Enable Navidrome integration"
+    )
     navidrome_url: str = Field(default="", description="Navidrome server URL")
     navidrome_username: str = Field(default="", description="Navidrome username")
     navidrome_password: str = Field(default="", description="Navidrome password")
 
     # Jellyfin
-    jellyfin_enabled: bool = Field(default=False, description="Enable Jellyfin integration")
+    jellyfin_enabled: bool = Field(
+        default=False, description="Enable Jellyfin integration"
+    )
     jellyfin_url: str = Field(default="", description="Jellyfin server URL")
     jellyfin_username: str = Field(default="", description="Jellyfin username")
     jellyfin_password: str = Field(default="", description="Jellyfin password")
 
     # Spotify API
-    spotify_enabled: bool = Field(default=False, description="Enable Spotify integration")
+    spotify_enabled: bool = Field(
+        default=False, description="Enable Spotify integration"
+    )
     spotify_client_id: str = Field(default="", description="Spotify Client ID")
     spotify_client_secret: str = Field(default="", description="Spotify Client Secret")
 
@@ -84,9 +87,7 @@ class Settings(BaseSettings):
     )
 
     # Database (for future use)
-    database_url: str = Field(
-        default="sqlite:///./app.db", description="Database URL"
-    )
+    database_url: str = Field(default="sqlite:///./app.db", description="Database URL")
 
     # Monitoring
     enable_metrics: bool = Field(default=True, description="Enable metrics")
@@ -94,7 +95,8 @@ class Settings(BaseSettings):
 
     # File Storage
     host_music_path: str = Field(
-        default="./music", description="Host system music directory path (downloads and complete subdirectories will be created)"
+        default="./music",
+        description="Host system music directory path (downloads and complete subdirectories will be created)",
     )
 
     @field_validator("log_level")

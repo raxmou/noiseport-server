@@ -575,7 +575,6 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
     try:
         # --- NAVIDROME ---
         if service == "navidrome":
-
             base_url = config.get("url", "").rstrip("/")
             username = config.get("username")
             password = config.get("password")

@@ -3,8 +3,8 @@
 import pytest
 from pydantic import ValidationError
 
+from app.models.config import FeaturesConfig, MusicPathsConfig, WizardConfiguration
 from config import Settings
-from app.models.config import WizardConfiguration, MusicPathsConfig, FeaturesConfig
 
 
 @pytest.mark.unit
@@ -53,10 +53,7 @@ def test_features_config_lastfm():
     assert config.lastfmSecret == ""
 
     # Test custom values
-    config = FeaturesConfig(
-        lastfmApiKey="test_api_key",
-        lastfmSecret="test_secret"
-    )
+    config = FeaturesConfig(lastfmApiKey="test_api_key", lastfmSecret="test_secret")
     assert config.lastfmApiKey == "test_api_key"
     assert config.lastfmSecret == "test_secret"
 
@@ -69,10 +66,7 @@ def test_settings_lastfm():
     assert settings.lastfm_secret == ""
 
     # Test custom values
-    settings = Settings(
-        lastfm_api_key="test_api_key",
-        lastfm_secret="test_secret"
-    )
+    settings = Settings(lastfm_api_key="test_api_key", lastfm_secret="test_secret")
     assert settings.lastfm_api_key == "test_api_key"
     assert settings.lastfm_secret == "test_secret"
 
@@ -97,7 +91,7 @@ def test_settings_validation():
         log_level="DEBUG",
         environment="production",
         port=8080,
-        host_music_path="/custom/music"
+        host_music_path="/custom/music",
     )
     assert settings.log_level == "DEBUG"
     assert settings.environment == "production"
@@ -115,4 +109,3 @@ def test_settings_properties():
     prod_settings = Settings(environment="production")
     assert prod_settings.is_development is False
     assert prod_settings.is_production is True
-

@@ -1,11 +1,12 @@
 """Core application initialization."""
 
 import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from prometheus_client import Counter, Histogram
 from pydantic import ValidationError
 
@@ -27,9 +28,7 @@ logger = get_logger(__name__)
 REQUEST_COUNT = Counter(
     "http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"]
 )
-REQUEST_DURATION = Histogram(
-    "http_request_duration_seconds", "HTTP request duration"
-)
+REQUEST_DURATION = Histogram("http_request_duration_seconds", "HTTP request duration")
 
 
 def create_app() -> FastAPI:
@@ -54,13 +53,18 @@ def create_app() -> FastAPI:
 
     # Include API routers
     app.include_router(api_router)
-    
+
     # Serve static files for the React frontend
-    frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")
-    
-    
-    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist_path, "assets")), name="assets")
-    
+    frontend_dist_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist"
+    )
+
+    app.mount(
+        "/assets",
+        StaticFiles(directory=os.path.join(frontend_dist_path, "assets")),
+        name="assets",
+    )
+
     # Serve the React app for wizard routes
     @app.get("/wizard")
     @app.get("/setup")
@@ -69,7 +73,9 @@ def create_app() -> FastAPI:
         index_path = os.path.join(frontend_dist_path, "index.html")
         if os.path.exists(index_path):
             return FileResponse(index_path)
-        return {"message": "Setup wizard not available. Please build the frontend first."}
+        return {
+            "message": "Setup wizard not available. Please build the frontend first."
+        }
 
     # Add root endpoint
     @app.get("/", tags=["Root"])

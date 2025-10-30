@@ -1,10 +1,8 @@
 """Compose-runner utility for managing Docker Compose stacks from within a container."""
 
+import logging
 import os
 import socket
-import logging
-from typing import Dict, List, Optional, Tuple
-from pathlib import Path
 
 import docker
 from docker.errors import DockerException, NotFound
@@ -32,7 +30,7 @@ class ComposeRunner:
 
     def redeploy_service(
         self, service_name: str, compose_file: str = "docker-compose.full.yml"
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Recreate a single service so updated mounts/files (like .env) are applied.
         """
@@ -56,14 +54,14 @@ class ComposeRunner:
 
     def restart_service(
         self, service_name: str, compose_file: str = "docker-compose.full.yml"
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Restart a single service in the stack using docker-compose.
         Args:
             service_name: Name of the service to restart (e.g., 'slskd')
             compose_file: Path to compose file (relative to project root)
         Returns:
-            Tuple of (success, message)
+            tuple of (success, message)
         """
         logger.info(f"Restarting service '{service_name}' from {compose_file}")
         args = ["-f", compose_file, "-p", COMPOSE_PROJECT_NAME, "restart", service_name]
@@ -75,7 +73,7 @@ class ComposeRunner:
 
     """
     Manages Docker Compose operations from within a container using the docker/compose image.
-    
+
     This class discovers the host path backing the container's /app/workspace mount and
     uses it to run docker-compose commands in the proper context.
     """
@@ -131,12 +129,26 @@ class ComposeRunner:
 
     def _run_compose_command(
         self,
-        compose_args: List[str],
+        compose_args: list[str],
         capture_output: bool = True,
-    ) -> Tuple[int, str, str]:
+        stream_logs: bool = False,
+    ) -> tuple[int, str, str]:
+        """
+        Run a docker-compose command using the docker/compose:2 image.
+
+        Args:
+            compose_args: list of arguments to pass to docker-compose
+            capture_output: Whether to capture stdout/stderr
+            stream_logs: Whether to stream logs in real-time
+
+        Returns:
+            tuple of (exit_code, stdout, stderr)
+        """
         if not self.host_project_path:
             self.discover_host_path()
 
+        # Build the docker run command for compose
+        # Mount docker socket and project directory
         volumes = {
             "/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "rw"},
             self.host_project_path: {"bind": self.host_project_path, "mode": "rw"},
@@ -177,15 +189,17 @@ class ComposeRunner:
 
     def compose_config(
         self, compose_file: str = "docker-compose.full.yml"
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Validate compose configuration.
+
 
         Args:
             compose_file: Path to compose file (relative to project root)
 
+
         Returns:
-            Tuple of (success, message)
+            tuple of (success, message)
         """
         exit_code, stdout, stderr = self._run_compose_command(
             ["-f", compose_file, "config", "--quiet"]
@@ -198,7 +212,7 @@ class ComposeRunner:
 
     def compose_pull(
         self, compose_file: str = "docker-compose.full.yml"
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Pull images for the stack.
 
@@ -206,7 +220,7 @@ class ComposeRunner:
             compose_file: Path to compose file (relative to project root)
 
         Returns:
-            Tuple of (success, message)
+            tuple of (success, message)
         """
         logger.info(f"Pulling images for {compose_file}")
         exit_code, stdout, stderr = self._run_compose_command(
@@ -224,7 +238,7 @@ class ComposeRunner:
         build: bool = False,
         detach: bool = True,
         log_file: str = "launch_services.log",
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Bring up the stack and write logs to a file.
 
@@ -235,7 +249,7 @@ class ComposeRunner:
             log_file: Path to log file for service launch logs
 
         Returns:
-            Tuple of (success, message)
+            tuple of (success, message)
         """
         logger.info(f"Starting stack from {compose_file}")
 
@@ -271,7 +285,7 @@ class ComposeRunner:
         self,
         compose_file: str = "docker-compose.full.yml",
         remove_volumes: bool = False,
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Bring down the stack.
 
@@ -280,7 +294,7 @@ class ComposeRunner:
             remove_volumes: Whether to remove volumes
 
         Returns:
-            Tuple of (success, message)
+            tuple of (success, message)
         """
         logger.info(f"Stopping stack from {compose_file}")
 
@@ -297,15 +311,15 @@ class ComposeRunner:
         else:
             return False, f"Failed to stop stack: {stderr}"
 
-    def get_stack_status(self) -> Dict[str, any]:
+    def get_stack_status(self) -> dict[str, any]:
         """
         Get the status of containers in the stack.
 
         Returns:
-            Dict with container status information
+            dict with container status information
         """
         try:
-            # List containers with the noiseport project label
+            # list containers with the noiseport project label
             containers = self.client.containers.list(
                 all=True,
                 filters={"label": f"com.docker.compose.project={COMPOSE_PROJECT_NAME}"},
@@ -339,7 +353,7 @@ class ComposeRunner:
 
     def preflight_checks(
         self, compose_file: str = "docker-compose.full.yml"
-    ) -> Tuple[bool, List[str]]:
+    ) -> tuple[bool, list[str]]:
         """
         Run preflight checks before launching the stack.
 
@@ -347,7 +361,7 @@ class ComposeRunner:
             compose_file: Path to compose file (relative to project root)
 
         Returns:
-            Tuple of (all_passed, list_of_issues)
+            tuple of (all_passed, list_of_issues)
         """
         issues = []
 
