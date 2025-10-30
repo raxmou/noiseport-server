@@ -65,6 +65,7 @@ export default function TailscaleStep({
         setConnectionMessage(
           `Connection failed: Server returned status ${response.status}`
         );
+        console.log("Connection failed:", response);
       }
     } catch (error) {
       setConnectionStatus("error");
