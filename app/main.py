@@ -2,7 +2,9 @@
 
 import uvicorn
 
-from app.core.app import app
+from app.core.app import (
+    app,  # noqa: F401 - Required for uvicorn string import discovery
+)
 from config import settings
 
 

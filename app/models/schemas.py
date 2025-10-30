@@ -1,6 +1,5 @@
 """Pydantic models for API schemas."""
 
-
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -71,7 +70,9 @@ class MetricsResponse(BaseModel):
 
     total_downloads: int = Field(..., ge=0, description="Total number of downloads")
     active_downloads: int = Field(..., ge=0, description="Number of active downloads")
-    completed_downloads: int = Field(..., ge=0, description="Number of completed downloads")
+    completed_downloads: int = Field(
+        ..., ge=0, description="Number of completed downloads"
+    )
     failed_downloads: int = Field(..., ge=0, description="Number of failed downloads")
 
 
@@ -106,7 +107,9 @@ class NoResultsStatsResponse(BaseModel):
     """Response model for searches with no results statistics."""
 
     count: int = Field(..., ge=0, description="Number of searches with no results")
-    searches: list[SearchWithoutResults] = Field(..., description="List of searches with no results")
+    searches: list[SearchWithoutResults] = Field(
+        ..., description="List of searches with no results"
+    )
 
 
 class TrackStats(BaseModel):

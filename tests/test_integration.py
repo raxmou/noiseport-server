@@ -15,7 +15,10 @@ def test_full_app_startup(client):
 
     for endpoint in endpoints:
         response = client.get(endpoint)
-        assert response.status_code in [200, 404]  # 404 is acceptable for some endpoints
+        assert response.status_code in [
+            200,
+            404,
+        ]  # 404 is acceptable for some endpoints
 
 
 @pytest.mark.integration

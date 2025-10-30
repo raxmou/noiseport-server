@@ -1,25 +1,6 @@
-# Individual build commands
-build-server: ## Build noiseport-server image
-	docker build -t maxenceroux/noiseport-server:latest -f Dockerfile .
-
-build-slskd: ## Build noiseport-server-slskd image
-	docker build -t maxenceroux/noiseport-server-slskd:latest -f Dockerfile.slskd .
-
-build-wizard: ## Build noiseport-server-wizard image
-	docker build -t maxenceroux/noiseport-server-wizard:latest -f Dockerfile.wizard .
-
-# Individual push commands
-push-server: ## Push noiseport-server image
-	docker push maxenceroux/noiseport-server:latest
-
-push-slskd: ## Push noiseport-server-slskd image
-	docker push maxenceroux/noiseport-server-slskd:latest
-
-push-wizard: ## Push noiseport-server-wizard image
-	docker push maxenceroux/noiseport-server-wizard:latest
 # Production-ready FastAPI Makefile
 
-.PHONY: help install install-dev lint format test test-unit test-integration coverage build run clean docker-build docker-run docker-compose-up docker-compose-down dev-compose dev-compose-bg dev-logs dev-stop pre-commit-install pre-commit-run security audit docs serve-docs
+.PHONY: help install install-dev lint format test test-unit test-integration coverage build run clean docker-build docker-run docker-compose-up docker-compose-down dev-compose dev-compose-bg dev-logs dev-stop pre-commit-install pre-commit-run security audit buildx-server buildx-slskd
 
 # Default target
 .DEFAULT_GOAL := help
@@ -37,7 +18,6 @@ help: ## Show this help message
 	@echo "🚀 Quick Start:"
 	@echo "  make setup          # Set up development environment"
 	@echo "  make dev-compose    # Start hot reload development (recommended)"
-	@echo "  make wizard-dev     # Start server and open setup wizard"
 	@echo ""
 	@echo "🔥 Development (Hot Reload):"
 	@echo "  make dev-compose    # Docker Compose with hot reload (frontend + backend)"
@@ -241,52 +221,25 @@ build-wizard: ## Build the React setup wizard frontend
 	@echo "Setup wizard built successfully!"
 	@echo "Access it at http://localhost:$(PORT)/wizard"
 
-wizard: ## Open the setup wizard (requires server to be running)
-	docker compose -f docker-compose.wizard.yml up --build
-
-wizard-dev: ## Start development server and open wizard
-	@echo "🎵 Starting development server and wizard..."
-	@echo "Server will be available at http://localhost:$(PORT)"
-	@echo "Wizard will be available at http://localhost:$(PORT)/wizard"
-	@echo ""
-	$(UV) run uvicorn $(APP_MODULE) --reload --host 0.0.0.0 --port $(PORT) &
-	@sleep 3 && \
-	
-	command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:$(PORT)/wizard || \
-	echo "Please open http://localhost:$(PORT)/wizard in your browser") &
-	@wait
-
 # Environment setup
 setup: install-dev pre-commit-install build-wizard ## Set up development environment
 	@echo "Development environment setup complete!"
 	@echo "Setup wizard frontend built!"
-	@echo "Run 'make wizard-dev' to start server and access the setup wizard"
-	@echo "Or run 'make dev' to start the development server"
+	@echo "Run 'make dev' to start the development server"
 
 build: ## Build the application
 	$(UV) build
 
-# Build Docker images for main app, slskd, and wizard
+# Multi-arch Docker build and push
+buildx-server: ## Build and push multi-arch noiseport-server image (amd64, arm64)
+	docker buildx build --platform linux/amd64,linux/arm64 -t maxenceroux/noiseport-server:latest -f Dockerfile . --push
 
-build-docker: ## Build all Docker images with :latest tag
-	docker build -t maxenceroux/noiseport-server:latest -f Dockerfile .
-	docker build -t maxenceroux/noiseport-server-slskd:latest -f Dockerfile.slskd .
-	docker build -t maxenceroux/noiseport-server-wizard:latest -f Dockerfile.wizard .
+buildx-slskd: ## Build and push multi-arch noiseport-server-slskd image (amd64, arm64)
+	docker buildx build --platform linux/amd64,linux/arm64 -t maxenceroux/noiseport-server-slskd:latest -f Dockerfile.slskd . --push
 
-# Push Docker images to registry
-push-docker: ## Push all Docker images with :latest tag
-	docker push maxenceroux/noiseport-server:latest
-	docker push maxenceroux/noiseport-server-slskd:latest
-	docker push maxenceroux/noiseport-server-wizard:latest
+buildx-all: buildx-server buildx-slskd ## Build and push all multi-arch Docker images
 
 # Quick checks
 check: lint typecheck test ## Run quick checks (lint, typecheck, test)
 
 check-all: lint typecheck test security ## Run all checks
-
-# Import targets (keep existing functionality)
-import-incomplete: ## Import incomplete music files
-	beet -c beet_config.yaml import /media/pi/Lexar/music/downloads
-
-rerun-import-full-refresh: ## Rerun import with full refresh
-	beet -c beet_config_full_refresh.yaml import /media/pi/Lexar/music/complete

@@ -1,7 +1,6 @@
 """Custom exceptions for the application."""
 
 
-
 class DownloaderException(Exception):
     """Base exception for downloader application."""
 
