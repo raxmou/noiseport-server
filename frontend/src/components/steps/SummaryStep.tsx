@@ -37,6 +37,7 @@ export default function SummaryStep({ config, onValidation }: Props) {
         setMachineIP(response.ip);
       } catch (error) {
         console.error("Failed to fetch machine IP:", error);
+        // Fall back to localhost if API call fails
         setMachineIP("localhost");
       }
     };
@@ -77,6 +78,8 @@ export default function SummaryStep({ config, onValidation }: Props) {
       // Cleanup interval on unmount
       return () => clearInterval(interval);
     }
+    // Return empty cleanup if already triggered
+    return undefined;
   }, [confettiTriggered]);
 
   const services: ServiceLink[] = [

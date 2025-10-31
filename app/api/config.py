@@ -1490,6 +1490,8 @@ async def get_machine_ip():
             s.connect(("8.8.8.8", 80))
             ip_address = s.getsockname()[0]
         except (OSError, socket.error):
+            # If we can't determine the external IP, fall back to localhost
+            logger.warning("Unable to determine machine IP, falling back to localhost")
             ip_address = "127.0.0.1"
         finally:
             s.close()
@@ -1502,5 +1504,5 @@ async def get_machine_ip():
         logger.error(f"Failed to get machine IP: {e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"message": "Failed to get machine IP", "ip": "localhost"}
+            content={"message": "Failed to get machine IP"}
         )
