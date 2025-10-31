@@ -210,15 +210,19 @@ The easiest way to configure the application is through the **Web-based Setup Wi
 
 ### Quick Setup
 
-1. **Start the application:**
+1. **Start the wizard:**
    ```bash
-   make dev
+   # Using docker compose (recommended)
+   docker compose -f docker-compose.wizard.yml up -d
+   
+   # Or using make
+   make wizard
    ```
 
 2. **Access the setup wizard:**
    ```bash
-   make wizard
-   # Or open http://localhost:8000/wizard in your browser
+   # Open in browser
+   open http://localhost:8000/wizard
    ```
 
 3. **Follow the wizard steps:**
@@ -229,7 +233,35 @@ The easiest way to configure the application is through the **Web-based Setup Wi
    - **Optional Features**: Enable additional features like scrobbling
    - **Summary**: Review and save your configuration
 
-The wizard automatically generates and saves your `.env` configuration file.
+The wizard automatically generates and saves configuration files to the `wizard-config/` directory.
+
+### Configuration Persistence
+
+All wizard-generated configuration files are stored in `wizard-config/`:
+- `.env` - Environment variables and credentials
+- `docker-compose.full.yml` - Full stack compose file
+- `slskd.yml` - Soulseek daemon configuration
+- `start-music-stack.sh` - Startup script
+- `launch_services.log` - Service launch logs
+
+This directory is mounted into the wizard container to persist your configuration to the host system.
+
+### Starting the Full Stack
+
+After configuration, start all services:
+
+**Option 1: Using the wizard interface**
+- Click "Launch Services" button in the wizard
+
+**Option 2: Using the generated script**
+```bash
+./wizard-config/start-music-stack.sh
+```
+
+**Option 3: Using docker compose**
+```bash
+docker compose -f wizard-config/docker-compose.full.yml up -d
+```
 
 ### Wizard Features
 
@@ -237,7 +269,17 @@ The wizard automatically generates and saves your `.env` configuration file.
 - ✅ **Real-time Validation**: Instant feedback on configuration errors
 - 🔗 **Connection Testing**: Test service connections before saving
 - 📱 **Responsive Design**: Works on desktop and mobile devices
-- 🔒 **Secure**: No sensitive data stored in browser, all saved to `.env`
+- 🔒 **Secure**: No sensitive data stored in browser, all saved to `wizard-config/`
+- 🚀 **Frontend from Image**: Frontend is served from the Docker image, no local build needed
+
+### Technical Details
+
+The wizard uses a selective volume mounting strategy:
+- **Mounts**: Only `wizard-config/` is mounted for config persistence
+- **Frontend**: Served from the built frontend in the Docker image
+- **Benefits**: No source code conflicts, fast startup, portable configuration
+
+See [`wizard-config/README.md`](wizard-config/README.md) for more details on the configuration directory.
 
 ### Manual Configuration (Alternative)
 
