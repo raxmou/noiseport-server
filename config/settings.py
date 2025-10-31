@@ -99,6 +99,12 @@ class Settings(BaseSettings):
         description="Host system music directory path (downloads and complete subdirectories will be created)",
     )
 
+    # Wizard Configuration
+    wizard_config_dir: str = Field(
+        default="./wizard-config",
+        description="Directory for wizard-generated configuration files",
+    )
+
     @field_validator("log_level")
     @classmethod
     def validate_log_level(cls, v: str) -> str:

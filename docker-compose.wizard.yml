@@ -9,16 +9,17 @@ services:
     environment:
       - WIZARD_MODE=true
       - PYTHONPATH=/app
+      - WIZARD_CONFIG_DIR=/app/wizard-config
     volumes:
-      # Mount source code for hot reload
-      - ./app:/app/app
-      - ./config:/app/config
-      # Mount configuration output directory
-      - .:/app/workspace
-      
+      # Mount dedicated config directory for persistence (not entire project root)
+      - ./wizard-config:/app/wizard-config
+      # Mount slskd template directory for reading template
+      - ./slskd:/app/slskd:ro
+      # Mount docker-compose template for reading
+      - ./docker-compose.full.yml.template:/app/docker-compose.full.yml.template:ro
+      # Mount Docker socket for ComposeRunner
       - /var/run/docker.sock:/var/run/docker.sock
-    working_dir: /app/workspace
-    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    command: uvicorn app.core.app:app --host 0.0.0.0 --port 8000
     restart: unless-stopped
 
 
