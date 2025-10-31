@@ -158,8 +158,8 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
 
         # Create .env file if it does not exist
         if not os.path.exists(env_file_path):
-            env_example_path = PROJECT_ROOT / ".env.example"
-            if env_example_path.exists():
+            env_example_path = str(PROJECT_ROOT / ".env.example")
+            if os.path.exists(env_example_path):
                 with (
                     open(env_example_path) as example_file,
                     open(env_file_path, "w") as env_file,
@@ -299,7 +299,8 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
         try:
             import os
 
-            slskd_template_path = "slskd/slskd.yml.template"
+            # slskd directory is mounted at /app/slskd in the container
+            slskd_template_path = str(PROJECT_ROOT / "slskd" / "slskd.yml.template")
             # Write slskd.yml to wizard-config directory
             slskd_config_path = os.path.join(wizard_config_dir, "slskd.yml")
             if os.path.exists(slskd_template_path):
@@ -319,7 +320,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 )
             else:
                 logger.warning(
-                    "slskd.yml.template not found, skipping slskd.yml generation"
+                    f"slskd.yml.template not found at {slskd_template_path}, skipping slskd.yml generation"
                 )
         except Exception as e:
             logger.warning(f"Failed to generate slskd.yml: {e}")
@@ -330,8 +331,8 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
         try:
             import os
 
-            # Read the template
-            template_path = f"{DOCKER_COMPOSE_FULL_FILE}.template"
+            # Read the template (mounted at /app in container)
+            template_path = str(PROJECT_ROOT / f"{DOCKER_COMPOSE_FULL_FILE}.template")
             if os.path.exists(template_path):
                 with open(template_path) as f:
                     compose_template = f.read()

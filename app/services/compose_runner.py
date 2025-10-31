@@ -3,6 +3,7 @@
 import logging
 import os
 import socket
+from typing import Optional
 
 import docker
 from docker.errors import DockerException, NotFound
@@ -234,7 +235,7 @@ class ComposeRunner:
         compose_file: str = "docker-compose.full.yml",
         build: bool = False,
         detach: bool = True,
-        log_file: str = None,
+        log_file: Optional[str] = None,
     ) -> tuple[bool, str]:
         """
         Bring up the stack and write logs to a file.
@@ -243,7 +244,7 @@ class ComposeRunner:
             compose_file: Path to compose file (relative to wizard config directory)
             build: Whether to build images before starting
             detach: Whether to run in detached mode
-            log_file: Absolute path to log file for service launch logs
+            log_file: Optional absolute path to log file for service launch logs
 
         Returns:
             tuple of (success, message)
