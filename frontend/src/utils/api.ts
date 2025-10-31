@@ -186,13 +186,4 @@ export class ApiService {
     }
     return response.json();
   }
-
-  static async getMachineIP(): Promise<{ip: string}> {
-    const response = await fetch(`${API_BASE}/config/machine-ip`);
-    
-    if (!response.ok) {
-      throw new Error('Failed to get machine IP');
-    }
-    return response.json();
-  }
 }

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { WizardConfiguration } from "../../types/wizard";
 import { Paper, Alert } from "../ui";
-import { ApiService } from "../../utils/api";
 
 interface Props {
   config: WizardConfiguration;
@@ -17,8 +16,10 @@ interface ServiceLink {
 
 export default function SummaryStep({ config, onValidation }: Props) {
   const onValidationRef = useRef(onValidation);
-  const [machineIP, setMachineIP] = useState<string>("loading...");
   const [confettiTriggered, setConfettiTriggered] = useState(false);
+
+  // Use Tailscale IP from config
+  const machineIP = config.tailscale.ip || "localhost";
 
   useEffect(() => {
     onValidationRef.current = onValidation;
@@ -28,21 +29,6 @@ export default function SummaryStep({ config, onValidation }: Props) {
     // Always valid for summary step
     onValidationRef.current(true);
   }, [config]);
-
-  useEffect(() => {
-    // Fetch machine IP
-    const fetchIP = async () => {
-      try {
-        const response = await ApiService.getMachineIP();
-        setMachineIP(response.ip);
-      } catch (error) {
-        console.error("Failed to fetch machine IP:", error);
-        // Fall back to localhost if API call fails
-        setMachineIP("localhost");
-      }
-    };
-    fetchIP();
-  }, []);
 
   useEffect(() => {
     // Trigger confetti animation once when component mounts

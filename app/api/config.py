@@ -3,7 +3,6 @@
 import hashlib
 import json
 import os
-import socket
 import subprocess
 import threading
 from pathlib import Path
@@ -1475,34 +1474,4 @@ async def get_service_status() -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": "Failed to check service status"},
-        )
-
-
-@router.get("/config/machine-ip")
-async def get_machine_ip():
-    """Get the machine's local network IP address."""
-    try:
-        # Try to get the primary IP address by connecting to an external host
-        # This doesn't actually send data, just determines which interface would be used
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            # Connect to a public DNS server (doesn't actually send anything)
-            s.connect(("8.8.8.8", 80))
-            ip_address = s.getsockname()[0]
-        except (OSError, socket.error):
-            # If we can't determine the external IP, fall back to localhost
-            logger.warning("Unable to determine machine IP, falling back to localhost")
-            ip_address = "127.0.0.1"
-        finally:
-            s.close()
-        
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={"ip": ip_address}
-        )
-    except Exception as e:
-        logger.error(f"Failed to get machine IP: {e}")
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"message": "Failed to get machine IP"}
         )

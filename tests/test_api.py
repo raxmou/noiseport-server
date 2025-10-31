@@ -86,14 +86,3 @@ def test_stats_endpoints_structure(client):
         response = client.get(endpoint)
         # Without SLSKD service, we expect 503 or 500 (connection error)
         assert response.status_code in [200, 500, 503]
-
-
-@pytest.mark.unit
-def test_machine_ip_endpoint(client):
-    """Test the machine IP endpoint."""
-    response = client.get("/api/v1/config/machine-ip")
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert "ip" in data
-    assert isinstance(data["ip"], str)
-    assert len(data["ip"]) > 0
