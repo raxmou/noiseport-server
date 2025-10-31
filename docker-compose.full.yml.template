@@ -12,6 +12,7 @@ services:
       - SLSKD_REMOTE_CONFIGURATION=true
     volumes:
       - ./slskd:/app
+      - ./wizard-config/slskd.yml:/app/slskd.yml 
       - {{HOST_MUSIC_PATH}}:/music
       - {{HOST_MUSIC_PATH}}/musiclibrary.db:/music/musiclibrary.db
       - ./shared:/shared
@@ -39,6 +40,7 @@ services:
     volumes:
       - {{HOST_MUSIC_PATH}}/downloads:/music/downloads
       - {{HOST_MUSIC_PATH}}/complete:/music/complete
+      - ./wizard-config/.env:/app/.env # Mount wizard-generated .env file
     depends_on:
       - slskd
     restart: unless-stopped

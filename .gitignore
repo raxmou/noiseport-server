@@ -8,6 +8,12 @@ jellyfin/*
 docker-compose.full.yml
 start-music-stack.sh
 
+# Wizard-generated config files (keep .gitkeep and README.md)
+wizard-config/*
+!wizard-config/.gitkeep
+!wizard-config/README.md
+launch_services.log
+
 node_modules*
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -3,9 +3,12 @@
 import logging
 import os
 import socket
+from typing import Optional
 
 import docker
 from docker.errors import DockerException, NotFound
+
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +62,7 @@ class ComposeRunner:
         Restart a single service in the stack using docker-compose.
         Args:
             service_name: Name of the service to restart (e.g., 'slskd')
-            compose_file: Path to compose file (relative to project root)
+            compose_file: Path to compose file (relative to wizard config directory)
         Returns:
             tuple of (success, message)
         """
@@ -74,25 +77,24 @@ class ComposeRunner:
     """
     Manages Docker Compose operations from within a container using the docker/compose image.
 
-    This class discovers the host path backing the container's /app/workspace mount and
-    uses it to run docker-compose commands in the proper context.
+    This class uses the wizard config directory to find compose files and run operations.
     """
 
     def __init__(self):
         """Initialize the ComposeRunner."""
         self.client = docker.from_env()
-        self.host_project_path = None
+        self.wizard_config_path = None
         self.container_id = None
 
-    def discover_host_path(self) -> str:
+    def discover_config_path(self) -> str:
         """
-        Discover the host absolute path backing the /app/workspace mount.
+        Discover the host absolute path for the wizard config directory.
 
         Returns:
-            str: The host path backing /app/workspace
+            str: The host path to wizard-config directory
 
         Raises:
-            RuntimeError: If unable to discover the host path
+            RuntimeError: If unable to discover the config path
         """
         try:
             # Get container hostname which is typically the container ID
@@ -102,30 +104,26 @@ class ComposeRunner:
             container = self.client.containers.get(self.container_id)
             mounts = container.attrs.get("Mounts", [])
 
-            # Find the mount for /app/workspace
+            # Find the mount for /app/wizard-config
             for mount in mounts:
-                if mount.get("Destination") == "/app/workspace":
+                if mount.get("Destination") == "/app/wizard-config":
                     host_path = mount.get("Source")
                     if host_path:
-                        self.host_project_path = host_path
-                        logger.info(f"Discovered host project path: {host_path}")
+                        self.wizard_config_path = host_path
+                        logger.info(f"Discovered wizard config path: {host_path}")
                         return host_path
 
-            # Fallback: try environment variable
-            if "HOST_PROJECT_PATH" in os.environ:
-                path = os.environ["HOST_PROJECT_PATH"]
-                self.host_project_path = path
-                logger.info(f"Using host project path from env: {path}")
-                return path
-
+            # No mount found - this is an error condition
             raise RuntimeError(
-                "Could not discover host project path from mounts or environment"
+                "Could not discover wizard config path from container mounts. "
+                "Ensure /app/wizard-config is mounted in the container. "
+                f"Available mounts: {[m.get('Destination') for m in mounts]}"
             )
 
         except NotFound:
             raise RuntimeError(f"Container {self.container_id} not found")
         except DockerException as e:
-            raise RuntimeError(f"Docker error while discovering host path: {e}")
+            raise RuntimeError(f"Docker error while discovering config path: {e}")
 
     def _run_compose_command(
         self,
@@ -144,16 +142,16 @@ class ComposeRunner:
         Returns:
             tuple of (exit_code, stdout, stderr)
         """
-        if not self.host_project_path:
-            self.discover_host_path()
+        if not self.wizard_config_path:
+            self.discover_config_path()
 
         # Build the docker run command for compose
-        # Mount docker socket and project directory
+        # Mount docker socket and wizard config directory
         volumes = {
             "/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "rw"},
-            self.host_project_path: {"bind": self.host_project_path, "mode": "rw"},
+            self.wizard_config_path: {"bind": self.wizard_config_path, "mode": "rw"},
         }
-        working_dir = self.host_project_path
+        working_dir = self.wizard_config_path
 
         # ⬅️ run Docker CLI with the "compose" subcommand
         command = ["compose"] + compose_args
@@ -237,16 +235,16 @@ class ComposeRunner:
         compose_file: str = "docker-compose.full.yml",
         build: bool = False,
         detach: bool = True,
-        log_file: str = "launch_services.log",
+        log_file: Optional[str] = None,
     ) -> tuple[bool, str]:
         """
         Bring up the stack and write logs to a file.
 
         Args:
-            compose_file: Path to compose file (relative to project root)
+            compose_file: Path to compose file (relative to wizard config directory)
             build: Whether to build images before starting
             detach: Whether to run in detached mode
-            log_file: Path to log file for service launch logs
+            log_file: Optional absolute path to log file for service launch logs
 
         Returns:
             tuple of (success, message)
@@ -260,26 +258,28 @@ class ComposeRunner:
             args.append("-d")
 
         exit_code, stdout, stderr = self._run_compose_command(args, capture_output=True)
-        # Write logs to file
-        try:
-            with open(log_file, "a") as f:
-                f.write("==== Service Launch Log ====" + "\n")
-                f.write(stdout)
-                if stderr:
-                    f.write("\n[ERROR]\n" + stderr)
-        except Exception as e:
-            logger.error(f"Failed to write launch log: {e}")
+        
+        # Write logs to file if path provided
+        if log_file:
+            try:
+                with open(log_file, "a") as f:
+                    f.write("==== Service Launch Log ====" + "\n")
+                    f.write(stdout)
+                    if stderr:
+                        f.write("\n[ERROR]\n" + stderr)
+            except Exception as e:
+                logger.error(f"Failed to write launch log: {e}")
 
         if exit_code == 0:
-            return (
-                True,
-                f"Stack started successfully with project name '{COMPOSE_PROJECT_NAME}'. Logs written to {log_file}",
-            )
+            message = f"Stack started successfully with project name '{COMPOSE_PROJECT_NAME}'."
+            if log_file:
+                message += f" Logs written to {log_file}"
+            return True, message
         else:
-            return (
-                False,
-                f"Failed to start stack: {stderr}. See {log_file} for details.",
-            )
+            message = f"Failed to start stack: {stderr}."
+            if log_file:
+                message += f" See {log_file} for details."
+            return False, message
 
     def compose_down(
         self,
@@ -358,25 +358,26 @@ class ComposeRunner:
         Run preflight checks before launching the stack.
 
         Args:
-            compose_file: Path to compose file (relative to project root)
+            compose_file: Path to compose file (relative to wizard config directory)
 
         Returns:
             tuple of (all_passed, list_of_issues)
         """
         issues = []
 
-        # Check 1: Can we discover the host path?
+        # Check 1: Can we discover the wizard config path?
         try:
-            if not self.host_project_path:
-                self.discover_host_path()
+            if not self.wizard_config_path:
+                self.discover_config_path()
         except Exception as e:
-            issues.append(f"Cannot discover host project path: {e}")
+            issues.append(f"Cannot discover wizard config path: {e}")
 
         # Check 2: Does the compose file exist?
-        if self.host_project_path:
-            compose_path = os.path.join("/app/workspace", compose_file)
-            if not os.path.exists(compose_path):
-                issues.append(f"Compose file not found: {compose_file}")
+        if self.wizard_config_path:
+            # Check in container path first
+            container_compose_path = os.path.join(settings.wizard_config_dir, compose_file)
+            if not os.path.exists(container_compose_path):
+                issues.append(f"Compose file not found in wizard config: {compose_file}")
 
         # Check 3: Is Docker socket accessible?
         try:
