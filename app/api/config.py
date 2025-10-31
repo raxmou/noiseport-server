@@ -1489,7 +1489,7 @@ async def get_machine_ip():
             # Connect to a public DNS server (doesn't actually send anything)
             s.connect(("8.8.8.8", 80))
             ip_address = s.getsockname()[0]
-        except Exception:
+        except (OSError, socket.error):
             ip_address = "127.0.0.1"
         finally:
             s.close()

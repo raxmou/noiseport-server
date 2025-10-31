@@ -73,6 +73,9 @@ export default function SummaryStep({ config, onValidation }: Props) {
       }, 250);
 
       setConfettiTriggered(true);
+
+      // Cleanup interval on unmount
+      return () => clearInterval(interval);
     }
   }, [confettiTriggered]);
 
@@ -180,7 +183,8 @@ export default function SummaryStep({ config, onValidation }: Props) {
             <p className="text-sm">
               All you need to do now is download the Desktop and/or Mobile app (if not done yet),
               go to their settings/config page, and input the IP address{" "}
-              <span className="font-mono text-primary">{machineIP}</span> and your credentials.
+              <span className="font-mono text-primary">{machineIP}</span> along with the
+              credentials you configured for your services (e.g., Navidrome or Jellyfin username and password).
             </p>
             <div className="mt-4 space-y-2">
               <p className="text-sm font-medium">Download Apps:</p>
