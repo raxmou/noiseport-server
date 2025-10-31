@@ -112,25 +112,11 @@ class ComposeRunner:
                         logger.info(f"Discovered wizard config path: {host_path}")
                         return host_path
 
-            # Fallback: try environment variable
-            if "WIZARD_CONFIG_DIR" in os.environ:
-                # This is the container path, we need to find the host path
-                container_path = os.environ["WIZARD_CONFIG_DIR"]
-                logger.warning(f"Using WIZARD_CONFIG_DIR from env: {container_path}, but need to discover host path")
-                
-                # Try to find it from any mount that ends with wizard-config
-                for mount in mounts:
-                    dest = mount.get("Destination", "")
-                    if "wizard-config" in dest:
-                        host_path = mount.get("Source")
-                        if host_path:
-                            self.wizard_config_path = host_path
-                            logger.info(f"Discovered wizard config path from mounts: {host_path}")
-                            return host_path
-
+            # No mount found - this is an error condition
             raise RuntimeError(
-                "Could not discover wizard config path from mounts or environment. "
-                "Ensure /app/wizard-config is mounted in the container."
+                "Could not discover wizard config path from container mounts. "
+                "Ensure /app/wizard-config is mounted in the container. "
+                f"Available mounts: {[m.get('Destination') for m in mounts]}"
             )
 
         except NotFound:

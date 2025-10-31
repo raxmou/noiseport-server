@@ -19,7 +19,7 @@ services:
       - ./docker-compose.full.yml.template:/app/docker-compose.full.yml.template:ro
       # Mount Docker socket for ComposeRunner
       - /var/run/docker.sock:/var/run/docker.sock
-    command: uvicorn app.core.app:app --host 0.0.0.0 --port 8000
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     restart: unless-stopped
 
 
