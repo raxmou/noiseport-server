@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { WizardConfiguration } from "../../types/wizard";
 import { ServiceInfo } from "../ServiceInfo";
 import { serviceInfoData } from "../../data/services";
@@ -29,13 +29,21 @@ export default function MusicPathsStep({
   const [configSaved, setConfigSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
-  const [containerLogs, setContainerLogs] = useState<{ [key: string]: string }>({});
+  const [containerLogs, setContainerLogs] = useState<{ [key: string]: string }>(
+    {}
+  );
   const [showLogs, setShowLogs] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     const isValid = Boolean(config.musicPaths?.hostMusicPath);
-    onValidation(isValid);
-  }, [config.musicPaths, onValidation]);
+    // Only call onValidation if the value changes
+    onValidationRef.current(isValid);
+  }, [config.musicPaths]);
+
+  const onValidationRef = useRef(onValidation);
+  useEffect(() => {
+    onValidationRef.current = onValidation;
+  }, [onValidation]);
 
   const handlePathChange = (value: string) => {
     setConfigSaved(false);
@@ -106,17 +114,20 @@ export default function MusicPathsStep({
   const fetchContainerLogs = async (containerName: string) => {
     try {
       const result = await ApiService.getContainerLogs(containerName);
-      setContainerLogs(prev => ({ ...prev, [containerName]: result.logs }));
+      setContainerLogs((prev) => ({ ...prev, [containerName]: result.logs }));
     } catch (error) {
       console.error(`Error fetching logs for ${containerName}:`, error);
-      setContainerLogs(prev => ({ ...prev, [containerName]: "Failed to fetch logs" }));
+      setContainerLogs((prev) => ({
+        ...prev,
+        [containerName]: "Failed to fetch logs",
+      }));
     }
   };
 
   const toggleLogs = async (containerName: string) => {
     const isCurrentlyShown = showLogs[containerName];
-    setShowLogs(prev => ({ ...prev, [containerName]: !isCurrentlyShown }));
-    
+    setShowLogs((prev) => ({ ...prev, [containerName]: !isCurrentlyShown }));
+
     // Fetch logs if opening and not already fetched
     if (!isCurrentlyShown && !containerLogs[containerName]) {
       await fetchContainerLogs(containerName);
@@ -140,7 +151,11 @@ export default function MusicPathsStep({
   const getStateIcon = (state?: string, running?: boolean) => {
     if (running) {
       return (
-        <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+        <svg
+          className="w-4 h-4 text-green-400"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
           <path
             fillRule="evenodd"
             d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -154,7 +169,11 @@ export default function MusicPathsStep({
       );
     } else {
       return (
-        <svg className="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+        <svg
+          className="w-4 h-4 text-red-400"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
           <path
             fillRule="evenodd"
             d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -328,10 +347,11 @@ export default function MusicPathsStep({
                 </p>
                 <Alert variant="warning" className="mt-2">
                   <p className="text-sm">
-                    <strong>⏱️ First Launch Notice:</strong> If this is your first time launching,
-                    Docker will need to download container images (Navidrome, Jellyfin, slskd).
-                    This process may take several minutes depending on your internet connection.
-                    The wizard will show you when services are ready.
+                    <strong>⏱️ First Launch Notice:</strong> If this is your
+                    first time launching, Docker will need to download container
+                    images (Navidrome, Jellyfin, slskd). This process may take
+                    several minutes depending on your internet connection. The
+                    wizard will show you when services are ready.
                   </p>
                 </Alert>
               </div>
@@ -348,7 +368,11 @@ export default function MusicPathsStep({
                   variant="outline"
                   size="xs"
                   leftSection={
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <svg
+                      className="w-4 h-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
                       <path
                         fillRule="evenodd"
                         d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
@@ -362,8 +386,9 @@ export default function MusicPathsStep({
               </div>
               <Alert variant="info" className="text-xs">
                 <p>
-                  Click "Check Status" to manually refresh the current state of your containers.
-                  This is especially useful during the initial setup when images are being downloaded.
+                  Click "Check Status" to manually refresh the current state of
+                  your containers. This is especially useful during the initial
+                  setup when images are being downloaded.
                 </p>
               </Alert>
             </div>
@@ -385,7 +410,8 @@ export default function MusicPathsStep({
                   🎉 Services Launch In Progress
                 </p>
                 <p className="text-sm text-neutral-400">
-                  Containers are starting up. Check the status below to see progress.
+                  Containers are starting up. Check the status below to see
+                  progress.
                 </p>
               </div>
             </div>
@@ -411,17 +437,19 @@ export default function MusicPathsStep({
 
                   if (!serviceInfo) {
                     return (
-                      <div
-                        key={serviceName}
-                        className="space-y-2"
-                      >
+                      <div key={serviceName} className="space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             {getStateIcon(service.state, service.running)}
                             <span className="font-semibold">
-                              {serviceName.charAt(0).toUpperCase() + serviceName.slice(1)}
+                              {serviceName.charAt(0).toUpperCase() +
+                                serviceName.slice(1)}
                             </span>
-                            <span className={`text-xs ${getStateColor(service.state)}`}>
+                            <span
+                              className={`text-xs ${getStateColor(
+                                service.state
+                              )}`}
+                            >
                               ({service.state || "unknown"})
                             </span>
                           </div>
@@ -431,7 +459,9 @@ export default function MusicPathsStep({
                               variant="outline"
                               size="xs"
                             >
-                              {showLogs[serviceName] ? "Hide Logs" : "Show Logs"}
+                              {showLogs[serviceName]
+                                ? "Hide Logs"
+                                : "Show Logs"}
                             </Button>
                             <a
                               href={service.url}
@@ -469,7 +499,9 @@ export default function MusicPathsStep({
                                   {containerLogs[serviceName]}
                                 </pre>
                               ) : (
-                                <p className="text-neutral-500">Loading logs...</p>
+                                <p className="text-neutral-500">
+                                  Loading logs...
+                                </p>
                               )}
                             </div>
                           </div>
@@ -485,9 +517,14 @@ export default function MusicPathsStep({
                           <div className="flex items-center gap-2">
                             {getStateIcon(service.state, service.running)}
                             <span className="font-semibold">
-                              {serviceName.charAt(0).toUpperCase() + serviceName.slice(1)}
+                              {serviceName.charAt(0).toUpperCase() +
+                                serviceName.slice(1)}
                             </span>
-                            <span className={`text-xs ${getStateColor(service.state)}`}>
+                            <span
+                              className={`text-xs ${getStateColor(
+                                service.state
+                              )}`}
+                            >
                               ({service.state || "unknown"})
                             </span>
                           </div>
@@ -512,7 +549,9 @@ export default function MusicPathsStep({
                                   {containerLogs[serviceName]}
                                 </pre>
                               ) : (
-                                <p className="text-neutral-500">Loading logs...</p>
+                                <p className="text-neutral-500">
+                                  Loading logs...
+                                </p>
                               )}
                             </div>
                           </div>

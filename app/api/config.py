@@ -113,10 +113,10 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
     try:
         # Get wizard config directory from settings (environment variable or default)
         wizard_config_dir = settings.wizard_config_dir
-        
+
         # Ensure wizard config directory exists
         os.makedirs(wizard_config_dir, exist_ok=True)
-        
+
         # Convert config to environment variables
         env_vars = {
             # Tailscale
@@ -302,7 +302,8 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             # slskd directory is mounted at /app/slskd in the container
             slskd_template_path = str(PROJECT_ROOT / "slskd" / "slskd.yml.template")
             # Write slskd.yml to wizard-config directory
-            slskd_config_path = os.path.join(wizard_config_dir, "slskd.yml")
+            slskd_config_path = os.path.join(wizard_config_dir, "slskd", "slskd.yml")
+            os.makedirs(os.path.dirname(slskd_config_path), exist_ok=True)
             if os.path.exists(slskd_template_path):
                 with open(slskd_template_path) as f:
                     template = f.read()
@@ -315,9 +316,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 )
                 with open(slskd_config_path, "w") as f:
                     f.write(config_content)
-                logger.info(
-                    f"Generated slskd.yml from template at {slskd_config_path}"
-                )
+                logger.info(f"Generated slskd.yml from template at {slskd_config_path}")
             else:
                 logger.warning(
                     f"slskd.yml.template not found at {slskd_template_path}, skipping slskd.yml generation"
@@ -344,7 +343,9 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 )
 
                 # Write the full docker-compose file to wizard-config directory
-                compose_output_path = os.path.join(wizard_config_dir, DOCKER_COMPOSE_FULL_FILE)
+                compose_output_path = os.path.join(
+                    wizard_config_dir, DOCKER_COMPOSE_FULL_FILE
+                )
                 with open(compose_output_path, "w") as f:
                     f.write(compose_content)
 
@@ -391,12 +392,14 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 )
 
                 # Create a startup script in wizard-config directory
-                startup_script_path = os.path.join(wizard_config_dir, "start-music-stack.sh")
-                
+                startup_script_path = os.path.join(
+                    wizard_config_dir, "start-music-stack.sh"
+                )
+
                 # Determine wizard compose file path relative to wizard-config
                 # Assumes wizard-config and docker-compose.wizard.yml are in the same parent directory
                 wizard_compose_relative = "../docker-compose.wizard.yml"
-                
+
                 startup_script = f"""#!/bin/bash
 # Start the NoisePort music stack
 # This script should be run from the host system (not inside a container)
@@ -446,7 +449,7 @@ echo "🛑 To stop stack: docker compose -f \\"$COMPOSE_FILE\\" down"
                     | stat.S_IROTH
                     | stat.S_IXOTH,
                 )
-                
+
                 logger.info(f"Generated startup script at {startup_script_path}")
 
             else:
@@ -942,7 +945,7 @@ async def launch_services() -> JSONResponse:
     # Check if the full docker-compose file exists in wizard-config
     wizard_config_dir = settings.wizard_config_dir
     compose_file_path = os.path.join(wizard_config_dir, DOCKER_COMPOSE_FULL_FILE)
-    
+
     if not os.path.exists(compose_file_path):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -983,10 +986,10 @@ async def launch_services() -> JSONResponse:
                 # Write logs to wizard-config directory
                 log_file = os.path.join(wizard_config_dir, "launch_services.log")
                 success, message = runner.compose_up(
-                    compose_file=DOCKER_COMPOSE_FULL_FILE, 
-                    build=False, 
+                    compose_file=DOCKER_COMPOSE_FULL_FILE,
+                    build=False,
                     detach=True,
-                    log_file=log_file
+                    log_file=log_file,
                 )
                 if success:
                     logger.info(f"Stack launched successfully: {message}")
@@ -1154,7 +1157,7 @@ async def launch_status() -> JSONResponse:
     """Get the status/log output of the music stack launch."""
     wizard_config_dir = settings.wizard_config_dir
     log_file = os.path.join(wizard_config_dir, "launch_services.log")
-    
+
     if os.path.exists(log_file):
         with open(log_file) as f:
             log_content = f.read()

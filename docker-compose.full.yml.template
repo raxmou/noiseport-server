@@ -40,7 +40,7 @@ services:
     volumes:
       - {{HOST_MUSIC_PATH}}/downloads:/music/downloads
       - {{HOST_MUSIC_PATH}}/complete:/music/complete
-      - ./wizard-config/.env:/app/.env # Mount wizard-generated .env file
+      - ./env:/app/.env # Mount wizard-generated .env file
     depends_on:
       - slskd
     restart: unless-stopped
