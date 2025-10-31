@@ -172,7 +172,8 @@ docker-compose-down: ## Stop services with docker-compose
 docker-logs: ## View docker-compose logs
 	docker compose logs -f
 
-
+wizard:
+	docker compose -f docker-compose.wizard.yml up 
 # === Pre-commit ===
 pre-commit-install: ## Install pre-commit hooks
 	$(UV) run pre-commit install
