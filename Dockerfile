@@ -74,7 +74,7 @@ COPY --chown=appuser:appuser . .
 COPY --from=frontend-builder --chown=appuser:appuser /app/frontend/dist /app/frontend/dist
 
 # Create directories for file storage
-RUN mkdir -p /music/downloads /music/complete && \
+RUN mkdir -p /music/downloads /music/complete /music/incomplete&& \
     chown -R appuser:appuser /music
 
 # Switch to non-root user

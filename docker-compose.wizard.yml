@@ -13,6 +13,7 @@ services:
     volumes:
       # Mount dedicated config directory for persistence (not entire project root)
       - ./wizard-config:/app/wizard-config
+      - ./wizard-config/.env:/app/.env
       # Mount slskd template directory for reading template
       - ./slskd:/app/slskd:ro
       # Mount docker-compose template for reading
