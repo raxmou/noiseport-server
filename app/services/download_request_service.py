@@ -1,6 +1,6 @@
 """Service for managing download requests in the database."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.core.logging import get_logger
 from app.database.connection import get_db
@@ -36,7 +36,7 @@ class DownloadRequestService:
                     username,
                     vpn_ip,
                     "pending",
-                    datetime.utcnow().isoformat(),
+                    datetime.now(UTC).isoformat(),
                 ),
             )
             request_id = cursor.lastrowid
@@ -78,25 +78,25 @@ class DownloadRequestService:
         with get_db() as conn:
             cursor = conn.cursor()
 
-            updates = ["status = ?"]
-            params = [status]
+            # Build update query safely with predefined field names
+            update_fields = {"status": status}
 
             if slskd_username is not None:
-                updates.append("slskd_username = ?")
-                params.append(slskd_username)
+                update_fields["slskd_username"] = slskd_username
 
             if file_count is not None:
-                updates.append("file_count = ?")
-                params.append(file_count)
+                update_fields["file_count"] = file_count
 
             if total_size is not None:
-                updates.append("total_size = ?")
-                params.append(total_size)
+                update_fields["total_size"] = total_size
 
+            # Create SET clause with safe field names
+            set_clause = ", ".join(f"{field} = ?" for field in update_fields.keys())
+            params = list(update_fields.values())
             params.append(task_id)
 
             cursor.execute(
-                f"UPDATE download_requests SET {', '.join(updates)} WHERE task_id = ?",
+                f"UPDATE download_requests SET {set_clause} WHERE task_id = ?",
                 params,
             )
 
@@ -121,7 +121,7 @@ class DownloadRequestService:
                     "completed",
                     completed_files,
                     album_directory,
-                    datetime.utcnow().isoformat(),
+                    datetime.now(UTC).isoformat(),
                     task_id,
                 ),
             )
@@ -201,6 +201,17 @@ class DownloadRequestService:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT COUNT(*) FROM download_requests WHERE username = ?", (username,)
+            )
+            result = cursor.fetchone()
+            return result[0] if result else 0
+
+    @staticmethod
+    def get_vpn_ip_request_count(vpn_ip: str) -> int:
+        """Get count of download requests for a specific VPN IP."""
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(*) FROM download_requests WHERE vpn_ip = ?", (vpn_ip,)
             )
             result = cursor.fetchone()
             return result[0] if result else 0

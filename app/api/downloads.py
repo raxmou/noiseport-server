@@ -326,10 +326,8 @@ def get_ip_download_history(
             vpn_ip=vpn_ip, limit=limit, offset=offset
         )
 
-        # Count is computed from the results
-        count = (
-            len(requests) if offset == 0 else DownloadRequestService.get_request_count()
-        )
+        # Get proper count for this VPN IP
+        count = DownloadRequestService.get_vpn_ip_request_count(vpn_ip)
 
         return DownloadHistoryResponse(
             count=count,

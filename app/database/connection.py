@@ -10,8 +10,22 @@ from config import settings
 
 logger = get_logger(__name__)
 
+
+def parse_sqlite_url(url: str) -> Path:
+    """Parse SQLite database URL to get file path."""
+    # Handle various SQLite URL formats:
+    # - sqlite:///./app.db (relative)
+    # - sqlite:////absolute/path/app.db (absolute)
+    # - sqlite:///:memory: (in-memory)
+    if url.startswith("sqlite:///"):
+        path_str = url[len("sqlite:///") :]
+        return Path(path_str)
+    # Fallback for simple paths
+    return Path(url.replace("sqlite://", ""))
+
+
 # Default database path
-DB_PATH = Path(settings.database_url.replace("sqlite:///", ""))
+DB_PATH = parse_sqlite_url(settings.database_url)
 
 
 def get_db_path() -> Path:

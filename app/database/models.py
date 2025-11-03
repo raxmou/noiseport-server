@@ -1,6 +1,6 @@
 """Database models for tracking download requests."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 class DownloadRequest:
@@ -31,7 +31,7 @@ class DownloadRequest:
         self.username = username
         self.vpn_ip = vpn_ip
         self.status = status
-        self.timestamp = timestamp or datetime.utcnow()
+        self.timestamp = timestamp or datetime.now(UTC)
         self.slskd_username = slskd_username
         self.file_count = file_count
         self.completed_files = completed_files
