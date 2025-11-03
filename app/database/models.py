@@ -1,7 +1,6 @@
 """Database models for tracking download requests."""
 
 from datetime import datetime
-from typing import Optional
 
 
 class DownloadRequest:
@@ -9,20 +8,20 @@ class DownloadRequest:
 
     def __init__(
         self,
-        id: Optional[int] = None,
+        id: int | None = None,
         task_id: str = "",
         artist: str = "",
         album: str = "",
         username: str = "",
         vpn_ip: str = "",
         status: str = "pending",
-        timestamp: Optional[datetime] = None,
-        slskd_username: Optional[str] = None,
+        timestamp: datetime | None = None,
+        slskd_username: str | None = None,
         file_count: int = 0,
         completed_files: int = 0,
         total_size: int = 0,
-        album_directory: Optional[str] = None,
-        completed_at: Optional[datetime] = None,
+        album_directory: str | None = None,
+        completed_at: datetime | None = None,
     ):
         """Initialize a download request."""
         self.id = id
@@ -56,7 +55,9 @@ class DownloadRequest:
             "completed_files": self.completed_files,
             "total_size": self.total_size,
             "album_directory": self.album_directory,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
         }
 
     @classmethod

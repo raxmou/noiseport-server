@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from app.database import connection
 from app.database.connection import get_db, init_db
 from app.database.models import DownloadRequest
 from app.services.download_request_service import DownloadRequestService

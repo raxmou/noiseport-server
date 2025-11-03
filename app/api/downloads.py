@@ -215,9 +215,7 @@ async def search_album(artist: str, album: str) -> dict[str, Any]:
 
 
 @router.get("/history", response_model=DownloadHistoryResponse, tags=["Downloads"])
-def get_download_history(
-    limit: int = 100, offset: int = 0
-) -> DownloadHistoryResponse:
+def get_download_history(limit: int = 100, offset: int = 0) -> DownloadHistoryResponse:
     """
     Get download history for all users.
 
@@ -244,7 +242,9 @@ def get_download_history(
                     completed_files=req.completed_files,
                     total_size=req.total_size,
                     album_directory=req.album_directory,
-                    completed_at=req.completed_at.isoformat() if req.completed_at else None,
+                    completed_at=req.completed_at.isoformat()
+                    if req.completed_at
+                    else None,
                 )
                 for req in requests
             ],
@@ -258,7 +258,11 @@ def get_download_history(
         )
 
 
-@router.get("/history/user/{username}", response_model=DownloadHistoryResponse, tags=["Downloads"])
+@router.get(
+    "/history/user/{username}",
+    response_model=DownloadHistoryResponse,
+    tags=["Downloads"],
+)
 def get_user_download_history(
     username: str, limit: int = 100, offset: int = 0
 ) -> DownloadHistoryResponse:
@@ -290,7 +294,9 @@ def get_user_download_history(
                     completed_files=req.completed_files,
                     total_size=req.total_size,
                     album_directory=req.album_directory,
-                    completed_at=req.completed_at.isoformat() if req.completed_at else None,
+                    completed_at=req.completed_at.isoformat()
+                    if req.completed_at
+                    else None,
                 )
                 for req in requests
             ],
@@ -304,7 +310,9 @@ def get_user_download_history(
         )
 
 
-@router.get("/history/ip/{vpn_ip}", response_model=DownloadHistoryResponse, tags=["Downloads"])
+@router.get(
+    "/history/ip/{vpn_ip}", response_model=DownloadHistoryResponse, tags=["Downloads"]
+)
 def get_ip_download_history(
     vpn_ip: str, limit: int = 100, offset: int = 0
 ) -> DownloadHistoryResponse:
@@ -319,7 +327,9 @@ def get_ip_download_history(
         )
 
         # Count is computed from the results
-        count = len(requests) if offset == 0 else DownloadRequestService.get_request_count()
+        count = (
+            len(requests) if offset == 0 else DownloadRequestService.get_request_count()
+        )
 
         return DownloadHistoryResponse(
             count=count,
@@ -338,7 +348,9 @@ def get_ip_download_history(
                     completed_files=req.completed_files,
                     total_size=req.total_size,
                     album_directory=req.album_directory,
-                    completed_at=req.completed_at.isoformat() if req.completed_at else None,
+                    completed_at=req.completed_at.isoformat()
+                    if req.completed_at
+                    else None,
                 )
                 for req in requests
             ],
@@ -352,7 +364,9 @@ def get_ip_download_history(
         )
 
 
-@router.get("/request/{task_id}", response_model=DownloadRequestResponse, tags=["Downloads"])
+@router.get(
+    "/request/{task_id}", response_model=DownloadRequestResponse, tags=["Downloads"]
+)
 def get_download_request(task_id: str) -> DownloadRequestResponse:
     """
     Get details of a specific download request by task ID.
@@ -382,7 +396,9 @@ def get_download_request(task_id: str) -> DownloadRequestResponse:
             completed_files=request.completed_files,
             total_size=request.total_size,
             album_directory=request.album_directory,
-            completed_at=request.completed_at.isoformat() if request.completed_at else None,
+            completed_at=request.completed_at.isoformat()
+            if request.completed_at
+            else None,
         )
 
     except HTTPException:

@@ -1,7 +1,6 @@
 """Service for managing download requests in the database."""
 
 from datetime import datetime
-from typing import List, Optional
 
 from app.core.logging import get_logger
 from app.database.connection import get_db
@@ -26,15 +25,25 @@ class DownloadRequestService:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO download_requests 
+                INSERT INTO download_requests
                 (task_id, artist, album, username, vpn_ip, status, timestamp)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-                (task_id, artist, album, username, vpn_ip, "pending", datetime.utcnow().isoformat()),
+                (
+                    task_id,
+                    artist,
+                    album,
+                    username,
+                    vpn_ip,
+                    "pending",
+                    datetime.utcnow().isoformat(),
+                ),
             )
             request_id = cursor.lastrowid
 
-            cursor.execute("SELECT * FROM download_requests WHERE id = ?", (request_id,))
+            cursor.execute(
+                "SELECT * FROM download_requests WHERE id = ?", (request_id,)
+            )
             row = cursor.fetchone()
 
             if row:
@@ -43,7 +52,7 @@ class DownloadRequestService:
             raise ValueError("Failed to create download request")
 
     @staticmethod
-    def get_request_by_task_id(task_id: str) -> Optional[DownloadRequest]:
+    def get_request_by_task_id(task_id: str) -> DownloadRequest | None:
         """Get a download request by task ID."""
         with get_db() as conn:
             cursor = conn.cursor()
@@ -61,9 +70,9 @@ class DownloadRequestService:
     def update_request_status(
         task_id: str,
         status: str,
-        slskd_username: Optional[str] = None,
-        file_count: Optional[int] = None,
-        total_size: Optional[int] = None,
+        slskd_username: str | None = None,
+        file_count: int | None = None,
+        total_size: int | None = None,
     ) -> bool:
         """Update the status of a download request."""
         with get_db() as conn:
@@ -104,26 +113,30 @@ class DownloadRequestService:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                UPDATE download_requests 
+                UPDATE download_requests
                 SET status = ?, completed_files = ?, album_directory = ?, completed_at = ?
                 WHERE task_id = ?
             """,
-                ("completed", completed_files, album_directory, datetime.utcnow().isoformat(), task_id),
+                (
+                    "completed",
+                    completed_files,
+                    album_directory,
+                    datetime.utcnow().isoformat(),
+                    task_id,
+                ),
             )
 
             return cursor.rowcount > 0
 
     @staticmethod
-    def get_all_requests(
-        limit: int = 100, offset: int = 0
-    ) -> List[DownloadRequest]:
+    def get_all_requests(limit: int = 100, offset: int = 0) -> list[DownloadRequest]:
         """Get all download requests with pagination."""
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT * FROM download_requests 
-                ORDER BY timestamp DESC 
+                SELECT * FROM download_requests
+                ORDER BY timestamp DESC
                 LIMIT ? OFFSET ?
             """,
                 (limit, offset),
@@ -135,15 +148,15 @@ class DownloadRequestService:
     @staticmethod
     def get_requests_by_user(
         username: str, limit: int = 100, offset: int = 0
-    ) -> List[DownloadRequest]:
+    ) -> list[DownloadRequest]:
         """Get download requests for a specific user."""
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT * FROM download_requests 
-                WHERE username = ? 
-                ORDER BY timestamp DESC 
+                SELECT * FROM download_requests
+                WHERE username = ?
+                ORDER BY timestamp DESC
                 LIMIT ? OFFSET ?
             """,
                 (username, limit, offset),
@@ -155,15 +168,15 @@ class DownloadRequestService:
     @staticmethod
     def get_requests_by_vpn_ip(
         vpn_ip: str, limit: int = 100, offset: int = 0
-    ) -> List[DownloadRequest]:
+    ) -> list[DownloadRequest]:
         """Get download requests for a specific VPN IP."""
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT * FROM download_requests 
-                WHERE vpn_ip = ? 
-                ORDER BY timestamp DESC 
+                SELECT * FROM download_requests
+                WHERE vpn_ip = ?
+                ORDER BY timestamp DESC
                 LIMIT ? OFFSET ?
             """,
                 (vpn_ip, limit, offset),

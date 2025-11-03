@@ -1,9 +1,9 @@
 """Database connection and initialization."""
 
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator
 
 from app.core.logging import get_logger
 from config import settings
@@ -77,28 +77,28 @@ def init_db() -> None:
         # Create indexes for common queries
         cursor.execute(
             """
-            CREATE INDEX IF NOT EXISTS idx_download_requests_username 
+            CREATE INDEX IF NOT EXISTS idx_download_requests_username
             ON download_requests(username)
         """
         )
 
         cursor.execute(
             """
-            CREATE INDEX IF NOT EXISTS idx_download_requests_vpn_ip 
+            CREATE INDEX IF NOT EXISTS idx_download_requests_vpn_ip
             ON download_requests(vpn_ip)
         """
         )
 
         cursor.execute(
             """
-            CREATE INDEX IF NOT EXISTS idx_download_requests_status 
+            CREATE INDEX IF NOT EXISTS idx_download_requests_status
             ON download_requests(status)
         """
         )
 
         cursor.execute(
             """
-            CREATE INDEX IF NOT EXISTS idx_download_requests_timestamp 
+            CREATE INDEX IF NOT EXISTS idx_download_requests_timestamp
             ON download_requests(timestamp)
         """
         )
