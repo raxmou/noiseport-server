@@ -150,3 +150,29 @@ class DownloadedAlbumsResponse(BaseModel):
 
     count: int = Field(..., ge=0, description="Total number of downloaded albums")
     albums: list[DownloadedAlbum] = Field(..., description="List of downloaded albums")
+
+
+class DownloadRequestResponse(BaseModel):
+    """Response model for a download request record."""
+
+    id: int = Field(..., description="Request ID")
+    task_id: str = Field(..., description="Task ID")
+    artist: str = Field(..., description="Artist name")
+    album: str = Field(..., description="Album name")
+    username: str = Field(..., description="Username from Headscale VPN")
+    vpn_ip: str = Field(..., description="VPN IP address")
+    status: str = Field(..., description="Download status")
+    timestamp: str = Field(..., description="Request timestamp")
+    slskd_username: str | None = Field(None, description="SLSKD username who shared the album")
+    file_count: int = Field(default=0, description="Number of files in download")
+    completed_files: int = Field(default=0, description="Number of completed files")
+    total_size: int = Field(default=0, description="Total size in bytes")
+    album_directory: str | None = Field(None, description="Directory where album is stored")
+    completed_at: str | None = Field(None, description="Completion timestamp")
+
+
+class DownloadHistoryResponse(BaseModel):
+    """Response model for download history."""
+
+    count: int = Field(..., ge=0, description="Total number of requests")
+    requests: list[DownloadRequestResponse] = Field(..., description="List of download requests")
