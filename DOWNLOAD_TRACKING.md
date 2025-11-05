@@ -67,7 +67,7 @@ Initiates a download and creates a tracking record.
 - `artist` (required): Artist name
 - `album` (required): Album name
 - `vpn_ip` (required): Tailscale/Headscale VPN IP address
-- `username` (optional): Username, defaults to VPN IP if not provided
+- `username` (optional): Username, automatically resolved from Headscale API if not provided
 
 **Response**:
 ```json
@@ -174,12 +174,26 @@ Returns details for a specific download request.
 
 ## User Identification
 
-The frontend sends user information directly in the request body:
+The system supports multiple methods for user identification:
 
-1. **VPN IP**: Tailscale/Headscale VPN IP address (required)
-2. **Username**: Optional username, defaults to VPN IP if not provided
+1. **VPN IP** (required): Tailscale/Headscale VPN IP address sent from frontend
+2. **Username** (optional): Can be explicitly provided or automatically resolved
 
-Both frontend and backend are on the same Headscale VPN network, so the frontend can reliably provide its own VPN IP and username.
+### Username Resolution
+
+When a download request is received:
+1. If `username` is provided in the request body, it is used directly
+2. If `username` is not provided, the system attempts to resolve it from Headscale API using the VPN IP
+3. If Headscale resolution fails or is not configured, the username defaults to the VPN IP
+
+### Headscale Configuration
+
+To enable automatic username resolution, configure the following environment variables:
+
+- `HEADSCALE_URL`: Headscale API URL (e.g., `http://headscale:8080`)
+- `HEADSCALE_API_KEY`: Headscale API key for authentication
+
+The Headscale client uses the `/api/v1/machine` endpoint to lookup machines by IP address and extract the username.
 
 ## Docker Configuration
 

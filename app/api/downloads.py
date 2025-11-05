@@ -15,6 +15,7 @@ from app.models.schemas import (
 )
 from app.services import slskd_service
 from app.services.download_request_service import DownloadRequestService
+from app.services.headscale_service import headscale_client
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -97,6 +98,7 @@ def download_album(
     3. Enqueuing the files for download
 
     User information is tracked via VPN IP provided in the request body.
+    Username is resolved from Headscale if not provided.
 
     Returns immediately with a task ID for tracking.
     """
@@ -105,8 +107,13 @@ def download_album(
     # Get VPN IP from request body
     vpn_ip = request.vpn_ip
 
-    # Use provided username or fall back to VPN IP
-    username = request.username if request.username else vpn_ip
+    # Resolve username: use provided username, or resolve from Headscale, or fall back to VPN IP
+    username = request.username
+    if not username:
+        # Try to resolve from Headscale
+        resolved_username = headscale_client.resolve_username(vpn_ip)
+        username = resolved_username if resolved_username else vpn_ip
+        logger.info(f"Resolved username for IP {vpn_ip}: {username}")
 
     logger.info(
         f"Received download request: {request.artist} - {request.album} "
