@@ -8,14 +8,28 @@ class DownloadRequest(BaseModel):
 
     artist: str = Field(..., min_length=1, max_length=255, description="Artist name")
     album: str = Field(..., min_length=1, max_length=255, description="Album name")
+    vpn_ip: str = Field(
+        ..., min_length=1, max_length=50, description="Tailscale/Headscale VPN IP"
+    )
+    username: str | None = Field(
+        None, max_length=255, description="Username (optional, derived from VPN IP)"
+    )
 
-    @field_validator("artist", "album")
+    @field_validator("artist", "album", "vpn_ip")
     @classmethod
     def validate_non_empty_string(cls, v: str) -> str:
         """Validate that strings are not empty or whitespace only."""
         if not v or not v.strip():
             raise ValueError("Field cannot be empty or whitespace only")
         return v.strip()
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v: str | None) -> str | None:
+        """Validate username if provided."""
+        if v is not None and v.strip():
+            return v.strip()
+        return None
 
 
 class DownloadResponse(BaseModel):

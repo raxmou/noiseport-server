@@ -15,7 +15,12 @@ def client():
 @pytest.fixture
 def sample_download_request():
     """Sample download request data."""
-    return {"artist": "Test Artist", "album": "Test Album"}
+    return {
+        "artist": "Test Artist",
+        "album": "Test Album",
+        "vpn_ip": "100.64.0.100",
+        "username": "testuser",
+    }
 
 
 @pytest.fixture

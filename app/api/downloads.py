@@ -3,7 +3,7 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
 from app.core.exceptions import DownloadError, SearchTimeoutError, SlskdConnectionError
 from app.core.logging import get_logger
@@ -85,7 +85,7 @@ def background_download_album(
 
 @router.post("/download", response_model=DownloadResponse, tags=["Downloads"])
 def download_album(
-    request: DownloadRequest, background_tasks: BackgroundTasks, req: Request
+    request: DownloadRequest, background_tasks: BackgroundTasks
 ) -> DownloadResponse:
     """
     Download an album.
@@ -96,29 +96,17 @@ def download_album(
     2. Finding the best quality match (320kbps MP3 or FLAC preferred)
     3. Enqueuing the files for download
 
-    User information is tracked via Headscale VPN headers.
+    User information is tracked via VPN IP provided in the request body.
 
     Returns immediately with a task ID for tracking.
     """
     task_id = str(uuid.uuid4())
 
-    # Extract user info from Headscale VPN headers
-    # Headscale typically uses X-Forwarded-For or similar headers
-    # We'll try multiple common headers
-    vpn_ip = (
-        req.headers.get("X-Forwarded-For", "")
-        or req.headers.get("X-Real-IP", "")
-        or req.client.host
-        if req.client
-        else "unknown"
-    )
+    # Get VPN IP from request body
+    vpn_ip = request.vpn_ip
 
-    # Extract username from Headscale - typically in X-Headscale-User or custom header
-    username = (
-        req.headers.get("X-Headscale-User", "")
-        or req.headers.get("X-User", "")
-        or vpn_ip
-    )
+    # Use provided username or fall back to VPN IP
+    username = request.username if request.username else vpn_ip
 
     logger.info(
         f"Received download request: {request.artist} - {request.album} "

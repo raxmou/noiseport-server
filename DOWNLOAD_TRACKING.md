@@ -1,6 +1,6 @@
 # Download Request Tracking
 
-This document describes the download request tracking system that monitors which users requested which album downloads via the Headscale VPN.
+This document describes the download request tracking system that monitors which users requested which album downloads.
 
 ## Database Schema
 
@@ -14,8 +14,8 @@ The main table for tracking download requests.
 | `task_id` | TEXT | Unique task identifier (UUID) |
 | `artist` | TEXT | Artist name |
 | `album` | TEXT | Album name |
-| `username` | TEXT | Username from Headscale VPN (extracted from headers) |
-| `vpn_ip` | TEXT | VPN IP address of the requester |
+| `username` | TEXT | Username (provided by frontend or defaults to VPN IP) |
+| `vpn_ip` | TEXT | Tailscale/Headscale VPN IP address |
 | `status` | TEXT | Download status (see Status Values below) |
 | `timestamp` | TIMESTAMP | When the request was made |
 | `slskd_username` | TEXT | Username on SLSKD who shared the album |
@@ -53,17 +53,21 @@ The main table for tracking download requests.
 
 Initiates a download and creates a tracking record.
 
-**Request Headers** (automatically captured):
-- `X-Headscale-User` or `X-User`: Username from Headscale VPN
-- `X-Forwarded-For` or `X-Real-IP`: VPN IP address
-
 **Request Body**:
 ```json
 {
   "artist": "Artist Name",
-  "album": "Album Name"
+  "album": "Album Name",
+  "vpn_ip": "100.64.0.5",
+  "username": "alice@headscale.local"
 }
 ```
+
+**Fields**:
+- `artist` (required): Artist name
+- `album` (required): Album name
+- `vpn_ip` (required): Tailscale/Headscale VPN IP address
+- `username` (optional): Username, defaults to VPN IP if not provided
 
 **Response**:
 ```json
@@ -168,14 +172,14 @@ Returns details for a specific download request.
 }
 ```
 
-## User Identification via Headscale VPN
+## User Identification
 
-The system extracts user information from HTTP headers set by the Headscale VPN:
+The frontend sends user information directly in the request body:
 
-1. **Username**: Extracted from `X-Headscale-User` or `X-User` header
-2. **VPN IP**: Extracted from `X-Forwarded-For` or `X-Real-IP` header
+1. **VPN IP**: Tailscale/Headscale VPN IP address (required)
+2. **Username**: Optional username, defaults to VPN IP if not provided
 
-If these headers are not present, the system falls back to the client IP address.
+Both frontend and backend are on the same Headscale VPN network, so the frontend can reliably provide its own VPN IP and username.
 
 ## Docker Configuration
 
