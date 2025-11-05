@@ -26,13 +26,13 @@ class HeadscaleClient:
 
     def get_machine_by_ip(self, ip_address: str) -> dict | None:
         """
-        Get machine information by IP address.
+        Get node/machine information by IP address.
 
         Args:
             ip_address: The VPN IP address to lookup
 
         Returns:
-            Machine information dict or None if not found
+            Node information dict or None if not found
         """
         if not self.url or not self.api_key:
             logger.warning(
@@ -41,7 +41,7 @@ class HeadscaleClient:
             return None
 
         try:
-            # Get all nodes from Headscale
+            # Get all nodes from Headscale (API v1 uses /node endpoint)
             response = self.session.get(f"{self.url}/api/v1/node")
             response.raise_for_status()
             data = response.json()
@@ -74,21 +74,21 @@ class HeadscaleClient:
         Returns:
             Username or None if not found
         """
-        machine = self.get_machine_by_ip(ip_address)
-        if machine:
-            # Try to get the username from the machine's user field
-            user = machine.get("user", {})
+        node = self.get_machine_by_ip(ip_address)
+        if node:
+            # Try to get the username from the node's user field
+            user = node.get("user", {})
             if isinstance(user, dict):
                 username = user.get("name")
                 if username:
                     logger.info(f"Resolved IP {ip_address} to username: {username}")
                     return username
 
-            # Fallback to machine name if user not available
-            machine_name = machine.get("name")
-            if machine_name:
-                logger.info(f"Resolved IP {ip_address} to machine name: {machine_name}")
-                return machine_name
+            # Fallback to node name if user not available
+            node_name = node.get("name")
+            if node_name:
+                logger.info(f"Resolved IP {ip_address} to node name: {node_name}")
+                return node_name
 
         return None
 

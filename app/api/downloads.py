@@ -1,6 +1,8 @@
 """Download endpoints."""
 
+import json
 import uuid
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
@@ -16,9 +18,68 @@ from app.models.schemas import (
 from app.services import slskd_service
 from app.services.download_request_service import DownloadRequestService
 from app.services.headscale_service import headscale_client
+from config import settings
 
 logger = get_logger(__name__)
 router = APIRouter()
+
+
+def create_download_metadata(
+    artist: str,
+    album: str,
+    slskd_username: str,
+    vpn_username: str,
+    vpn_ip: str,
+    task_id: str,
+) -> None:
+    """
+    Create a metadata JSON file for the download.
+
+    The file is created in the expected download directory structure:
+    /music/downloads/{slskd_username}/{artist}/{album}/.noiseport_metadata.json
+    """
+    try:
+        # Construct the expected download path
+        # SLSKD downloads to /music/downloads/{slskd_username}/{path from file}
+        # The file paths typically include artist/album structure
+        base_path = Path(settings.host_music_path) / "downloads" / slskd_username
+
+        # Sanitize artist and album names for filesystem
+        safe_artist = "".join(
+            c if c.isalnum() or c in (" ", "-", "_") else "_" for c in artist
+        )
+        safe_album = "".join(
+            c if c.isalnum() or c in (" ", "-", "_") else "_" for c in album
+        )
+
+        # Create the expected directory path
+        download_dir = base_path / safe_artist / safe_album
+
+        # Ensure the directory exists
+        download_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create metadata file
+        metadata = {
+            "vpn_username": vpn_username,
+            "vpn_ip": vpn_ip,
+            "task_id": task_id,
+            "artist": artist,
+            "album": album,
+            "slskd_username": slskd_username,
+        }
+
+        metadata_file = download_dir / ".noiseport_metadata.json"
+        with open(metadata_file, "w") as f:
+            json.dump(metadata, f, indent=2)
+
+        logger.info(f"[Task {task_id}] Created metadata file: {metadata_file}")
+
+    except Exception as e:
+        # Log error but don't fail the download
+        logger.error(
+            f"[Task {task_id}] Failed to create metadata file: {e}",
+            exc_info=True,
+        )
 
 
 def background_download_album(
@@ -55,6 +116,16 @@ def background_download_album(
             slskd_username=slskd_username,
             file_count=len(files),
             total_size=sum(f.size or 0 for f in files),
+        )
+
+        # Create metadata JSON file with VPN user info
+        create_download_metadata(
+            artist=artist,
+            album=album,
+            slskd_username=slskd_username,
+            vpn_username=username,
+            vpn_ip=vpn_ip,
+            task_id=task_id,
         )
 
         # Enqueue download

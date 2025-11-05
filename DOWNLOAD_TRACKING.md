@@ -193,7 +193,33 @@ To enable automatic username resolution, configure the following environment var
 - `HEADSCALE_URL`: Headscale API URL (e.g., `http://headscale:8080`)
 - `HEADSCALE_API_KEY`: Headscale API key for authentication
 
-The Headscale client uses the `/api/v1/machine` endpoint to lookup machines by IP address and extract the username.
+The Headscale client uses the `/api/v1/node` endpoint to lookup nodes by IP address and extract the username.
+
+## Download Metadata Files
+
+When a download is triggered, the system automatically creates a metadata JSON file alongside the downloaded content. This file tracks who requested the download.
+
+### Metadata File Location
+
+The metadata file is created at:
+```
+/music/downloads/{slskd_username}/{artist}/{album}/.noiseport_metadata.json
+```
+
+### Metadata File Contents
+
+```json
+{
+  "vpn_username": "alice@headscale.local",
+  "vpn_ip": "100.64.0.50",
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "artist": "Artist Name",
+  "album": "Album Name",
+  "slskd_username": "shareuser123"
+}
+```
+
+This allows easy identification of who requested each album download, even after the files have been processed or moved.
 
 ## Docker Configuration
 

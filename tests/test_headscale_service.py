@@ -31,7 +31,7 @@ def test_resolve_username_success(mock_get):
     # Mock Headscale API response
     mock_response = Mock()
     mock_response.json.return_value = {
-        "machines": [
+        "nodes": [
             {
                 "id": "1",
                 "name": "alice-laptop",
@@ -53,7 +53,7 @@ def test_resolve_username_success(mock_get):
     username = client.resolve_username("100.64.0.1")
 
     assert username == "alice@headscale.local"
-    mock_get.assert_called_once_with("http://headscale:8080/api/v1/machine")
+    mock_get.assert_called_once_with("http://headscale:8080/api/v1/node")
 
 
 @pytest.mark.unit
@@ -62,7 +62,7 @@ def test_resolve_username_not_found(mock_get):
     """Test username resolution when IP not found."""
     mock_response = Mock()
     mock_response.json.return_value = {
-        "machines": [
+        "nodes": [
             {
                 "id": "1",
                 "name": "alice-laptop",
@@ -86,7 +86,7 @@ def test_resolve_username_fallback_to_machine_name(mock_get):
     """Test username resolution falls back to machine name if user not available."""
     mock_response = Mock()
     mock_response.json.return_value = {
-        "machines": [
+        "nodes": [
             {
                 "id": "1",
                 "name": "test-machine",
