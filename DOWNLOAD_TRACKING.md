@@ -179,16 +179,22 @@ If these headers are not present, the system falls back to the client IP address
 
 ## Docker Configuration
 
-The SQLite database is persisted via a Docker volume:
+SQLite is an embedded database (library, not a separate server), so it runs within the FastAPI container. The database file is persisted via a Docker volume mount:
 
 ```yaml
+# All docker-compose files include:
 volumes:
   - ./data:/app/data
 environment:
   - DATABASE_URL=sqlite:////app/data/noiseport.db
 ```
 
-This ensures the database persists across container restarts.
+This configuration is present in:
+- `docker-compose.dev.yml` - Development environment with hot reload
+- `docker-compose.wizard.yml` - Setup wizard mode
+- `docker-compose.full.yml.template` - Production stack template
+
+The database file `noiseport.db` is stored in the `./data` directory on the host and persists across container restarts.
 
 ## Future Enhancements
 
