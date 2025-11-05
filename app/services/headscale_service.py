@@ -41,20 +41,20 @@ class HeadscaleClient:
             return None
 
         try:
-            # Get all machines from Headscale
-            response = self.session.get(f"{self.url}/api/v1/machine")
+            # Get all nodes from Headscale
+            response = self.session.get(f"{self.url}/api/v1/node")
             response.raise_for_status()
             data = response.json()
 
-            machines = data.get("machines", [])
+            nodes = data.get("nodes", [])
 
-            # Find machine with matching IP
-            for machine in machines:
-                ip_addresses = machine.get("ipAddresses", [])
+            # Find node with matching IP
+            for node in nodes:
+                ip_addresses = node.get("ipAddresses", [])
                 if ip_address in ip_addresses:
-                    return machine
+                    return node
 
-            logger.warning(f"No machine found with IP address: {ip_address}")
+            logger.warning(f"No node found with IP address: {ip_address}")
             return None
 
         except requests.exceptions.RequestException as e:
