@@ -8,6 +8,11 @@ jellyfin/*
 docker-compose.full.yml
 start-music-stack.sh
 
+# Database files
+data/
+*.db
+*.db-journal
+
 # Wizard-generated config files (keep .gitkeep and README.md)
 wizard-config/*
 !wizard-config/.gitkeep

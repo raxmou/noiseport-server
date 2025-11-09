@@ -109,6 +109,14 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Headscale/Tailscale
+    headscale_url: str = Field(
+        default="", description="Headscale API URL (e.g., http://headscale:8080)"
+    )
+    headscale_api_key: str = Field(
+        default="", description="Headscale API key for authentication"
+    )
+
     @field_validator("log_level")
     @classmethod
     def validate_log_level(cls, v: str) -> str:

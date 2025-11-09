@@ -47,15 +47,23 @@ def test_download_endpoint_validation(client):
     response = client.post("/api/v1/downloads/download", json={})
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
+    # Test missing vpn_ip
+    response = client.post(
+        "/api/v1/downloads/download", json={"artist": "Test", "album": "Test"}
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
     # Test empty strings
     response = client.post(
-        "/api/v1/downloads/download", json={"artist": "", "album": ""}
+        "/api/v1/downloads/download",
+        json={"artist": "", "album": "", "vpn_ip": ""},
     )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     # Test whitespace only
     response = client.post(
-        "/api/v1/downloads/download", json={"artist": "   ", "album": "   "}
+        "/api/v1/downloads/download",
+        json={"artist": "   ", "album": "   ", "vpn_ip": "   "},
     )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 

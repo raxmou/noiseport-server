@@ -663,9 +663,9 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
             try:
                 headers = {
                     "Authorization": (
-                        f"MediaBrowser UserId=\"{config.get('username')}\", "
+                        f'MediaBrowser UserId="{config.get("username")}", '
                         f'Client="SetupWizard", Device="SetupWizard", '
-                        f"Token=\"{config.get('password')}\""
+                        f'Token="{config.get("password")}"'
                     )
                 }
                 resp = requests.get(

@@ -35,6 +35,15 @@ def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     logger.info("Initializing FastAPI application")
 
+    # Initialize database
+    from app.database import init_db
+
+    try:
+        init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}", exc_info=True)
+
     # Create FastAPI app
     app = FastAPI(
         title=settings.app_name,

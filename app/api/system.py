@@ -3,11 +3,12 @@
 import time
 from datetime import datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from prometheus_client import generate_latest
 
 from app.core.logging import get_logger
 from app.models.schemas import APIInfo, HealthResponse
+from app.services.headscale_service import headscale_client
 from config import settings
 
 logger = get_logger(__name__)
@@ -15,6 +16,16 @@ router = APIRouter()
 
 # Application start time for uptime calculation
 start_time = time.time()
+
+
+@router.get("/ping", tags=["System"])
+def ping(ip_address: str, request: Request):
+    return {
+        "message": "pong",
+        "client_host": request.client.host,
+        "ip_address": ip_address,
+        "headscale_user": headscale_client.resolve_username(ip_address),
+    }
 
 
 @router.get("/health", response_model=HealthResponse, tags=["System"])
