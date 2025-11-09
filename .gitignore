@@ -1,3 +1,4 @@
+noiseport.db
 # Ignore generated Soulseek config with credentials
 slskd/slskd.yml
 sandbox.py

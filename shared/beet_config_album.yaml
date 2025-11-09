@@ -15,7 +15,24 @@ paths:
   default: $albumartist/$album%aunique{}/$track $title
   singleton: Non-Album/$artist/$title
 
-plugins: fetchart lastgenre lyrics scrub zero
+plugins: fetchart lastgenre lyrics scrub zero hook filetote
+
+
+filetote:
+  filenames: noiseport_metadata.json
+
+
+scrub:
+  auto: no
+  
+hook:
+  hooks:
+    - event: item_moved
+      command: /shared/scripts/tag_after_import.sh "{source}" "{destination}"
+
+types:
+  DOWNLOADED_BY: str
+
 
 fetchart:
   sources: coverart itunes amazon albumart

@@ -1,4 +1,18 @@
 FROM slskd/slskd:latest
+
+# system deps for jq + Python venv + tag libs (mutagen)
 RUN apt-get update \
-    && apt-get install -y beets jq python3-requests python3-pylast \
-    && rm -rf /var/lib/apt/lists/*
+  && apt-get install -y jq python3-full python3-venv python3-pip git \
+  && rm -rf /var/lib/apt/lists/*
+
+# create a venv for beets + plugins
+RUN python3 -m venv /opt/beets \
+  && /opt/beets/bin/pip install --no-cache-dir --upgrade pip \
+  && /opt/beets/bin/pip install --no-cache-dir \
+       beets beets-filetote beets-extrafiles mutagen pylast requests langdetect beautifulsoup4
+
+# ensure our venv's beet is first in PATH for all shells + scripts
+ENV PATH="/opt/beets/bin:${PATH}"
+
+# (optional) show what we got
+RUN beet --version
