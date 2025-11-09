@@ -3,7 +3,6 @@
 import logging
 import os
 import socket
-from typing import Optional
 
 import docker
 from docker.errors import DockerException, NotFound
@@ -235,7 +234,7 @@ class ComposeRunner:
         compose_file: str = "docker-compose.full.yml",
         build: bool = False,
         detach: bool = True,
-        log_file: Optional[str] = None,
+        log_file: str | None = None,
     ) -> tuple[bool, str]:
         """
         Bring up the stack and write logs to a file.
@@ -258,7 +257,7 @@ class ComposeRunner:
             args.append("-d")
 
         exit_code, stdout, stderr = self._run_compose_command(args, capture_output=True)
-        
+
         # Write logs to file if path provided
         if log_file:
             try:
@@ -375,9 +374,13 @@ class ComposeRunner:
         # Check 2: Does the compose file exist?
         if self.wizard_config_path:
             # Check in container path first
-            container_compose_path = os.path.join(settings.wizard_config_dir, compose_file)
+            container_compose_path = os.path.join(
+                settings.wizard_config_dir, compose_file
+            )
             if not os.path.exists(container_compose_path):
-                issues.append(f"Compose file not found in wizard config: {compose_file}")
+                issues.append(
+                    f"Compose file not found in wizard config: {compose_file}"
+                )
 
         # Check 3: Is Docker socket accessible?
         try:

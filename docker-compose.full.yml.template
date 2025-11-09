@@ -37,10 +37,12 @@ services:
       - JELLYFIN_URL=http://jellyfin:8096
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - DATABASE_URL=sqlite:////app/data/noiseport.db
     volumes:
       - {{HOST_MUSIC_PATH}}/downloads:/music/downloads
       - {{HOST_MUSIC_PATH}}/complete:/music/complete
       - ./env:/app/.env # Mount wizard-generated .env file
+      - ./data:/app/data # Mount data directory for SQLite database
     depends_on:
       - slskd
     restart: unless-stopped
