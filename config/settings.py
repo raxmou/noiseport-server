@@ -98,7 +98,10 @@ class Settings(BaseSettings):
         default="./music",
         description="Host system music directory path (downloads and complete subdirectories will be created)",
     )
-
+    download_path: str = Field(
+        default="/music/downloads",
+        description="Music download directory path",
+    )
     # Wizard Configuration
     wizard_config_dir: str = Field(
         default="./wizard-config",
