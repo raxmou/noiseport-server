@@ -37,12 +37,13 @@ def create_download_metadata(
     Create a metadata JSON file for the download.
 
     The file is created in the expected download directory structure:
-    /music/downloads/{album_x}/.noiseport_metadata.json
+    /music/downloads/{album_x}/noiseport_metadata.json
     """
     try:
         # Extract the parent folder name from the SLSKD file path
         parent_folder = Path(slskd_file_path).parent.name
-
+        print(slskd_file_path)
+        print(parent_folder)
         # Construct the expected download path
         base_path = Path(settings.host_music_path) / "downloads" / parent_folder
 
@@ -59,7 +60,7 @@ def create_download_metadata(
             "slskd_username": slskd_username,
         }
 
-        metadata_file = base_path / ".noiseport_metadata.json"
+        metadata_file = base_path / "noiseport_metadata.json"
         with open(metadata_file, "w") as f:
             json.dump(metadata, f, indent=2)
 
@@ -117,7 +118,7 @@ def background_download_album(
             vpn_username=username,
             vpn_ip=vpn_ip,
             task_id=task_id,
-            slskd_file_path=files[0].path if files else "",  # Use first file's path
+            slskd_file_path=files[0].filename if files else "",  # Use first file's path
         )
 
         # Enqueue download
