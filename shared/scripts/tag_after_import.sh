@@ -3,7 +3,7 @@ set -eu
 
 LOG_FILE="/shared/tag_album.log"
 META_NAME="noiseport_metadata.json"
-
+log()"Tagging script started"
 mkdir -p "$(dirname "$LOG_FILE")"; touch "$LOG_FILE"
 log(){ echo "$(date '+%F %T') - $*" >>"$LOG_FILE"; }
 
