@@ -11,8 +11,12 @@ This directory contains scripts used by the noiseport-server for music import an
 **Workflow**:
 1. Receives album directory path from slskd via `SLSKD_SCRIPT_DATA` environment variable
 2. Runs beets import on the downloaded album
-3. After successful import, calls post-import tagging script
-4. Logs all operations to `/shared/import_album.log`
+3. After successful import, locates the imported album using two strategies:
+   - **Strategy 1**: Find `noiseport_metadata.json` file moved by filetote plugin (most reliable)
+   - **Strategy 2**: Query beets for recently added items (last 5 minutes)
+4. Calls post-import tagging script if album location found
+5. Falls back to `item_moved` hook strategy if location cannot be determined
+6. Logs all operations to `/shared/import_album.log`
 
 **Environment Variables**:
 - `SLSKD_SCRIPT_DATA`: JSON data from slskd containing album information
