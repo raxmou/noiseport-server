@@ -42,8 +42,7 @@ def create_download_metadata(
     try:
         # Extract the parent folder name from the SLSKD file path
         parent_folder = Path(slskd_file_path).parent.name
-        print(slskd_file_path)
-        print(parent_folder)
+
         # Construct the expected download path
         base_path = Path(settings.host_music_path) / "downloads" / parent_folder
 
