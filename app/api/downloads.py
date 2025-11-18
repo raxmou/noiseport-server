@@ -24,6 +24,24 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
+def sanitize_path_for_slskd(path: str) -> str:
+    """
+    Sanitize path to match how slskd sanitizes directory names.
+    
+    slskd replaces certain characters when creating local directories:
+    - Parentheses () are replaced with underscores _
+    
+    Args:
+        path: The original path string
+        
+    Returns:
+        Sanitized path string matching slskd's behavior
+    """
+    # Replace parentheses with underscores to match slskd's sanitization
+    sanitized = path.replace("(", "_").replace(")", "_")
+    return sanitized
+
+
 def create_download_metadata(
     artist: str,
     album: str,
@@ -42,6 +60,9 @@ def create_download_metadata(
     try:
         # Extract the parent folder name from the SLSKD file path
         parent_folder = Path(slskd_file_path).parent.name
+        
+        # Sanitize the folder name to match how slskd sanitizes it when downloading
+        parent_folder = sanitize_path_for_slskd(parent_folder)
 
         # Construct the expected download path
         base_path = Path(settings.host_music_path) / "downloads" / parent_folder
