@@ -7,6 +7,15 @@ const defaultConfig: WizardConfiguration = {
     enabled: false,
     ip: '',
   },
+  headscale: {
+    enabled: false,
+    setupMode: 'domain',
+    domain: '',
+    serverIp: '',
+    serverUrl: '',
+    apiKey: '',
+    baseDomain: 'headscale.local',
+  },
   navidrome: {
     enabled: false,
     url: '',

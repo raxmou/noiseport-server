@@ -1,0 +1,63 @@
+---
+# Headscale and Headplane Docker Compose Configuration
+# This file provides self-hosted VPN coordination (Headscale) and web UI (Headplane)
+# Can be used standalone or integrated with the main NoisePort stack
+
+version: "3.8"
+
+services:
+  headscale:
+    image: headscale/headscale:latest
+    container_name: headscale
+    restart: unless-stopped
+    ports:
+      - "8080:8080"  # HTTP API and web interface
+      - "9090:9090"  # Metrics endpoint
+    volumes:
+      - ./wizard-config/headscale/config:/etc/headscale
+      - ./wizard-config/headscale/data:/var/lib/headscale
+    command: headscale serve
+    environment:
+      # Server URL - will be replaced by wizard based on mode
+      - HEADSCALE_SERVER_URL=${HEADSCALE_SERVER_URL:-http://localhost:8080}
+      # Listen address
+      - HEADSCALE_LISTEN_ADDR=0.0.0.0:8080
+      # Metrics
+      - HEADSCALE_METRICS_LISTEN_ADDR=0.0.0.0:9090
+    networks:
+      - headscale-net
+    labels:
+      glance.name: Headscale VPN Server
+      glance.hide: false
+      glance.icon: si:wireguard
+      glance.url: http://localhost:8080
+      glance.description: "Self-hosted VPN coordination server"
+
+  headplane:
+    image: ghcr.io/tale/headplane:latest
+    container_name: headplane
+    restart: unless-stopped
+    ports:
+      - "3000:3000"  # Web UI port
+    environment:
+      # Headscale connection
+      - HEADSCALE_URL=http://headscale:8080
+      # API key - will be set by wizard
+      - HEADSCALE_API_KEY=${HEADSCALE_API_KEY:-}
+      # Optional: custom branding
+      - DISABLE_API_KEY_LOGIN=false
+    depends_on:
+      - headscale
+    networks:
+      - headscale-net
+    labels:
+      glance.name: Headplane Web UI
+      glance.hide: false
+      glance.icon: si:react
+      glance.url: http://localhost:3000
+      glance.description: "Web interface for Headscale management"
+
+networks:
+  headscale-net:
+    driver: bridge
+    name: headscale-net

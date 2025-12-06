@@ -56,6 +56,15 @@ async def get_current_config() -> WizardConfiguration:
                 "enabled": getattr(settings, "tailscale_enabled", False),
                 "ip": getattr(settings, "tailscale_ip", ""),
             },
+            headscale={
+                "enabled": getattr(settings, "headscale_enabled", False),
+                "setupMode": getattr(settings, "headscale_setup_mode", "domain"),
+                "domain": getattr(settings, "headscale_domain", ""),
+                "serverIp": getattr(settings, "headscale_server_ip", ""),
+                "serverUrl": getattr(settings, "headscale_server_url", ""),
+                "apiKey": getattr(settings, "headscale_api_key", ""),
+                "baseDomain": getattr(settings, "headscale_base_domain", "headscale.local"),
+            },
             navidrome={
                 "enabled": settings.navidrome_enabled,
                 "url": settings.navidrome_url,
@@ -122,6 +131,14 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             # Tailscale
             "TAILSCALE_ENABLED": str(config.tailscale.enabled).lower(),
             "TAILSCALE_IP": config.tailscale.ip,
+            # Headscale
+            "HEADSCALE_ENABLED": str(config.headscale.enabled).lower(),
+            "HEADSCALE_SETUP_MODE": config.headscale.setupMode,
+            "HEADSCALE_DOMAIN": config.headscale.domain,
+            "HEADSCALE_SERVER_IP": config.headscale.serverIp,
+            "HEADSCALE_SERVER_URL": config.headscale.serverUrl,
+            "HEADSCALE_API_KEY": config.headscale.apiKey,
+            "HEADSCALE_BASE_DOMAIN": config.headscale.baseDomain,
             # Navidrome
             "NAVIDROME_ENABLED": str(config.navidrome.enabled).lower(),
             "NAVIDROME_URL": config.navidrome.url,
@@ -207,6 +224,18 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             for key in ["TAILSCALE_ENABLED", "TAILSCALE_IP"]:
                 f.write(f"{key}={existing_vars.get(key, '')}\n")
 
+            f.write("\n# Headscale\n")
+            for key in [
+                "HEADSCALE_ENABLED",
+                "HEADSCALE_SETUP_MODE",
+                "HEADSCALE_DOMAIN",
+                "HEADSCALE_SERVER_IP",
+                "HEADSCALE_SERVER_URL",
+                "HEADSCALE_API_KEY",
+                "HEADSCALE_BASE_DOMAIN",
+            ]:
+                f.write(f"{key}={existing_vars.get(key, '')}\n")
+
             f.write("\n# Navidrome\n")
             for key in [
                 "NAVIDROME_ENABLED",
@@ -264,6 +293,13 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             written_keys = {
                 "TAILSCALE_ENABLED",
                 "TAILSCALE_IP",
+                "HEADSCALE_ENABLED",
+                "HEADSCALE_SETUP_MODE",
+                "HEADSCALE_DOMAIN",
+                "HEADSCALE_SERVER_IP",
+                "HEADSCALE_SERVER_URL",
+                "HEADSCALE_API_KEY",
+                "HEADSCALE_BASE_DOMAIN",
                 "NAVIDROME_ENABLED",
                 "NAVIDROME_URL",
                 "NAVIDROME_USERNAME",
@@ -323,6 +359,52 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 )
         except Exception as e:
             logger.warning(f"Failed to generate slskd.yml: {e}")
+
+        # Generate Headscale config from template if enabled
+        if config.headscale.enabled:
+            try:
+                import os
+
+                # Headscale config template
+                headscale_template_path = str(
+                    PROJECT_ROOT / "config" / "headscale" / "config.yaml.template"
+                )
+                headscale_config_dir = os.path.join(
+                    wizard_config_dir, "headscale", "config"
+                )
+                headscale_config_path = os.path.join(
+                    headscale_config_dir, "config.yaml"
+                )
+                os.makedirs(headscale_config_dir, exist_ok=True)
+
+                # Also create data directory for Headscale
+                headscale_data_dir = os.path.join(wizard_config_dir, "headscale", "data")
+                os.makedirs(headscale_data_dir, exist_ok=True)
+
+                if os.path.exists(headscale_template_path):
+                    with open(headscale_template_path) as f:
+                        template = f.read()
+
+                    # Replace placeholders
+                    config_content = template.replace(
+                        "{{HEADSCALE_SERVER_URL}}", config.headscale.serverUrl or ""
+                    )
+                    config_content = config_content.replace(
+                        "{{HEADSCALE_BASE_DOMAIN}}",
+                        config.headscale.baseDomain or "headscale.local",
+                    )
+
+                    with open(headscale_config_path, "w") as f:
+                        f.write(config_content)
+                    logger.info(
+                        f"Generated Headscale config from template at {headscale_config_path}"
+                    )
+                else:
+                    logger.warning(
+                        f"Headscale config template not found at {headscale_template_path}, skipping generation"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to generate Headscale config: {e}")
 
         logger.info("Configuration saved successfully")
 

@@ -5,6 +5,7 @@ import SpotifyStep from './steps/SpotifyStep';
 import SoulseekStep from './steps/SoulseekStep';
 import MusicPathsStep from './steps/MusicPathsStep';
 import TailscaleStep from './steps/TailscaleStep';
+import HeadscaleStep from './steps/HeadscaleStep';
 import FeaturesStep from './steps/FeaturesStep';
 import SummaryStep from './steps/SummaryStep';
 
@@ -13,6 +14,13 @@ const steps: WizardStep[] = [
     id: 'tailscale',
     title: 'Tailscale VPN',
     description: 'Set up Tailscale VPN for secure remote access',
+    completed: false,
+    valid: false,
+  },
+  {
+    id: 'headscale',
+    title: 'Headscale VPN',
+    description: 'Set up self-hosted Headscale VPN',
     completed: false,
     valid: false,
   },
@@ -107,7 +115,7 @@ export default function SetupWizard() {
         );
       case 1:
         return (
-          <MusicPathsStep
+          <HeadscaleStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(1, valid)}
@@ -115,7 +123,7 @@ export default function SetupWizard() {
         );
       case 2:
         return (
-          <SoulseekStep
+          <MusicPathsStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(2, valid)}
@@ -123,7 +131,7 @@ export default function SetupWizard() {
         );
       case 3:
         return (
-          <SpotifyStep
+          <SoulseekStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(3, valid)}
@@ -131,7 +139,7 @@ export default function SetupWizard() {
         );
       case 4:
         return (
-          <FeaturesStep
+          <SpotifyStep
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(4, valid)}
@@ -139,9 +147,17 @@ export default function SetupWizard() {
         );
       case 5:
         return (
+          <FeaturesStep
+            config={config}
+            onUpdate={updateConfig}
+            onValidation={(valid) => handleStepValidation(5, valid)}
+          />
+        );
+      case 6:
+        return (
           <SummaryStep
             config={config}
-            onValidation={(valid) => handleStepValidation(5, valid)}
+            onValidation={(valid) => handleStepValidation(6, valid)}
           />
         );
       default:
