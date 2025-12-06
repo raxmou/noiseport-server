@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import stat
 import subprocess
 import threading
 from pathlib import Path
@@ -116,8 +117,6 @@ async def get_current_config() -> WizardConfiguration:
 @router.post("/config")
 async def save_configuration(config: WizardConfiguration) -> JSONResponse:
     """Save the configuration to environment file."""
-    import os
-
     print(config)
     try:
         # Get wizard config directory from settings (environment variable or default)
@@ -333,8 +332,6 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
 
         # Generate slskd.yml from template with Soulseek credentials
         try:
-            import os
-
             # slskd directory is mounted at /app/slskd in the container
             slskd_template_path = str(PROJECT_ROOT / "slskd" / "slskd.yml.template")
             # Write slskd.yml to wizard-config directory
@@ -363,8 +360,6 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
         # Generate Headscale config from template if enabled
         if config.headscale.enabled:
             try:
-                import os
-
                 # Headscale config template
                 headscale_template_path = str(
                     PROJECT_ROOT / "config" / "headscale" / "config.yaml.template"
@@ -410,8 +405,6 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
 
         # Generate full docker-compose file with user-specified host paths
         try:
-            import os
-
             # Read the template (mounted at /app in container)
             template_path = str(PROJECT_ROOT / f"{DOCKER_COMPOSE_FULL_FILE}.template")
             if os.path.exists(template_path):
@@ -432,9 +425,6 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                     f.write(compose_content)
 
                 # Create directories with proper permissions
-                import os
-                import stat
-
                 host_music_path = env_vars["HOST_MUSIC_PATH"]
                 download_path = f"{host_music_path}/downloads"
                 complete_path = f"{host_music_path}/complete"
