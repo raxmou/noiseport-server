@@ -1,6 +1,15 @@
 """Configuration models for the setup wizard."""
 
+from enum import Enum
+
 from pydantic import BaseModel, Field
+
+
+class HeadscaleSetupMode(str, Enum):
+    """Headscale setup mode options."""
+
+    DOMAIN = "domain"
+    IP = "ip"
 
 
 class NavidromeConfig(BaseModel):
@@ -74,9 +83,9 @@ class HeadscaleConfig(BaseModel):
     """Headscale VPN configuration."""
 
     enabled: bool = Field(default=False, description="Enable Headscale integration")
-    setupMode: str = Field(
-        default="domain",
-        description="Setup mode: 'domain' or 'ip'",
+    setupMode: HeadscaleSetupMode = Field(
+        default=HeadscaleSetupMode.DOMAIN,
+        description="Setup mode: domain-based or IP-based",
     )
     domain: str = Field(default="", description="Domain name for Headscale server")
     serverIp: str = Field(

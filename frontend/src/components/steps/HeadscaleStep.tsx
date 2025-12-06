@@ -156,12 +156,19 @@ export default function HeadscaleStep({
 
     setConnectionStatus("testing");
     setConnectionMessage(null);
+    
+    // Create AbortController for timeout (better browser compatibility)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
     try {
       const healthUrl = `${config.headscale.serverUrl}/health`;
       const response = await fetch(healthUrl, {
         method: "GET",
-        signal: AbortSignal.timeout(5000),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         setConnectionStatus("success");
@@ -184,8 +191,9 @@ export default function HeadscaleStep({
         );
       }
     } catch (error) {
+      clearTimeout(timeoutId);
       setConnectionStatus("error");
-      if (error instanceof Error && error.name === "TimeoutError") {
+      if (error instanceof Error && error.name === "AbortError") {
         setConnectionMessage(
           "Connection timed out. Make sure Headscale is running and accessible."
         );
