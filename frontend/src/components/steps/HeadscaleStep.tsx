@@ -7,9 +7,7 @@ import {
   TextInput,
   Paper,
   Alert,
-  Anchor,
   Code,
-  Select,
 } from "../ui";
 
 interface Props {
@@ -80,7 +78,7 @@ export default function HeadscaleStep({
     });
   };
 
-  const handleSetupModeChange = (value: string | null) => {
+  const handleSetupModeChange = (value: string) => {
     if (value === "domain" || value === "ip") {
       const updates: Partial<WizardConfiguration["headscale"]> = {
         setupMode: value,
@@ -279,17 +277,48 @@ export default function HeadscaleStep({
 
         {config.headscale.enabled && (
           <div className="space-y-4">
-            <Select
-              label="Setup Mode"
-              value={config.headscale.setupMode}
-              onChange={handleSetupModeChange}
-              data={[
-                { value: "domain", label: "Domain-based (HTTPS)" },
-                { value: "ip", label: "IP-based (HTTP)" },
-              ]}
-              description="Choose how you want to access your Headscale server"
-              required
-            />
+            <div>
+              <label className="block text-sm font-medium mb-3">
+                Setup Mode <span className="text-red-500">*</span>
+              </label>
+              <p className="text-sm text-neutral-400 mb-3">
+                Choose how you want to access your Headscale server
+              </p>
+              <div className="space-y-2">
+                <label className="flex items-center p-3 border border-neutral-700 rounded-lg cursor-pointer hover:bg-neutral-800 transition-colors">
+                  <input
+                    type="radio"
+                    name="setupMode"
+                    value="domain"
+                    checked={config.headscale.setupMode === "domain"}
+                    onChange={(e) => handleSetupModeChange(e.target.value)}
+                    className="mr-3"
+                  />
+                  <div>
+                    <div className="font-medium">Domain-based (HTTPS)</div>
+                    <div className="text-sm text-neutral-400">
+                      Use a domain name with HTTPS (recommended for production)
+                    </div>
+                  </div>
+                </label>
+                <label className="flex items-center p-3 border border-neutral-700 rounded-lg cursor-pointer hover:bg-neutral-800 transition-colors">
+                  <input
+                    type="radio"
+                    name="setupMode"
+                    value="ip"
+                    checked={config.headscale.setupMode === "ip"}
+                    onChange={(e) => handleSetupModeChange(e.target.value)}
+                    className="mr-3"
+                  />
+                  <div>
+                    <div className="font-medium">IP-based (HTTP)</div>
+                    <div className="text-sm text-neutral-400">
+                      Use IP address directly (simpler for testing/local networks)
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
 
             {config.headscale.setupMode === "domain" && (
               <>
@@ -415,16 +444,20 @@ export default function HeadscaleStep({
                   you'll need to create this API key in Headscale. Use the
                   command:
                 </p>
-                <Code block className="mt-2">
-                  {`docker exec headscale headscale apikeys create`}
-                </Code>
+                <div className="mt-2">
+                  <Code block>
+                    {`docker exec headscale headscale apikeys create`}
+                  </Code>
+                </div>
                 <p className="text-sm mt-2">
                   Then update this field with the generated key, or use the one
                   generated here and create it with:
                 </p>
-                <Code block className="mt-2">
-                  {`docker exec headscale headscale apikeys create --expiration 0`}
-                </Code>
+                <div className="mt-2">
+                  <Code block>
+                    {`docker exec headscale headscale apikeys create --expiration 0`}
+                  </Code>
+                </div>
               </Alert>
             </div>
 
@@ -500,16 +533,20 @@ export default function HeadscaleStep({
           </li>
           <li>
             <strong>Create a namespace/user</strong> in Headscale:
-            <Code block className="mt-2">
-              docker exec headscale headscale users create myuser
-            </Code>
+            <div className="mt-2">
+              <Code block>
+                docker exec headscale headscale users create myuser
+              </Code>
+            </div>
           </li>
           <li>
             <strong>Generate a pre-auth key</strong> for your devices:
-            <Code block className="mt-2">
-              docker exec headscale headscale preauthkeys create --user myuser
-              --reusable --expiration 24h
-            </Code>
+            <div className="mt-2">
+              <Code block>
+                docker exec headscale headscale preauthkeys create --user myuser
+                --reusable --expiration 24h
+              </Code>
+            </div>
           </li>
           <li>
             <strong>Install Tailscale client</strong> on your devices and
