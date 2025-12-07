@@ -416,7 +416,13 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                         f"Caddyfile template not found at {caddy_template_path}, using default"
                     )
                     caddy_content = f"""{domain or "localhost"} {{
+    # Headscale API (root path for Tailscale clients)
     reverse_proxy headscale:8080
+
+    # Headplane admin UI
+    handle /admin* {{
+        reverse_proxy headplane:3000
+    }}
 }}
 """
 
@@ -1003,7 +1009,7 @@ async def launch_headscale() -> JSONResponse:
     """
     try:
         wizard_config_dir = settings.wizard_config_dir
-        
+
         # Ensure Headscale config directory and files exist before launching
         headscale_config_dir = os.path.join(wizard_config_dir, "headscale", "config")
         headscale_data_dir = os.path.join(wizard_config_dir, "headscale", "data")
@@ -1028,7 +1034,13 @@ async def launch_headscale() -> JSONResponse:
                             break
 
             default_caddyfile = f"""{default_domain} {{
+    # Headscale API (root path for Tailscale clients)
     reverse_proxy headscale:8080
+
+    # Headplane admin UI
+    handle /admin* {{
+        reverse_proxy headplane:3000
+    }}
 }}
 """
             with open(caddy_config_path, "w") as f:
@@ -1038,18 +1050,18 @@ async def launch_headscale() -> JSONResponse:
         # Create a modified docker-compose file with corrected paths for wizard-config context
         headscale_compose_src = str(PROJECT_ROOT / "docker-compose.headscale.yml")
         headscale_compose_dest = os.path.join(wizard_config_dir, "docker-compose.headscale.yml")
-        
+
         if not os.path.exists(headscale_compose_src):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Headscale compose file not found.",
             )
-        
+
         # Read the original compose file and adjust paths
         import yaml
-        with open(headscale_compose_src, 'r') as f:
+        with open(headscale_compose_src) as f:
             compose_config = yaml.safe_load(f)
-        
+
         # Update volume paths to be relative to wizard-config directory
         if 'services' in compose_config:
             if 'headscale' in compose_config['services']:
@@ -1062,20 +1074,20 @@ async def launch_headscale() -> JSONResponse:
                 compose_config['services']['caddy']['volumes'] = [
                     v.replace('./wizard-config/', './') for v in volumes
                 ]
-        
+
         # Write the modified compose file
         with open(headscale_compose_dest, 'w') as f:
             yaml.safe_dump(compose_config, f, default_flow_style=False, sort_keys=False)
-        
+
         logger.info(f"Created modified headscale compose file at {headscale_compose_dest}")
 
         def run_headscale():
             try:
                 log_file = os.path.join(wizard_config_dir, "launch_headscale.log")
-                
+
                 # Use ComposeRunner to properly handle Docker Compose execution
                 runner = ComposeRunner()
-                
+
                 # Run docker-compose up using ComposeRunner
                 success, message = runner.compose_up(
                     compose_file="docker-compose.headscale.yml",

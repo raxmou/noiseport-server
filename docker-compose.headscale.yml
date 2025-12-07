@@ -51,6 +51,30 @@ services:
       glance.url: https://localhost
       glance.description: "Automatic HTTPS reverse proxy for Headscale"
 
+  headplane:
+    image: ghcr.io/tale/headplane:latest
+    container_name: headplane
+    restart: unless-stopped
+    ports:
+      - "3000:3000"  # Web UI port (also accessible via Caddy)
+    environment:
+      # Headscale connection
+      - HEADSCALE_URL=http://headscale:8080
+      # API key - will be set by wizard
+      - HEADSCALE_API_KEY=${HEADSCALE_API_KEY:-}
+      # Optional: custom branding
+      - DISABLE_API_KEY_LOGIN=false
+    depends_on:
+      - headscale
+    networks:
+      - headscale-net
+    labels:
+      glance.name: Headplane Web UI
+      glance.hide: false
+      glance.icon: si:react
+      glance.url: http://localhost:3000
+      glance.description: "Web interface for Headscale management"
+
 networks:
   headscale-net:
     driver: bridge

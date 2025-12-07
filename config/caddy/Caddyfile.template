@@ -1,3 +1,9 @@
 {{HEADSCALE_DOMAIN}} {
+    # Headscale API (root path for Tailscale clients)
     reverse_proxy headscale:8080
+
+    # Headplane admin UI
+    handle /admin* {
+        reverse_proxy headplane:3000
+    }
 }

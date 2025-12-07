@@ -663,8 +663,9 @@ export default function HeadscaleStep({
             Check logs with: <Code>docker logs caddy</Code>
           </li>
           <li>
-            <strong>Access your Headscale server</strong> at your configured domain
-            (e.g., <Code>https://your-domain.sslip.io</Code>)
+            <strong>Access Headplane admin UI</strong> at your configured domain
+            (e.g., <Code>https://your-domain.sslip.io/admin</Code>) or directly at{" "}
+            <Code>http://localhost:3000</Code>
           </li>
           <li>
             <strong>Create a namespace/user</strong> in Headscale:
