@@ -1002,84 +1002,91 @@ async def launch_headscale() -> JSONResponse:
     This starts only the Headscale VPN services without launching the full music stack.
     """
     try:
-        # Run docker-compose up for the headscale compose file
-        headscale_compose_path = str(PROJECT_ROOT / "docker-compose.headscale.yml")
+        wizard_config_dir = settings.wizard_config_dir
+        
+        # Ensure Headscale config directory and files exist before launching
+        headscale_config_dir = os.path.join(wizard_config_dir, "headscale", "config")
+        headscale_data_dir = os.path.join(wizard_config_dir, "headscale", "data")
+        os.makedirs(headscale_config_dir, exist_ok=True)
+        os.makedirs(headscale_data_dir, exist_ok=True)
 
-        if not os.path.exists(headscale_compose_path):
+        # Ensure Caddyfile exists before launching
+        caddy_config_dir = os.path.join(wizard_config_dir, "caddy")
+        caddy_config_path = os.path.join(caddy_config_dir, "Caddyfile")
+        os.makedirs(caddy_config_dir, exist_ok=True)
+
+        if not os.path.exists(caddy_config_path):
+            # Create a default Caddyfile if it doesn't exist
+            # Try to get domain from env or use localhost
+            default_domain = "localhost"
+            env_file_path = os.path.join(wizard_config_dir, ".env")
+            if os.path.exists(env_file_path):
+                with open(env_file_path) as f:
+                    for line in f:
+                        if line.startswith("HEADSCALE_DOMAIN="):
+                            default_domain = line.strip().split("=", 1)[1]
+                            break
+
+            default_caddyfile = f"""{default_domain} {{
+    reverse_proxy headscale:8080
+}}
+"""
+            with open(caddy_config_path, "w") as f:
+                f.write(default_caddyfile)
+            logger.info(f"Created default Caddyfile at {caddy_config_path}")
+
+        # Create a modified docker-compose file with corrected paths for wizard-config context
+        headscale_compose_src = str(PROJECT_ROOT / "docker-compose.headscale.yml")
+        headscale_compose_dest = os.path.join(wizard_config_dir, "docker-compose.headscale.yml")
+        
+        if not os.path.exists(headscale_compose_src):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Headscale compose file not found.",
             )
+        
+        # Read the original compose file and adjust paths
+        import yaml
+        with open(headscale_compose_src, 'r') as f:
+            compose_config = yaml.safe_load(f)
+        
+        # Update volume paths to be relative to wizard-config directory
+        if 'services' in compose_config:
+            if 'headscale' in compose_config['services']:
+                volumes = compose_config['services']['headscale'].get('volumes', [])
+                compose_config['services']['headscale']['volumes'] = [
+                    v.replace('./wizard-config/', './') for v in volumes
+                ]
+            if 'caddy' in compose_config['services']:
+                volumes = compose_config['services']['caddy'].get('volumes', [])
+                compose_config['services']['caddy']['volumes'] = [
+                    v.replace('./wizard-config/', './') for v in volumes
+                ]
+        
+        # Write the modified compose file
+        with open(headscale_compose_dest, 'w') as f:
+            yaml.safe_dump(compose_config, f, default_flow_style=False, sort_keys=False)
+        
+        logger.info(f"Created modified headscale compose file at {headscale_compose_dest}")
 
         def run_headscale():
             try:
-                wizard_config_dir = settings.wizard_config_dir
                 log_file = os.path.join(wizard_config_dir, "launch_headscale.log")
-
-                # Ensure Headscale config directory and files exist before launching
-                headscale_config_dir = os.path.join(wizard_config_dir, "headscale", "config")
-                headscale_data_dir = os.path.join(wizard_config_dir, "headscale", "data")
-                os.makedirs(headscale_config_dir, exist_ok=True)
-                os.makedirs(headscale_data_dir, exist_ok=True)
-
-                # Ensure Caddyfile exists before launching
-                caddy_config_dir = os.path.join(wizard_config_dir, "caddy")
-                caddy_config_path = os.path.join(caddy_config_dir, "Caddyfile")
-                os.makedirs(caddy_config_dir, exist_ok=True)
-
-                if not os.path.exists(caddy_config_path):
-                    # Create a default Caddyfile if it doesn't exist
-                    # Try to get domain from env or use localhost
-                    default_domain = "localhost"
-                    env_file_path = os.path.join(wizard_config_dir, ".env")
-                    if os.path.exists(env_file_path):
-                        with open(env_file_path) as f:
-                            for line in f:
-                                if line.startswith("HEADSCALE_DOMAIN="):
-                                    default_domain = line.strip().split("=", 1)[1]
-                                    break
-
-                    default_caddyfile = f"""{default_domain} {{
-    reverse_proxy headscale:8080
-}}
-"""
-                    with open(caddy_config_path, "w") as f:
-                        f.write(default_caddyfile)
-                    logger.info(f"Created default Caddyfile at {caddy_config_path}")
-
-                # Load environment variables from .env file
-                env_file_path = os.path.join(wizard_config_dir, ".env")
-                env_vars = os.environ.copy()
-
-                if os.path.exists(env_file_path):
-                    with open(env_file_path) as f:
-                        for line in f:
-                            line = line.strip()
-                            if line and not line.startswith("#") and "=" in line:
-                                key, value = line.split("=", 1)
-                                env_vars[key] = value
-
-                # Run docker-compose up
-                result = subprocess.run(
-                    ["docker", "compose", "-f", headscale_compose_path, "up", "-d"],
-                    capture_output=True,
-                    text=True,
-                    env=env_vars,
-                    timeout=120,
+                
+                # Use ComposeRunner to properly handle Docker Compose execution
+                runner = ComposeRunner()
+                
+                # Run docker-compose up using ComposeRunner
+                success, message = runner.compose_up(
+                    compose_file="docker-compose.headscale.yml",
+                    detach=True,
+                    log_file=log_file
                 )
 
-                with open(log_file, "w") as f:
-                    f.write(f"Command: docker compose -f {headscale_compose_path} up -d\n")
-                    f.write(f"Return code: {result.returncode}\n\n")
-                    f.write("STDOUT:\n")
-                    f.write(result.stdout)
-                    f.write("\n\nSTDERR:\n")
-                    f.write(result.stderr)
-
-                if result.returncode == 0:
+                if success:
                     logger.info("Headscale containers launched successfully")
                 else:
-                    logger.error(f"Failed to launch Headscale: {result.stderr}")
+                    logger.error(f"Failed to launch Headscale: {message}")
             except Exception as e:
                 logger.error(f"Error launching Headscale: {e}")
 
