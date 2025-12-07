@@ -394,32 +394,37 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 caddy_config_path = os.path.join(caddy_config_dir, "Caddyfile")
                 os.makedirs(caddy_config_dir, exist_ok=True)
 
+                # Extract domain from server URL or use domain field
+                domain = config.headscale.domain
+                if not domain and config.headscale.serverUrl:
+                    # Try to extract domain from URL
+                    import re
+                    match = re.search(r'https?://([^:/]+)', config.headscale.serverUrl)
+                    if match:
+                        domain = match.group(1)
+
                 if os.path.exists(caddy_template_path):
                     with open(caddy_template_path) as f:
                         template = f.read()
 
-                    # Extract domain from server URL or use domain field
-                    domain = config.headscale.domain
-                    if not domain and config.headscale.serverUrl:
-                        # Try to extract domain from URL
-                        import re
-                        match = re.search(r'https?://([^:/]+)', config.headscale.serverUrl)
-                        if match:
-                            domain = match.group(1)
-
                     caddy_content = template.replace(
                         "{{HEADSCALE_DOMAIN}}", domain or "localhost"
                     )
-
-                    with open(caddy_config_path, "w") as f:
-                        f.write(caddy_content)
-                    logger.info(
-                        f"Generated Caddyfile from template at {caddy_config_path}"
-                    )
                 else:
+                    # Create default Caddyfile if template is missing
                     logger.warning(
-                        f"Caddyfile template not found at {caddy_template_path}, skipping generation"
+                        f"Caddyfile template not found at {caddy_template_path}, using default"
                     )
+                    caddy_content = f"""{domain or "localhost"} {{
+    reverse_proxy headscale:8080
+}}
+"""
+
+                with open(caddy_config_path, "w") as f:
+                    f.write(caddy_content)
+                logger.info(
+                    f"Generated Caddyfile at {caddy_config_path} for domain: {domain or 'localhost'}"
+                )
             except Exception as e:
                 logger.warning(f"Failed to generate Headscale config: {e}")
 
@@ -1010,6 +1015,37 @@ async def launch_headscale() -> JSONResponse:
             try:
                 wizard_config_dir = settings.wizard_config_dir
                 log_file = os.path.join(wizard_config_dir, "launch_headscale.log")
+
+                # Ensure Headscale config directory and files exist before launching
+                headscale_config_dir = os.path.join(wizard_config_dir, "headscale", "config")
+                headscale_data_dir = os.path.join(wizard_config_dir, "headscale", "data")
+                os.makedirs(headscale_config_dir, exist_ok=True)
+                os.makedirs(headscale_data_dir, exist_ok=True)
+
+                # Ensure Caddyfile exists before launching
+                caddy_config_dir = os.path.join(wizard_config_dir, "caddy")
+                caddy_config_path = os.path.join(caddy_config_dir, "Caddyfile")
+                os.makedirs(caddy_config_dir, exist_ok=True)
+
+                if not os.path.exists(caddy_config_path):
+                    # Create a default Caddyfile if it doesn't exist
+                    # Try to get domain from env or use localhost
+                    default_domain = "localhost"
+                    env_file_path = os.path.join(wizard_config_dir, ".env")
+                    if os.path.exists(env_file_path):
+                        with open(env_file_path) as f:
+                            for line in f:
+                                if line.startswith("HEADSCALE_DOMAIN="):
+                                    default_domain = line.strip().split("=", 1)[1]
+                                    break
+
+                    default_caddyfile = f"""{default_domain} {{
+    reverse_proxy headscale:8080
+}}
+"""
+                    with open(caddy_config_path, "w") as f:
+                        f.write(default_caddyfile)
+                    logger.info(f"Created default Caddyfile at {caddy_config_path}")
 
                 # Load environment variables from .env file
                 env_file_path = os.path.join(wizard_config_dir, ".env")
