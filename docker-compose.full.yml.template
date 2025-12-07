@@ -110,12 +110,12 @@ services:
     container_name: headscale
     restart: unless-stopped
     ports:
-      - "8080:8080"  # HTTP API and web interface
+      - "8080:8080"  # HTTP API (internal / debug)
       - "9090:9090"  # Metrics endpoint
     volumes:
       - ./wizard-config/headscale/config:/etc/headscale
       - ./wizard-config/headscale/data:/var/lib/headscale
-    command: headscale serve
+    command: serve
     environment:
       - HEADSCALE_SERVER_URL=${HEADSCALE_SERVER_URL}
       - HEADSCALE_LISTEN_ADDR=0.0.0.0:8080
@@ -129,28 +129,31 @@ services:
       glance.url: http://localhost:8080
       glance.description: "Self-hosted VPN coordination server"
 
-  # Headplane web UI for Headscale
-  headplane:
-    image: ghcr.io/tale/headplane:latest
-    container_name: headplane
+  # Caddy reverse proxy for automatic HTTPS
+  caddy:
+    image: caddy:latest
+    container_name: caddy
     restart: unless-stopped
     ports:
-      - "3000:3000"  # Web UI port
-    environment:
-      - HEADSCALE_URL=http://headscale:8080
-      - HEADSCALE_API_KEY=${HEADSCALE_API_KEY}
-      - DISABLE_API_KEY_LOGIN=false
-    depends_on:
-      - headscale
+      - "80:80"    # HTTP for Let's Encrypt challenge
+      - "443:443"  # HTTPS for clients
+    volumes:
+      - ./wizard-config/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
       - noiseport
     labels:
-      glance.name: Headplane Web UI
+      glance.name: Caddy Reverse Proxy
       glance.hide: false
-      glance.icon: si:react
-      glance.url: http://localhost:3000
-      glance.description: "Web interface for Headscale management"
+      glance.icon: si:caddy
+      glance.url: https://localhost
+      glance.description: "Automatic HTTPS reverse proxy for Headscale"
 
 networks:
   noiseport:
     driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -385,6 +385,41 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                     logger.warning(
                         f"Headscale config template not found at {headscale_template_path}, skipping generation"
                     )
+
+                # Generate Caddyfile for HTTPS reverse proxy
+                caddy_template_path = str(
+                    PROJECT_ROOT / "config" / "caddy" / "Caddyfile.template"
+                )
+                caddy_config_dir = os.path.join(wizard_config_dir, "caddy")
+                caddy_config_path = os.path.join(caddy_config_dir, "Caddyfile")
+                os.makedirs(caddy_config_dir, exist_ok=True)
+
+                if os.path.exists(caddy_template_path):
+                    with open(caddy_template_path) as f:
+                        template = f.read()
+
+                    # Extract domain from server URL or use domain field
+                    domain = config.headscale.domain
+                    if not domain and config.headscale.serverUrl:
+                        # Try to extract domain from URL
+                        import re
+                        match = re.search(r'https?://([^:/]+)', config.headscale.serverUrl)
+                        if match:
+                            domain = match.group(1)
+
+                    caddy_content = template.replace(
+                        "{{HEADSCALE_DOMAIN}}", domain or "localhost"
+                    )
+
+                    with open(caddy_config_path, "w") as f:
+                        f.write(caddy_content)
+                    logger.info(
+                        f"Generated Caddyfile from template at {caddy_config_path}"
+                    )
+                else:
+                    logger.warning(
+                        f"Caddyfile template not found at {caddy_template_path}, skipping generation"
+                    )
             except Exception as e:
                 logger.warning(f"Failed to generate Headscale config: {e}")
 

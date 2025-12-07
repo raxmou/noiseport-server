@@ -1,7 +1,6 @@
 ---
-# Headscale and Headplane Docker Compose Configuration
-# This file provides self-hosted VPN coordination (Headscale) and web UI (Headplane)
-# Can be used standalone or integrated with the main NoisePort stack
+# Headscale and Caddy (HTTPS via sslip.io)
+# This file provides self-hosted VPN coordination (Headscale) with automatic HTTPS via Caddy
 
 version: "3.8"
 
@@ -10,19 +9,18 @@ services:
     image: headscale/headscale:latest
     container_name: headscale
     restart: unless-stopped
+    # Expose ports locally, but public access goes through Caddy
     ports:
-      - "8080:8080"  # HTTP API and web interface
+      - "8080:8080"  # HTTP API (internal / debug)
       - "9090:9090"  # Metrics endpoint
     volumes:
       - ./wizard-config/headscale/config:/etc/headscale
       - ./wizard-config/headscale/data:/var/lib/headscale
-    command: headscale serve
+    command: serve
     environment:
-      # Server URL - will be replaced by wizard based on mode
-      - HEADSCALE_SERVER_URL=${HEADSCALE_SERVER_URL:-http://localhost:8080}
-      # Listen address
+      # These variables are optional but kept for compatibility
+      - HEADSCALE_SERVER_URL=${HEADSCALE_SERVER_URL:-https://localhost}
       - HEADSCALE_LISTEN_ADDR=0.0.0.0:8080
-      # Metrics
       - HEADSCALE_METRICS_LISTEN_ADDR=0.0.0.0:9090
     networks:
       - headscale-net
@@ -33,31 +31,31 @@ services:
       glance.url: http://localhost:8080
       glance.description: "Self-hosted VPN coordination server"
 
-  headplane:
-    image: ghcr.io/tale/headplane:latest
-    container_name: headplane
+  caddy:
+    image: caddy:latest
+    container_name: caddy
     restart: unless-stopped
     ports:
-      - "3000:3000"  # Web UI port
-    environment:
-      # Headscale connection
-      - HEADSCALE_URL=http://headscale:8080
-      # API key - will be set by wizard
-      - HEADSCALE_API_KEY=${HEADSCALE_API_KEY:-}
-      # Optional: custom branding
-      - DISABLE_API_KEY_LOGIN=false
-    depends_on:
-      - headscale
+      - "80:80"    # HTTP for Let's Encrypt challenge
+      - "443:443"  # HTTPS for clients
+    volumes:
+      - ./wizard-config/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
       - headscale-net
     labels:
-      glance.name: Headplane Web UI
+      glance.name: Caddy Reverse Proxy
       glance.hide: false
-      glance.icon: si:react
-      glance.url: http://localhost:3000
-      glance.description: "Web interface for Headscale management"
+      glance.icon: si:caddy
+      glance.url: https://localhost
+      glance.description: "Automatic HTTPS reverse proxy for Headscale"
 
 networks:
   headscale-net:
     driver: bridge
     name: headscale-net
+
+volumes:
+  caddy_data:
+  caddy_config:

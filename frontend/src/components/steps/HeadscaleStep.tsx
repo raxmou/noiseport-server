@@ -101,6 +101,11 @@ export default function HeadscaleStep({
     }
   };
 
+  const generateSslipDomain = (ip: string) => {
+    // Convert IP to sslip.io format: 1-2-3-4.sslip.io
+    return ip.replace(/\./g, "-") + ".sslip.io";
+  };
+
   const handleDomainChange = (value: string) => {
     const serverUrl = value ? `https://${value}` : "";
     onUpdate({
@@ -113,11 +118,14 @@ export default function HeadscaleStep({
   };
 
   const handleServerIpChange = (value: string) => {
-    const serverUrl = value ? `http://${value}:8080` : "";
+    // For IP mode, generate sslip.io domain for HTTPS support
+    const sslipDomain = value ? generateSslipDomain(value) : "";
+    const serverUrl = sslipDomain ? `https://${sslipDomain}` : "";
     onUpdate({
       headscale: {
         ...config.headscale,
         serverIp: value,
+        domain: sslipDomain,
         serverUrl,
       },
     });
@@ -293,9 +301,8 @@ export default function HeadscaleStep({
         <div className="space-y-4">
           <Alert variant="info">
             <p className="text-sm">
-              The wizard will set up Headscale and Headplane Docker containers
-              for you automatically. You just need to choose your setup mode and
-              provide the necessary configuration.
+              The wizard will set up Headscale with <strong>Caddy</strong> (automatic HTTPS reverse proxy)
+              for you automatically. Caddy will handle SSL certificates via Let's Encrypt.
             </p>
           </Alert>
 
@@ -303,17 +310,23 @@ export default function HeadscaleStep({
             <h4 className="font-medium">Choose Your Setup Mode:</h4>
             <ul className="list-disc ml-5 space-y-2 text-sm text-neutral-400">
               <li>
-                <strong>Domain-based:</strong> Use if you have a domain name and
-                can set up DNS records. Recommended for production use with
-                HTTPS.
+                <strong>Domain-based:</strong> Use if you have your own domain name.
+                You'll need to set up a DNS A record pointing to your server.
               </li>
               <li>
-                <strong>IP-based:</strong> Use if you want to access Headscale
-                directly via IP address. Simpler setup, good for testing or
-                local networks.
+                <strong>IP-based with sslip.io:</strong> Automatically generates a domain
+                from your IP (e.g., 34-55-55-28.sslip.io). No DNS configuration needed!
+                Perfect for quick setup with automatic HTTPS.
               </li>
             </ul>
           </div>
+
+          <Alert variant="warning">
+            <p className="text-sm">
+              <strong>Important:</strong> For IP-based setup, make sure to use your <strong>public IP</strong>,
+              not a local IP like 192.168.x.x or 10.x.x.x. sslip.io and Let's Encrypt won't work with private IPs.
+            </p>
+          </Alert>
         </div>
       </Paper>
 
@@ -347,9 +360,9 @@ export default function HeadscaleStep({
                     className="mr-3"
                   />
                   <div>
-                    <div className="font-medium">Domain-based (HTTPS)</div>
+                    <div className="font-medium">Own Domain (HTTPS)</div>
                     <div className="text-sm text-neutral-400">
-                      Use a domain name with HTTPS (recommended for production)
+                      Use your own domain name with DNS A record
                     </div>
                   </div>
                 </label>
@@ -363,9 +376,9 @@ export default function HeadscaleStep({
                     className="mr-3"
                   />
                   <div>
-                    <div className="font-medium">IP-based (HTTP)</div>
+                    <div className="font-medium">IP with sslip.io (HTTPS)</div>
                     <div className="text-sm text-neutral-400">
-                      Use IP address directly (simpler for testing/local networks)
+                      Automatic domain from IP - no DNS setup needed! (Recommended)
                     </div>
                   </div>
                 </label>
@@ -410,23 +423,26 @@ export default function HeadscaleStep({
               <>
                 <Alert variant="info">
                   <div className="space-y-2">
-                    <p className="font-medium">IP-based Setup</p>
+                    <p className="font-medium">IP-based Setup with sslip.io</p>
                     <p className="text-sm">
-                      For IP-based setup, you'll use your server's IP address.
+                      For IP-based setup with HTTPS support, we'll use <strong>sslip.io</strong> - a free DNS service that automatically
+                      resolves to your IP. This allows Caddy to get a Let's Encrypt certificate.
                       {detectedIp && (
                         <span>
                           {" "}
-                          We detected your server IP as:{" "}
-                          <strong>{detectedIp}</strong>
+                          Detected server IP: <strong>{detectedIp}</strong>
                         </span>
                       )}
+                    </p>
+                    <p className="text-sm">
+                      Example: IP <Code>34.55.55.28</Code> becomes <Code>34-55-55-28.sslip.io</Code>
                     </p>
                   </div>
                 </Alert>
 
                 <TextInput
                   label="Server IP Address"
-                  placeholder="192.168.1.100 or your public IP"
+                  placeholder="34.55.55.28 (your public IP)"
                   value={config.headscale.serverIp}
                   onChange={(event) =>
                     handleServerIpChange(event.currentTarget.value)
@@ -434,10 +450,20 @@ export default function HeadscaleStep({
                   description={
                     detectedIp
                       ? `Detected IP: ${detectedIp} (you can use this or enter a different one)`
-                      : "Enter your server's IP address (local or public)"
+                      : "Enter your server's PUBLIC IP address (not local/private IP)"
                   }
                   required
                 />
+                {config.headscale.serverIp && (
+                  <Alert variant="success">
+                    <p className="text-sm">
+                      ✓ Your Headscale domain will be: <strong>{generateSslipDomain(config.headscale.serverIp)}</strong>
+                    </p>
+                    <p className="text-sm mt-2">
+                      Caddy will automatically obtain a Let's Encrypt certificate for HTTPS.
+                    </p>
+                  </Alert>
+                )}
               </>
             )}
 
@@ -630,11 +656,15 @@ export default function HeadscaleStep({
         <ol className="list-decimal ml-5 space-y-3 text-sm">
           <li>
             <strong>Click "Launch Headscale"</strong> button above to start
-            Headscale and Headplane containers
+            Headscale, Caddy, and Headplane containers
           </li>
           <li>
-            <strong>Access Headplane</strong> at{" "}
-            <Code>http://localhost:3000</Code> (or your server IP)
+            <strong>Wait for Caddy to obtain SSL certificate</strong> - this may take 1-2 minutes.
+            Check logs with: <Code>docker logs caddy</Code>
+          </li>
+          <li>
+            <strong>Access your Headscale server</strong> at your configured domain
+            (e.g., <Code>https://your-domain.sslip.io</Code>)
           </li>
           <li>
             <strong>Create a namespace/user</strong> in Headscale:
