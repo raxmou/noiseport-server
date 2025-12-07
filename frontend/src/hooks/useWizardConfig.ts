@@ -3,10 +3,6 @@ import { WizardConfiguration } from '../types/wizard';
 import { ApiService } from '../utils/api';
 
 const defaultConfig: WizardConfiguration = {
-  tailscale: {
-    enabled: false,
-    ip: '',
-  },
   headscale: {
     enabled: false,
     setupMode: 'domain',

@@ -27,6 +27,10 @@ export default function HeadscaleStep({
   const [connectionMessage, setConnectionMessage] = useState<string | null>(
     null
   );
+  const [launchStatus, setLaunchStatus] = useState<
+    "idle" | "launching" | "success" | "error"
+  >("idle");
+  const [launchMessage, setLaunchMessage] = useState<string | null>(null);
   const [detectedIp, setDetectedIp] = useState<string>("");
   const { saveConfig } = useWizardConfig();
 
@@ -202,6 +206,46 @@ export default function HeadscaleStep({
           "Failed to connect. Please verify your server URL and ensure Headscale is running."
         );
       }
+    }
+  };
+
+  const launchHeadscale = async () => {
+    // Save configuration first
+    try {
+      await saveConfig();
+    } catch (err) {
+      setLaunchStatus("error");
+      setLaunchMessage("Failed to save configuration before launching");
+      return;
+    }
+
+    setLaunchStatus("launching");
+    setLaunchMessage(null);
+
+    try {
+      const response = await fetch("/api/v1/config/launch-headscale", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setLaunchStatus("success");
+        setLaunchMessage(
+          "Headscale containers launched successfully! It may take a minute for services to start."
+        );
+      } else {
+        setLaunchStatus("error");
+        setLaunchMessage(data.detail || "Failed to launch Headscale containers");
+      }
+    } catch (error) {
+      setLaunchStatus("error");
+      setLaunchMessage(
+        "Failed to launch Headscale. Please check your configuration and try again."
+      );
     }
   };
 
@@ -471,6 +515,59 @@ export default function HeadscaleStep({
 
             <div className="flex justify-between items-center pt-4 border-t border-neutral-800">
               <div>
+                <p className="font-medium">Launch Headscale Containers</p>
+                <p className="text-sm text-neutral-400">
+                  Start Headscale and Headplane containers with your configuration
+                </p>
+              </div>
+              <Button
+                onClick={launchHeadscale}
+                loading={launchStatus === "launching"}
+                variant="primary"
+                disabled={!config.headscale.serverUrl}
+              >
+                Launch Headscale
+              </Button>
+            </div>
+
+            {launchStatus === "success" && (
+              <Alert
+                variant="success"
+                icon={
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                }
+                className="mt-4"
+              >
+                <div>{launchMessage}</div>
+              </Alert>
+            )}
+
+            {launchStatus === "error" && (
+              <Alert
+                variant="error"
+                icon={
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                }
+                className="mt-4"
+              >
+                <div>{launchMessage}</div>
+              </Alert>
+            )}
+
+            <div className="flex justify-between items-center pt-4 border-t border-neutral-800">
+              <div>
                 <p className="font-medium">Test Connection</p>
                 <p className="text-sm text-neutral-400">
                   Verify that Headscale is accessible at the configured URL
@@ -529,11 +626,11 @@ export default function HeadscaleStep({
       </Paper>
 
       <Paper className="mb-6">
-        <h3 className="text-lg font-kode mb-4">Next Steps After Setup</h3>
+        <h3 className="text-lg font-kode mb-4">Next Steps After Launch</h3>
         <ol className="list-decimal ml-5 space-y-3 text-sm">
           <li>
-            <strong>Launch the services</strong> from the Summary step - this
-            will start Headscale and Headplane containers
+            <strong>Click "Launch Headscale"</strong> button above to start
+            Headscale and Headplane containers
           </li>
           <li>
             <strong>Access Headplane</strong> at{" "}

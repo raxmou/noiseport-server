@@ -53,10 +53,6 @@ async def get_current_config() -> WizardConfiguration:
     try:
         # Build configuration from current settings
         config = WizardConfiguration(
-            tailscale={
-                "enabled": getattr(settings, "tailscale_enabled", False),
-                "ip": getattr(settings, "tailscale_ip", ""),
-            },
             headscale={
                 "enabled": getattr(settings, "headscale_enabled", False),
                 "setupMode": getattr(settings, "headscale_setup_mode", "domain"),
@@ -127,9 +123,6 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
 
         # Convert config to environment variables
         env_vars = {
-            # Tailscale
-            "TAILSCALE_ENABLED": str(config.tailscale.enabled).lower(),
-            "TAILSCALE_IP": config.tailscale.ip,
             # Headscale
             "HEADSCALE_ENABLED": str(config.headscale.enabled).lower(),
             "HEADSCALE_SETUP_MODE": config.headscale.setupMode,
@@ -219,10 +212,6 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 if key in existing_vars:
                     f.write(f"{key}={existing_vars[key]}\n")
 
-            f.write("\n# Tailscale\n")
-            for key in ["TAILSCALE_ENABLED", "TAILSCALE_IP"]:
-                f.write(f"{key}={existing_vars.get(key, '')}\n")
-
             f.write("\n# Headscale\n")
             for key in [
                 "HEADSCALE_ENABLED",
@@ -290,8 +279,6 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
 
             # Update written keys set
             written_keys = {
-                "TAILSCALE_ENABLED",
-                "TAILSCALE_IP",
                 "HEADSCALE_ENABLED",
                 "HEADSCALE_SETUP_MODE",
                 "HEADSCALE_DOMAIN",
@@ -796,45 +783,6 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
                 print(e)
                 message = f"Failed to connect to slskd: {e}"
 
-        # --- TAILSCALE ---
-        elif service == "tailscale":
-            try:
-                import subprocess
-
-                # Check if tailscale is installed and running
-                result = subprocess.run(
-                    ["tailscale", "status", "--json"],
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                )
-                if result.returncode == 0:
-                    import json
-
-                    status_data = json.loads(result.stdout)
-                    if status_data.get("BackendState") == "Running":
-                        success = True
-                        self_ip = status_data.get("TailscaleIPs", [])
-                        if self_ip:
-                            message = f"Tailscale is running. Your IP: {self_ip[0]}"
-                        else:
-                            message = "Tailscale is running but no IP assigned yet"
-                    else:
-                        success = False
-                        message = f"Tailscale not connected. State: {status_data.get('BackendState', 'Unknown')}"
-                else:
-                    success = False
-                    message = "Tailscale command failed. Make sure it's installed and configured."
-            except subprocess.TimeoutExpired:
-                success = False
-                message = "Tailscale status check timed out"
-            except FileNotFoundError:
-                success = False
-                message = "Tailscale not installed. Please install from https://tailscale.com/download"
-            except Exception as e:
-                success = False
-                message = f"Error checking Tailscale status: {e}"
-
         # --- UNKNOWN SERVICE ---
         else:
             success = False
@@ -1006,6 +954,87 @@ async def get_spotify_token() -> JSONResponse:
         )
 
 
+@router.post("/config/launch-headscale")
+async def launch_headscale() -> JSONResponse:
+    """
+    Launch Headscale and Headplane containers.
+
+    This starts only the Headscale VPN services without launching the full music stack.
+    """
+    try:
+        # Run docker-compose up for the headscale compose file
+        headscale_compose_path = str(PROJECT_ROOT / "docker-compose.headscale.yml")
+
+        if not os.path.exists(headscale_compose_path):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Headscale compose file not found.",
+            )
+
+        def run_headscale():
+            try:
+                wizard_config_dir = settings.wizard_config_dir
+                log_file = os.path.join(wizard_config_dir, "launch_headscale.log")
+
+                # Load environment variables from .env file
+                env_file_path = os.path.join(wizard_config_dir, ".env")
+                env_vars = os.environ.copy()
+
+                if os.path.exists(env_file_path):
+                    with open(env_file_path) as f:
+                        for line in f:
+                            line = line.strip()
+                            if line and not line.startswith("#") and "=" in line:
+                                key, value = line.split("=", 1)
+                                env_vars[key] = value
+
+                # Run docker-compose up
+                result = subprocess.run(
+                    ["docker", "compose", "-f", headscale_compose_path, "up", "-d"],
+                    capture_output=True,
+                    text=True,
+                    env=env_vars,
+                    timeout=120,
+                )
+
+                with open(log_file, "w") as f:
+                    f.write(f"Command: docker compose -f {headscale_compose_path} up -d\n")
+                    f.write(f"Return code: {result.returncode}\n\n")
+                    f.write("STDOUT:\n")
+                    f.write(result.stdout)
+                    f.write("\n\nSTDERR:\n")
+                    f.write(result.stderr)
+
+                if result.returncode == 0:
+                    logger.info("Headscale containers launched successfully")
+                else:
+                    logger.error(f"Failed to launch Headscale: {result.stderr}")
+            except Exception as e:
+                logger.error(f"Error launching Headscale: {e}")
+
+        # Launch in background thread
+        thread = threading.Thread(target=run_headscale, daemon=True)
+        thread.start()
+
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content={
+                "success": True,
+                "message": "Headscale launch started. Check container status to verify.",
+                "services": {
+                    "headscale": "http://localhost:8080",
+                    "headplane": "http://localhost:3000",
+                },
+            },
+        )
+    except Exception as e:
+        logger.error(f"Failed to launch Headscale: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to launch Headscale: {str(e)}",
+        )
+
+
 @router.post("/config/launch-services")
 async def launch_services() -> JSONResponse:
     """
@@ -1073,14 +1102,14 @@ async def launch_services() -> JSONResponse:
         thread = threading.Thread(target=run_stack, daemon=True)
         thread.start()
 
-        # Get TAILSCALE_IP from .env if available
-        tailscale_ip = None
+        # Get Headscale server IP from .env if available
+        server_ip = None
         try:
             env_file_path = os.path.join(wizard_config_dir, ".env")
             with open(env_file_path) as f:
                 for line in f:
-                    if line.startswith("TAILSCALE_IP="):
-                        tailscale_ip = line.strip().split("=", 1)[1]
+                    if line.startswith("HEADSCALE_SERVER_IP="):
+                        server_ip = line.strip().split("=", 1)[1]
                         break
         except Exception:
             pass
@@ -1096,10 +1125,10 @@ async def launch_services() -> JSONResponse:
                 "project": "noiseport",
                 "configPath": runner.wizard_config_path,
                 "services": {
-                    "navidrome": url(tailscale_ip, 4533),
-                    "jellyfin": url(tailscale_ip, 8096),
-                    "slskd": url(tailscale_ip, 5030),
-                    "fastapi": url(tailscale_ip, 8010),
+                    "navidrome": url(server_ip, 4533),
+                    "jellyfin": url(server_ip, 8096),
+                    "slskd": url(server_ip, 5030),
+                    "fastapi": url(server_ip, 8010),
                 },
             },
         )
@@ -1245,14 +1274,14 @@ async def launch_status() -> JSONResponse:
 
 @router.post("/config/restart-containers")
 async def restart_containers() -> JSONResponse:
-    """Restart development containers for Tailscale integration."""
+    """Restart development containers."""
     try:
-        logger.info("Starting container restart for Tailscale integration")
+        logger.info("Starting container restart")
 
         # Get current compose configuration
         compose_files = get_compose_file_args()
 
-        # First, restart the containers that need Tailscale integration
+        # Restart the containers
         containers_to_restart = ["fastapi"]  # Start with FastAPI, add others as needed
 
         restart_results = []
@@ -1313,8 +1342,7 @@ async def restart_containers() -> JSONResponse:
             "containers": restart_results,
             "next_steps": [
                 "Containers are restarting and will be available shortly",
-                "Tailscale integration should now be active",
-                "You can test the Tailscale connection again",
+                "Services should now be active",
             ],
         }
 
@@ -1427,13 +1455,13 @@ async def get_container_logs(container_name: str) -> JSONResponse:
 async def get_service_status() -> JSONResponse:
     """Check the status of all services with detailed state information."""
     try:
-        # Get TAILSCALE_IP from .env if available
-        tailscale_ip = None
+        # Get Headscale server IP from .env if available
+        server_ip = None
         try:
             with open(".env") as f:
                 for line in f:
-                    if line.startswith("TAILSCALE_IP="):
-                        tailscale_ip = line.strip().split("=", 1)[1]
+                    if line.startswith("HEADSCALE_SERVER_IP="):
+                        server_ip = line.strip().split("=", 1)[1]
                         break
         except Exception:
             pass
@@ -1444,25 +1472,25 @@ async def get_service_status() -> JSONResponse:
         services = {
             "navidrome": {
                 "running": False,
-                "url": url(tailscale_ip, 4533),
+                "url": url(server_ip, 4533),
                 "state": "unknown",
                 "status": "",
             },
             "jellyfin": {
                 "running": False,
-                "url": url(tailscale_ip, 8096),
+                "url": url(server_ip, 8096),
                 "state": "unknown",
                 "status": "",
             },
             "slskd": {
                 "running": False,
-                "url": url(tailscale_ip, 5030),
+                "url": url(server_ip, 5030),
                 "state": "unknown",
                 "status": "",
             },
             "fastapi": {
                 "running": False,
-                "url": url(tailscale_ip, 8000),
+                "url": url(server_ip, 8000),
                 "state": "unknown",
                 "status": "",
             },

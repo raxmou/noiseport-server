@@ -18,8 +18,8 @@ export default function SummaryStep({ config, onValidation }: Props) {
   const onValidationRef = useRef(onValidation);
   const [confettiTriggered, setConfettiTriggered] = useState(false);
 
-  // Use Tailscale IP from config
-  const machineIP = config.tailscale.ip || "localhost";
+  // Use Headscale server IP from config if available
+  const machineIP = config.headscale.serverIp || "localhost";
 
   useEffect(() => {
     onValidationRef.current = onValidation;

@@ -72,13 +72,6 @@ class FeaturesConfig(BaseModel):
     lastfmSecret: str = Field(default="", description="Last.fm API Secret")
 
 
-class TailscaleConfig(BaseModel):
-    """Tailscale configuration."""
-
-    enabled: bool = Field(default=False, description="Enable Tailscale integration")
-    ip: str = Field(default="", description="Tailscale IP address")
-
-
 class HeadscaleConfig(BaseModel):
     """Headscale VPN configuration."""
 
@@ -101,7 +94,6 @@ class HeadscaleConfig(BaseModel):
 class WizardConfiguration(BaseModel):
     """Complete wizard configuration."""
 
-    tailscale: TailscaleConfig = Field(default_factory=TailscaleConfig)
     headscale: HeadscaleConfig = Field(default_factory=HeadscaleConfig)
     navidrome: NavidromeConfig = Field(default_factory=NavidromeConfig)
     jellyfin: JellyfinConfig = Field(default_factory=JellyfinConfig)

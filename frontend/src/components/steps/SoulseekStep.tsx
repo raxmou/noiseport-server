@@ -50,20 +50,20 @@ export default function SoulseekStep({
   }, [config.soulseek]);
 
   useEffect(() => {
-    // Auto-set host using Tailscale IP if available (only if the host is still the default)
+    // Auto-set host using Headscale server IP if available (only if the host is still the default)
     if (
-      config.tailscale.enabled &&
-      config.tailscale.ip &&
+      config.headscale.enabled &&
+      config.headscale.serverIp &&
       config.soulseek.host === "http://slskd:5030"
     ) {
       onUpdate({
         soulseek: {
           ...config.soulseek,
-          host: `http://${config.tailscale.ip}:5030`,
+          host: `http://${config.headscale.serverIp}:5030`,
         },
       });
     }
-  }, [config.tailscale.enabled, config.tailscale.ip]); // Intentionally exclude onUpdate to prevent loops
+  }, [config.headscale.enabled, config.headscale.serverIp]); // Intentionally exclude onUpdate to prevent loops
 
   const handleSoulseekToggle = (enabled: boolean) => {
     onUpdate({
@@ -206,8 +206,8 @@ export default function SoulseekStep({
                 }
                 required
                 description={
-                  config.tailscale.enabled && config.tailscale.ip
-                    ? `Automatically set using Tailscale IP: ${config.tailscale.ip}`
+                  config.headscale.enabled && config.headscale.serverIp
+                    ? `Automatically set using Headscale server IP: ${config.headscale.serverIp}`
                     : "The URL where your slskd instance is running"
                 }
               />
