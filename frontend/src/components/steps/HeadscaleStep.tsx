@@ -9,6 +9,18 @@ interface Props {
   saveConfig: () => Promise<void>;
 }
 
+// Helper function to generate the admin Headplane URL
+const getHeadplaneUrl = (config: WizardConfiguration): string | null => {
+  if (config.headscale.setupMode === "domain" && config.headscale.domain) {
+    return `https://admin.${config.headscale.domain}`;
+  } else if (config.headscale.setupMode === "ip" && config.headscale.serverIp) {
+    const sslipDomain =
+      config.headscale.serverIp.replace(/\./g, "-") + ".sslip.io";
+    return `https://admin.${sslipDomain}`;
+  }
+  return null;
+};
+
 export default function HeadscaleStep({
   config,
   onUpdate,
@@ -276,26 +288,33 @@ export default function HeadscaleStep({
       </h2>
 
       <p className="text-neutral-400 mb-6">
-        Headscale is a self-hosted, open-source implementation of the Tailscale
-        control server. It creates a secure, private VPN network that lets you
-        access your NoisePort servers from anywhere, without relying on
-        third-party services.
+        Headscale is a self-hosted VPN that creates a secure private network for
+        all your users to access NoisePort services from anywhere in the world.
+        Think of it as your own private internet that only your users can join.
       </p>
 
       <Alert variant="info" className="mb-6">
         <div className="space-y-2">
-          <p className="font-medium">What is Headscale?</p>
+          <p className="font-medium">🌐 What is Headscale?</p>
           <p className="text-sm">
-            Headscale is a self-hosted coordination server for the WireGuard VPN
-            protocol. Unlike Tailscale (which is a paid service), Headscale
-            gives you complete control over your VPN infrastructure. It works
-            with the open-source Tailscale clients to provide secure, encrypted
-            connections between your devices.
+            Headscale creates a <strong>shared VPN network</strong> that all
+            your users can join. Once connected, users can securely access your
+            music server, Jellyfin, Navidrome, and other NoisePort services as
+            if they were on the same local network - even if they're on the
+            other side of the world.
+          </p>
+          <p className="text-sm">
+            Unlike commercial VPN services, Headscale gives you complete
+            control: you decide who gets access, you manage the network, and all
+            data stays on your infrastructure. It uses the WireGuard protocol
+            for fast, encrypted connections and works with standard Tailscale
+            clients on all platforms.
           </p>
           <p className="text-sm">
             <strong>Headplane</strong> provides a user-friendly web interface
-            for managing your Headscale server, making it easy to add devices,
-            manage users, and monitor your VPN network.
+            for managing your Headscale server - easily add users, generate
+            connection keys, monitor connected devices, and manage your VPN
+            network without command-line tools.
           </p>
         </div>
       </Alert>
@@ -769,12 +788,34 @@ export default function HeadscaleStep({
             take 1-2 minutes. Check logs with: <Code>docker logs caddy</Code>
           </li>
           <li>
-            <strong>Access Headplane Web UI</strong> at{" "}
-            <Code>https://admin.your-domain.sslip.io</Code> (replace with your
-            actual domain - note the <Code>admin.</Code> subdomain prefix) to
-            manage your Headscale server through a user-friendly interface.
-            Headplane is served via Caddy on its own subdomain with automatic
-            HTTPS!
+            <strong>Access Headplane Web UI</strong> to manage your Headscale
+            server through a user-friendly interface:
+            <div className="mt-2">
+              {getHeadplaneUrl(config) ? (
+                <a
+                  href={getHeadplaneUrl(config)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 underline"
+                >
+                  {getHeadplaneUrl(config)}
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                  </svg>
+                </a>
+              ) : (
+                <Code>Configure domain/IP above to see your Headplane URL</Code>
+              )}
+            </div>
+            <p className="text-xs text-neutral-400 mt-1">
+              Note: Headplane runs on the <Code>admin.</Code> subdomain with
+              automatic HTTPS via Caddy
+            </p>
           </li>
           <li>
             <strong>Login to Headplane</strong> with your Headscale API key (the
@@ -812,7 +853,7 @@ export default function HeadscaleStep({
       </Paper>
 
       <Alert
-        variant="warning"
+        variant="info"
         icon={
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
             <path
@@ -824,17 +865,40 @@ export default function HeadscaleStep({
         }
       >
         <div className="text-sm">
-          <p className="font-medium mb-2">Benefits of Headscale:</p>
+          <p className="font-medium mb-2">Why use Headscale for NoisePort?</p>
           <ul className="list-disc ml-5 space-y-1">
             <li>
-              🔐 Self-hosted - complete control over your VPN infrastructure
+              👥 <strong>Shared Access:</strong> All your users join the same
+              VPN network to access your services
             </li>
-            <li>🆓 Free and open-source - no subscription fees</li>
-            <li>🔒 End-to-end encrypted connections</li>
-            <li>🌐 Access your music from anywhere in the world</li>
-            <li>🚫 No third-party dependencies or data sharing</li>
-            <li>📱 Works with standard Tailscale clients on all platforms</li>
-            <li>⚡ Fast peer-to-peer connections when possible</li>
+            <li>
+              🌍 <strong>Global Access:</strong> Users can stream music from
+              anywhere in the world securely
+            </li>
+            <li>
+              🔐 <strong>Self-Hosted:</strong> Complete control over who can
+              join your network
+            </li>
+            <li>
+              🆓 <strong>Free Forever:</strong> No subscription fees or user
+              limits
+            </li>
+            <li>
+              🔒 <strong>Encrypted:</strong> All connections are end-to-end
+              encrypted via WireGuard
+            </li>
+            <li>
+              🚫 <strong>Private:</strong> No third-party services - your data
+              stays with you
+            </li>
+            <li>
+              📱 <strong>Universal:</strong> Works with Tailscale clients on
+              iOS, Android, Windows, Mac, Linux
+            </li>
+            <li>
+              ⚡ <strong>Fast:</strong> Direct peer-to-peer connections when
+              possible for low latency
+            </li>
           </ul>
         </div>
       </Alert>

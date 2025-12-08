@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { WizardConfiguration } from "../../types/wizard";
-import { useWizardConfig } from "../../hooks/useWizardConfig";
 import {
   Button,
   Checkbox,
@@ -14,12 +13,16 @@ interface Props {
   config: WizardConfiguration;
   onUpdate: (updates: Partial<WizardConfiguration>) => void;
   onValidation: (valid: boolean) => void;
+  testConnection: (service: string, serviceConfig: any) => Promise<boolean>;
+  saveConfig: () => Promise<void>;
 }
 
 export default function SoulseekStep({
   config,
   onUpdate,
   onValidation,
+  testConnection,
+  saveConfig,
 }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "testing" | "success" | "error"
@@ -28,7 +31,6 @@ export default function SoulseekStep({
     "idle" | "restarting" | "success" | "error"
   >("idle");
   const [saving, setSaving] = useState(false);
-  const [configSaved, setConfigSaved] = useState(false);
   const { testConnection } = useWizardConfig();
 
   const onValidationRef = useRef(onValidation);

@@ -14,12 +14,14 @@ interface Props {
   config: WizardConfiguration;
   onUpdate: (updates: Partial<WizardConfiguration>) => void;
   onValidation: (valid: boolean) => void;
+  saveConfig: () => Promise<void>;
 }
 
 export default function MusicPathsStep({
   config,
   onUpdate,
   onValidation,
+  saveConfig,
 }: Props) {
   const [servicesLaunched, setServicesLaunched] = useState(false);
   const [launching, setLaunching] = useState(false);
@@ -59,25 +61,13 @@ export default function MusicPathsStep({
     setSaving(true);
     console.log("Saving configuration:", config);
     try {
-      const response = await fetch("/api/v1/config", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(config),
-      });
-
-      if (response.ok) {
-        setConfigSaved(true);
-        const result = await response.json();
-        console.log("Configuration saved:", result);
-      } else {
-        console.error("Failed to save configuration");
-      }
+      await saveConfig();
+      setConfigSaved(true);
     } catch (error) {
       console.error("Error saving configuration:", error);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const launchServices = async () => {

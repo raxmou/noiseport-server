@@ -56,8 +56,18 @@ const steps: WizardStep[] = [
 export default function SetupWizard() {
   const [activeStep, setActiveStep] = useState(0);
   const [wizardSteps, setWizardSteps] = useState(steps);
-  const { config, loading, error, saveConfig, updateConfig, loadConfig } =
-    useWizardConfig();
+  const {
+    config,
+    loading,
+    error,
+    saveConfig,
+    updateConfig,
+    loadConfig,
+    testConnection,
+    saveSoulseekConfig,
+    saveSpotifyConfig,
+    saveFeaturesConfig,
+  } = useWizardConfig();
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -113,6 +123,7 @@ export default function SetupWizard() {
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(1, valid)}
+            saveConfig={saveConfig}
           />
         );
       case 2:
@@ -121,6 +132,8 @@ export default function SetupWizard() {
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(2, valid)}
+            testConnection={testConnection}
+            saveConfig={saveSoulseekConfig}
           />
         );
       case 3:
@@ -129,6 +142,8 @@ export default function SetupWizard() {
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(3, valid)}
+            testConnection={testConnection}
+            saveConfig={saveSpotifyConfig}
           />
         );
       case 4:
@@ -137,6 +152,7 @@ export default function SetupWizard() {
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(4, valid)}
+            saveConfig={saveFeaturesConfig}
           />
         );
       case 5:

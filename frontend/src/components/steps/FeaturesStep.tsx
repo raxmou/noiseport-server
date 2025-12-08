@@ -13,12 +13,14 @@ interface Props {
   config: WizardConfiguration;
   onUpdate: (updates: Partial<WizardConfiguration>) => void;
   onValidation: (valid: boolean) => void;
+  saveConfig: () => Promise<void>;
 }
 
 export default function FeaturesStep({
   config,
   onUpdate,
   onValidation,
+  saveConfig,
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [configSaved, setConfigSaved] = useState(false);
