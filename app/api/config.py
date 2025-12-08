@@ -422,16 +422,14 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                     logger.warning(
                         f"Caddyfile template not found at {caddy_template_path}, using default"
                     )
-                    caddy_content = f"""{domain or "localhost"} {{
-    # Headplane Web UI at /admin path (strips /admin prefix)
-    handle_path /admin* {{
-        reverse_proxy headplane:3000
-    }}
+                    caddy_content = f"""# Headscale API
+{domain or "localhost"} {{
+    reverse_proxy headscale:8080
+}}
 
-    # Headscale API at root
-    handle {{
-        reverse_proxy headscale:8080
-    }}
+# Headplane UI on subdomain
+admin.{domain or "localhost"} {{
+    reverse_proxy headplane:3000
 }}
 """
 
@@ -1097,16 +1095,14 @@ async def launch_headscale() -> JSONResponse:
                             default_domain = line.strip().split("=", 1)[1]
                             break
 
-            default_caddyfile = f"""{default_domain} {{
-    # Headplane Web UI at /admin path (strips /admin prefix)
-    handle_path /admin* {{
-        reverse_proxy headplane:3000
-    }}
+            default_caddyfile = f"""# Headscale API
+{default_domain} {{
+    reverse_proxy headscale:8080
+}}
 
-    # Headscale API at root
-    handle {{
-        reverse_proxy headscale:8080
-    }}
+# Headplane UI on subdomain
+admin.{default_domain} {{
+    reverse_proxy headplane:3000
 }}
 """
             with open(caddy_config_path, "w") as f:
@@ -1137,7 +1133,7 @@ async def launch_headscale() -> JSONResponse:
             default_headplane_config = f"""server:
   host: 0.0.0.0
   port: 3000
-  base_url: http://localhost:3000/admin
+  base_url: http://localhost:3000
   cookie_secret: "{cookie_secret}"
   cookie_secure: false
   data_path: /var/lib/headplane/
@@ -1233,7 +1229,7 @@ integration:
                 "message": "Headscale launch started. Check container status to verify.",
                 "services": {
                     "headscale": "http://localhost:8080",
-                    "headplane": "https://your-domain.sslip.io/admin (via Caddy)",
+                    "headplane": "https://admin.your-domain.sslip.io (via Caddy)",
                 },
             },
         )
