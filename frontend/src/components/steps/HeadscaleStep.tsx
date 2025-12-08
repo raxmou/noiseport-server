@@ -773,7 +773,8 @@ export default function HeadscaleStep({
             <Code>https://your-domain.sslip.io/admin</Code> (replace with your
             actual domain) to manage your Headscale server through a
             user-friendly interface. Headplane is served via Caddy with
-            automatic HTTPS!
+            automatic HTTPS! The <Code>/admin</Code> prefix is automatically
+            stripped by Caddy before forwarding to Headplane.
           </li>
           <li>
             <strong>Login to Headplane</strong> with your Headscale API key (the

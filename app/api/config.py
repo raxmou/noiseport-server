@@ -423,8 +423,8 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                         f"Caddyfile template not found at {caddy_template_path}, using default"
                     )
                     caddy_content = f"""{domain or "localhost"} {{
-    # Headplane Web UI at /admin path
-    handle /admin* {{
+    # Headplane Web UI at /admin path (strips /admin prefix)
+    handle_path /admin* {{
         reverse_proxy headplane:3000
     }}
 
@@ -1098,8 +1098,8 @@ async def launch_headscale() -> JSONResponse:
                             break
 
             default_caddyfile = f"""{default_domain} {{
-    # Headplane Web UI at /admin path
-    handle /admin* {{
+    # Headplane Web UI at /admin path (strips /admin prefix)
+    handle_path /admin* {{
         reverse_proxy headplane:3000
     }}
 

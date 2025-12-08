@@ -1,6 +1,6 @@
 {{HEADSCALE_DOMAIN}} {
-    # Headplane Web UI at /admin path
-    handle /admin* {
+    # Headplane Web UI at /admin path (strips /admin prefix)
+    handle_path /admin* {
         reverse_proxy headplane:3000
     }
 
