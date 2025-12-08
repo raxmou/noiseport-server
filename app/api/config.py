@@ -1084,7 +1084,7 @@ async def launch_headscale() -> JSONResponse:
         os.makedirs(caddy_config_dir, exist_ok=True)
 
         if not os.path.exists(caddy_config_path):
-            # Create a default Caddyfile if it doesn't exist
+            # Create Caddyfile from template if it doesn't exist
             # Try to get domain from env or use localhost
             default_domain = "localhost"
             env_file_path = os.path.join(wizard_config_dir, ".env")
@@ -1095,7 +1095,22 @@ async def launch_headscale() -> JSONResponse:
                             default_domain = line.strip().split("=", 1)[1]
                             break
 
-            default_caddyfile = f"""# Headscale API
+            # Use template if available
+            caddy_template_path = str(
+                PROJECT_ROOT / "config" / "caddy" / "Caddyfile.template"
+            )
+            if os.path.exists(caddy_template_path):
+                with open(caddy_template_path) as f:
+                    template = f.read()
+                caddyfile_content = template.replace(
+                    "{{HEADSCALE_DOMAIN}}", default_domain
+                )
+            else:
+                # Fallback to hardcoded template
+                logger.warning(
+                    f"Caddyfile template not found at {caddy_template_path}, using default"
+                )
+                caddyfile_content = f"""# Headscale API
 {default_domain} {{
     reverse_proxy headscale:8080
 }}
@@ -1106,8 +1121,8 @@ admin.{default_domain} {{
 }}
 """
             with open(caddy_config_path, "w") as f:
-                f.write(default_caddyfile)
-            logger.info(f"Created default Caddyfile at {caddy_config_path}")
+                f.write(caddyfile_content)
+            logger.info(f"Created Caddyfile at {caddy_config_path} for domain: {default_domain}")
 
         # Ensure Headplane config exists before launching
         headplane_config_dir = os.path.join(wizard_config_dir, "headplane")
