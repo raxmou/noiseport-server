@@ -1122,7 +1122,9 @@ admin.{default_domain} {{
 """
             with open(caddy_config_path, "w") as f:
                 f.write(caddyfile_content)
-            logger.info(f"Created Caddyfile at {caddy_config_path} for domain: {default_domain}")
+            logger.info(
+                f"Created Caddyfile at {caddy_config_path} for domain: {default_domain}"
+            )
 
         # Ensure Headplane config exists before launching
         headplane_config_dir = os.path.join(wizard_config_dir, "headplane")
