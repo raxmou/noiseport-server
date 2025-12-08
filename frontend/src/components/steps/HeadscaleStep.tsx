@@ -1,25 +1,19 @@
 import { useEffect, useState } from "react";
 import { WizardConfiguration } from "../../types/wizard";
-import { useWizardConfig } from "../../hooks/useWizardConfig";
-import {
-  Button,
-  Checkbox,
-  TextInput,
-  Paper,
-  Alert,
-  Code,
-} from "../ui";
+import { Button, Checkbox, TextInput, Paper, Alert, Code } from "../ui";
 
 interface Props {
   config: WizardConfiguration;
   onUpdate: (updates: Partial<WizardConfiguration>) => void;
   onValidation: (valid: boolean) => void;
+  saveConfig: () => Promise<void>;
 }
 
 export default function HeadscaleStep({
   config,
   onUpdate,
   onValidation,
+  saveConfig,
 }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "testing" | "success" | "error"
@@ -32,7 +26,8 @@ export default function HeadscaleStep({
   >("idle");
   const [launchMessage, setLaunchMessage] = useState<string | null>(null);
   const [detectedIp, setDetectedIp] = useState<string>("");
-  const { saveConfig } = useWizardConfig();
+  const [configSaved, setConfigSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Auto-detect server IP on mount
   useEffect(() => {
@@ -43,7 +38,10 @@ export default function HeadscaleStep({
         if (hostname !== "localhost" && hostname !== "127.0.0.1") {
           setDetectedIp(hostname);
           // Auto-fill if not already set
-          if (!config.headscale.serverIp && config.headscale.setupMode === "ip") {
+          if (
+            !config.headscale.serverIp &&
+            config.headscale.setupMode === "ip"
+          ) {
             onUpdate({
               headscale: { ...config.headscale, serverIp: hostname },
             });
@@ -63,8 +61,10 @@ export default function HeadscaleStep({
     const isValid =
       !config.headscale.enabled ||
       (config.headscale.enabled &&
-        ((config.headscale.setupMode === "domain" && !!config.headscale.domain) ||
-          (config.headscale.setupMode === "ip" && !!config.headscale.serverIp)) &&
+        ((config.headscale.setupMode === "domain" &&
+          !!config.headscale.domain) ||
+          (config.headscale.setupMode === "ip" &&
+            !!config.headscale.serverIp)) &&
         !!config.headscale.serverUrl);
     onValidation(isValid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,13 +77,14 @@ export default function HeadscaleStep({
   ]);
 
   const handleHeadscaleToggle = (enabled: boolean) => {
+    setConfigSaved(false);
     onUpdate({
       headscale: { ...config.headscale, enabled },
     });
   };
-
   const handleSetupModeChange = (value: string) => {
     if (value === "domain" || value === "ip") {
+      setConfigSaved(false);
       const updates: Partial<WizardConfiguration["headscale"]> = {
         setupMode: value,
       };
@@ -107,6 +108,7 @@ export default function HeadscaleStep({
   };
 
   const handleDomainChange = (value: string) => {
+    setConfigSaved(false);
     const serverUrl = value ? `https://${value}` : "";
     onUpdate({
       headscale: {
@@ -116,8 +118,8 @@ export default function HeadscaleStep({
       },
     });
   };
-
   const handleServerIpChange = (value: string) => {
+    setConfigSaved(false);
     // For IP mode, generate sslip.io domain for HTTPS support
     const sslipDomain = value ? generateSslipDomain(value) : "";
     const serverUrl = sslipDomain ? `https://${sslipDomain}` : "";
@@ -130,26 +132,28 @@ export default function HeadscaleStep({
       },
     });
   };
-
   const handleServerUrlChange = (value: string) => {
+    setConfigSaved(false);
     onUpdate({
       headscale: { ...config.headscale, serverUrl: value },
     });
   };
 
   const handleApiKeyChange = (value: string) => {
+    setConfigSaved(false);
     onUpdate({
       headscale: { ...config.headscale, apiKey: value },
     });
   };
 
   const handleBaseDomainChange = (value: string) => {
+    setConfigSaved(false);
     onUpdate({
       headscale: { ...config.headscale, baseDomain: value },
     });
   };
-
   const generateApiKey = () => {
+    setConfigSaved(false);
     // Generate a secure random API key
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
@@ -157,6 +161,20 @@ export default function HeadscaleStep({
       byte.toString(16).padStart(2, "0")
     ).join("");
     handleApiKeyChange(apiKey);
+  };
+
+  const saveConfiguration = async () => {
+    setSaving(true);
+    try {
+      await saveConfig();
+      setConfigSaved(true);
+    } catch (error) {
+      console.error("Failed to save configuration:", error);
+      setLaunchStatus("error");
+      setLaunchMessage("Failed to save configuration");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const testHeadscaleConnection = async () => {
@@ -168,18 +186,18 @@ export default function HeadscaleStep({
 
     setConnectionStatus("testing");
     setConnectionMessage(null);
-    
+
     // Create AbortController for timeout (better browser compatibility)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
+
     try {
       const healthUrl = `${config.headscale.serverUrl}/health`;
       const response = await fetch(healthUrl, {
         method: "GET",
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
 
       if (response.ok) {
@@ -199,34 +217,19 @@ export default function HeadscaleStep({
       } else {
         setConnectionStatus("error");
         setConnectionMessage(
-          `Connection failed: Server returned status ${response.status}`
+          `Headscale server returned status ${response.status}. Make sure the server is properly configured.`
         );
       }
     } catch (error) {
       clearTimeout(timeoutId);
       setConnectionStatus("error");
-      if (error instanceof Error && error.name === "AbortError") {
-        setConnectionMessage(
-          "Connection timed out. Make sure Headscale is running and accessible."
-        );
-      } else {
-        setConnectionMessage(
-          "Failed to connect. Please verify your server URL and ensure Headscale is running."
-        );
-      }
+      setConnectionMessage(
+        "Failed to connect to Headscale. Make sure the server is running and accessible."
+      );
     }
   };
 
   const launchHeadscale = async () => {
-    // Save configuration first
-    try {
-      await saveConfig();
-    } catch (err) {
-      setLaunchStatus("error");
-      setLaunchMessage("Failed to save configuration before launching");
-      return;
-    }
-
     setLaunchStatus("launching");
     setLaunchMessage(null);
 
@@ -247,7 +250,9 @@ export default function HeadscaleStep({
         );
       } else {
         setLaunchStatus("error");
-        setLaunchMessage(data.detail || "Failed to launch Headscale containers");
+        setLaunchMessage(
+          data.detail || "Failed to launch Headscale containers"
+        );
       }
     } catch (error) {
       setLaunchStatus("error");
@@ -281,11 +286,11 @@ export default function HeadscaleStep({
         <div className="space-y-2">
           <p className="font-medium">What is Headscale?</p>
           <p className="text-sm">
-            Headscale is a self-hosted coordination server for the WireGuard
-            VPN protocol. Unlike Tailscale (which is a paid service), Headscale
+            Headscale is a self-hosted coordination server for the WireGuard VPN
+            protocol. Unlike Tailscale (which is a paid service), Headscale
             gives you complete control over your VPN infrastructure. It works
-            with the open-source Tailscale clients to provide secure,
-            encrypted connections between your devices.
+            with the open-source Tailscale clients to provide secure, encrypted
+            connections between your devices.
           </p>
           <p className="text-sm">
             <strong>Headplane</strong> provides a user-friendly web interface
@@ -301,8 +306,9 @@ export default function HeadscaleStep({
         <div className="space-y-4">
           <Alert variant="info">
             <p className="text-sm">
-              The wizard will set up Headscale with <strong>Caddy</strong> (automatic HTTPS reverse proxy)
-              for you automatically. Caddy will handle SSL certificates via Let's Encrypt.
+              The wizard will set up Headscale with <strong>Caddy</strong>{" "}
+              (automatic HTTPS reverse proxy) for you automatically. Caddy will
+              handle SSL certificates via Let's Encrypt.
             </p>
           </Alert>
 
@@ -310,21 +316,25 @@ export default function HeadscaleStep({
             <h4 className="font-medium">Choose Your Setup Mode:</h4>
             <ul className="list-disc ml-5 space-y-2 text-sm text-neutral-400">
               <li>
-                <strong>Domain-based:</strong> Use if you have your own domain name.
-                You'll need to set up a DNS A record pointing to your server.
+                <strong>Domain-based:</strong> Use if you have your own domain
+                name. You'll need to set up a DNS A record pointing to your
+                server.
               </li>
               <li>
-                <strong>IP-based with sslip.io:</strong> Automatically generates a domain
-                from your IP (e.g., 34-55-55-28.sslip.io). No DNS configuration needed!
-                Perfect for quick setup with automatic HTTPS.
+                <strong>IP-based with sslip.io:</strong> Automatically generates
+                a domain from your IP (e.g., 34-55-55-28.sslip.io). No DNS
+                configuration needed! Perfect for quick setup with automatic
+                HTTPS.
               </li>
             </ul>
           </div>
 
           <Alert variant="warning">
             <p className="text-sm">
-              <strong>Important:</strong> For IP-based setup, make sure to use your <strong>public IP</strong>,
-              not a local IP like 192.168.x.x or 10.x.x.x. sslip.io and Let's Encrypt won't work with private IPs.
+              <strong>Important:</strong> For IP-based setup, make sure to use
+              your <strong>public IP</strong>, not a local IP like 192.168.x.x
+              or 10.x.x.x. sslip.io and Let's Encrypt won't work with private
+              IPs.
             </p>
           </Alert>
         </div>
@@ -339,6 +349,15 @@ export default function HeadscaleStep({
           }
           className="mb-4"
         />
+
+        {!config.headscale.enabled && (
+          <Alert variant="info" className="mt-4">
+            <p className="text-sm">
+              ℹ️ Check the box above to enable Headscale and configure your VPN settings.
+              Configuration files will only be generated when Headscale is enabled.
+            </p>
+          </Alert>
+        )}
 
         {config.headscale.enabled && (
           <div className="space-y-4">
@@ -378,7 +397,8 @@ export default function HeadscaleStep({
                   <div>
                     <div className="font-medium">IP with sslip.io (HTTPS)</div>
                     <div className="text-sm text-neutral-400">
-                      Automatic domain from IP - no DNS setup needed! (Recommended)
+                      Automatic domain from IP - no DNS setup needed!
+                      (Recommended)
                     </div>
                   </div>
                 </label>
@@ -395,9 +415,7 @@ export default function HeadscaleStep({
                     </p>
                     <ul className="list-disc ml-5 space-y-1 text-sm">
                       <li>A domain name (e.g., headscale.yourdomain.com)</li>
-                      <li>
-                        DNS A record pointing to your server's public IP
-                      </li>
+                      <li>DNS A record pointing to your server's public IP</li>
                       <li>
                         SSL certificate (can use Let's Encrypt with a reverse
                         proxy like Caddy or Nginx)
@@ -425,8 +443,10 @@ export default function HeadscaleStep({
                   <div className="space-y-2">
                     <p className="font-medium">IP-based Setup with sslip.io</p>
                     <p className="text-sm">
-                      For IP-based setup with HTTPS support, we'll use <strong>sslip.io</strong> - a free DNS service that automatically
-                      resolves to your IP. This allows Caddy to get a Let's Encrypt certificate.
+                      For IP-based setup with HTTPS support, we'll use{" "}
+                      <strong>sslip.io</strong> - a free DNS service that
+                      automatically resolves to your IP. This allows Caddy to
+                      get a Let's Encrypt certificate.
                       {detectedIp && (
                         <span>
                           {" "}
@@ -435,7 +455,8 @@ export default function HeadscaleStep({
                       )}
                     </p>
                     <p className="text-sm">
-                      Example: IP <Code>34.55.55.28</Code> becomes <Code>34-55-55-28.sslip.io</Code>
+                      Example: IP <Code>34.55.55.28</Code> becomes{" "}
+                      <Code>34-55-55-28.sslip.io</Code>
                     </p>
                   </div>
                 </Alert>
@@ -457,10 +478,14 @@ export default function HeadscaleStep({
                 {config.headscale.serverIp && (
                   <Alert variant="success">
                     <p className="text-sm">
-                      ✓ Your Headscale domain will be: <strong>{generateSslipDomain(config.headscale.serverIp)}</strong>
+                      ✓ Your Headscale domain will be:{" "}
+                      <strong>
+                        {generateSslipDomain(config.headscale.serverIp)}
+                      </strong>
                     </p>
                     <p className="text-sm mt-2">
-                      Caddy will automatically obtain a Let's Encrypt certificate for HTTPS.
+                      Caddy will automatically obtain a Let's Encrypt
+                      certificate for HTTPS.
                     </p>
                   </Alert>
                 )}
@@ -527,40 +552,116 @@ export default function HeadscaleStep({
                     {`docker exec headscale headscale apikeys create`}
                   </Code>
                 </div>
-                <p className="text-sm mt-2">
-                  Then update this field with the generated key, or use the one
-                  generated here and create it with:
-                </p>
-                <div className="mt-2">
-                  <Code block>
-                    {`docker exec headscale headscale apikeys create --expiration 0`}
-                  </Code>
-                </div>
               </Alert>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-neutral-800">
-              <div>
-                <p className="font-medium">Launch Headscale Containers</p>
-                <p className="text-sm text-neutral-400">
-                  Start Headscale and Headplane containers with your configuration
-                </p>
+            {configSaved && (
+              <Alert variant="info" className="mb-4">
+                <div className="flex items-center gap-2">
+                  <svg
+                    className="w-5 h-5 text-blue-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <div>
+                    <p className="font-semibold text-blue-200">
+                      Configuration Saved!
+                    </p>
+                    <p className="text-sm text-neutral-400">
+                      Headscale configuration files generated, ready to launch
+                      services!
+                    </p>
+                  </div>
+                </div>
+              </Alert>
+            )}
+
+            <div className="space-y-4 pt-4 border-t border-neutral-800">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-semibold mb-1">
+                    Step 1: Save Configuration
+                  </p>
+                  <p className="text-sm text-neutral-400">
+                    Save your Headscale settings to generate config files and
+                    .env
+                  </p>
+                </div>
+                <Button
+                  onClick={saveConfiguration}
+                  loading={saving}
+                  disabled={!config.headscale.serverUrl}
+                  variant={configSaved ? "outline" : "primary"}
+                  leftSection={
+                    configSaved ? (
+                      <svg
+                        className="w-5 h-5"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    ) : undefined
+                  }
+                >
+                  {saving
+                    ? "Saving..."
+                    : configSaved
+                    ? "Saved"
+                    : "Save Configuration"}
+                </Button>
               </div>
-              <Button
-                onClick={launchHeadscale}
-                loading={launchStatus === "launching"}
-                variant="primary"
-                disabled={!config.headscale.serverUrl}
-              >
-                Launch Headscale
-              </Button>
+
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-semibold mb-1">
+                    Step 2: Launch Headscale Containers
+                  </p>
+                  <p className="text-sm text-neutral-400">
+                    Start Headscale, Caddy, and Headplane containers
+                  </p>
+                </div>
+                <Button
+                  onClick={launchHeadscale}
+                  loading={launchStatus === "launching"}
+                  variant="primary"
+                  disabled={!configSaved}
+                  leftSection={
+                    <svg
+                      className="w-5 h-5"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                    </svg>
+                  }
+                >
+                  {launchStatus === "launching"
+                    ? "Launching..."
+                    : "Launch Headscale"}
+                </Button>
+              </div>
             </div>
 
             {launchStatus === "success" && (
               <Alert
                 variant="success"
                 icon={
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
                     <path
                       fillRule="evenodd"
                       d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -578,7 +679,11 @@ export default function HeadscaleStep({
               <Alert
                 variant="error"
                 icon={
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
                     <path
                       fillRule="evenodd"
                       d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -659,15 +764,25 @@ export default function HeadscaleStep({
             Headscale, Caddy, and Headplane containers
           </li>
           <li>
-            <strong>Wait for Caddy to obtain SSL certificate</strong> - this may take 1-2 minutes.
-            Check logs with: <Code>docker logs caddy</Code>
+            <strong>Wait for Caddy to obtain SSL certificate</strong> - this may
+            take 1-2 minutes. Check logs with: <Code>docker logs caddy</Code>
           </li>
           <li>
-            <strong>Access your Headscale server</strong> at your configured domain
-            (e.g., <Code>https://your-domain.sslip.io</Code>)
+            <strong>Access Headplane Web UI</strong> at <Code>https://your-domain.sslip.io/admin</Code> (replace with your actual domain)
+            to manage your Headscale server through a user-friendly interface. Headplane is served via Caddy with automatic HTTPS!
           </li>
           <li>
-            <strong>Create a namespace/user</strong> in Headscale:
+            <strong>Login to Headplane</strong> with your Headscale API key (the one you generated above).
+            If you need to create the API key first, run:
+            <div className="mt-2">
+              <Code block>
+                docker exec headscale headscale apikeys create
+              </Code>
+            </div>
+            Then copy the generated key and paste it into Headplane's login form.
+          </li>
+          <li>
+            <strong>Create a user</strong> in Headplane UI or via command line:
             <div className="mt-2">
               <Code block>
                 docker exec headscale headscale users create myuser
@@ -675,7 +790,7 @@ export default function HeadscaleStep({
             </div>
           </li>
           <li>
-            <strong>Generate a pre-auth key</strong> for your devices:
+            <strong>Generate a pre-auth key</strong> in Headplane UI or via command:
             <div className="mt-2">
               <Code block>
                 docker exec headscale headscale preauthkeys create --user myuser
@@ -705,7 +820,9 @@ export default function HeadscaleStep({
         <div className="text-sm">
           <p className="font-medium mb-2">Benefits of Headscale:</p>
           <ul className="list-disc ml-5 space-y-1">
-            <li>🔐 Self-hosted - complete control over your VPN infrastructure</li>
+            <li>
+              🔐 Self-hosted - complete control over your VPN infrastructure
+            </li>
             <li>🆓 Free and open-source - no subscription fees</li>
             <li>🔒 End-to-end encrypted connections</li>
             <li>🌐 Access your music from anywhere in the world</li>

@@ -51,6 +51,30 @@ services:
       glance.url: https://localhost
       glance.description: "Automatic HTTPS reverse proxy for Headscale"
 
+  headplane:
+    image: ghcr.io/tale/headplane:latest
+    container_name: headplane
+    restart: unless-stopped
+    # No external ports - accessed via Caddy at /admin
+    volumes:
+      - ./wizard-config/headplane/config.yaml:/etc/headplane/config.yaml:ro
+      - ./wizard-config/headscale/config/config.yaml:/etc/headscale/config.yaml:ro
+      - headplane_data:/var/lib/headplane
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - HEADPLANE_CONFIG_PATH=/etc/headplane/config.yaml
+    networks:
+      - headscale-net
+    depends_on:
+      - headscale
+    labels:
+      glance.name: Headplane UI
+      glance.hide: false
+      glance.icon: si:tailscale
+      glance.url: http://localhost:3000
+      glance.description: "Web UI for managing Headscale"
+      me.tale.headplane.target: headscale
+
 networks:
   headscale-net:
     driver: bridge
@@ -59,3 +83,4 @@ networks:
 volumes:
   caddy_data:
   caddy_config:
+  headplane_data:

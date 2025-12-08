@@ -103,6 +103,7 @@ export default function SetupWizard() {
             config={config}
             onUpdate={updateConfig}
             onValidation={(valid) => handleStepValidation(0, valid)}
+            saveConfig={saveConfig}
           />
         );
       case 1:
