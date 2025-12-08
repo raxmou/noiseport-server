@@ -353,8 +353,9 @@ export default function HeadscaleStep({
         {!config.headscale.enabled && (
           <Alert variant="info" className="mt-4">
             <p className="text-sm">
-              ℹ️ Check the box above to enable Headscale and configure your VPN settings.
-              Configuration files will only be generated when Headscale is enabled.
+              ℹ️ Check the box above to enable Headscale and configure your VPN
+              settings. Configuration files will only be generated when
+              Headscale is enabled.
             </p>
           </Alert>
         )}
@@ -768,18 +769,21 @@ export default function HeadscaleStep({
             take 1-2 minutes. Check logs with: <Code>docker logs caddy</Code>
           </li>
           <li>
-            <strong>Access Headplane Web UI</strong> at <Code>https://your-domain.sslip.io/admin</Code> (replace with your actual domain)
-            to manage your Headscale server through a user-friendly interface. Headplane is served via Caddy with automatic HTTPS!
+            <strong>Access Headplane Web UI</strong> at{" "}
+            <Code>https://your-domain.sslip.io/admin</Code> (replace with your
+            actual domain) to manage your Headscale server through a
+            user-friendly interface. Headplane is served via Caddy with
+            automatic HTTPS!
           </li>
           <li>
-            <strong>Login to Headplane</strong> with your Headscale API key (the one you generated above).
-            If you need to create the API key first, run:
+            <strong>Login to Headplane</strong> with your Headscale API key (the
+            one you generated above). If you need to create the API key first,
+            run:
             <div className="mt-2">
-              <Code block>
-                docker exec headscale headscale apikeys create
-              </Code>
+              <Code block>docker exec headscale headscale apikeys create</Code>
             </div>
-            Then copy the generated key and paste it into Headplane's login form.
+            Then copy the generated key and paste it into Headplane's login
+            form.
           </li>
           <li>
             <strong>Create a user</strong> in Headplane UI or via command line:
@@ -790,7 +794,8 @@ export default function HeadscaleStep({
             </div>
           </li>
           <li>
-            <strong>Generate a pre-auth key</strong> in Headplane UI or via command:
+            <strong>Generate a pre-auth key</strong> in Headplane UI or via
+            command:
             <div className="mt-2">
               <Code block>
                 docker exec headscale headscale preauthkeys create --user myuser
