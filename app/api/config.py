@@ -1125,6 +1125,10 @@ admin.{default_domain} {{
             logger.info(
                 f"Created Caddyfile at {caddy_config_path} for domain: {default_domain}"
             )
+        else:
+            logger.info(
+                f"Using existing Caddyfile at {caddy_config_path} (not overwriting saved configuration)"
+            )
 
         # Ensure Headplane config exists before launching
         headplane_config_dir = os.path.join(wizard_config_dir, "headplane")
@@ -1239,14 +1243,36 @@ integration:
         thread = threading.Thread(target=run_headscale, daemon=True)
         thread.start()
 
+        # Read domain from .env to show correct URLs
+        env_vars = {}
+        env_file_path = os.path.join(wizard_config_dir, ".env")
+        if os.path.exists(env_file_path):
+            with open(env_file_path) as f:
+                for line in f:
+                    if "=" in line and not line.startswith("#"):
+                        key, value = line.strip().split("=", 1)
+                        env_vars[key] = value
+
+        headscale_domain = env_vars.get("HEADSCALE_DOMAIN", "localhost")
+        headscale_url = (
+            f"https://{headscale_domain}"
+            if headscale_domain != "localhost"
+            else "http://localhost:8080"
+        )
+        headplane_url = (
+            f"https://admin.{headscale_domain}"
+            if headscale_domain != "localhost"
+            else "http://localhost:3000"
+        )
+
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED,
             content={
                 "success": True,
                 "message": "Headscale launch started. Check container status to verify.",
                 "services": {
-                    "headscale": "http://localhost:8080",
-                    "headplane": "https://admin.your-domain.sslip.io (via Caddy)",
+                    "headscale": headscale_url,
+                    "headplane": headplane_url,
                 },
             },
         )
