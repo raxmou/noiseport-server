@@ -1,9 +1,29 @@
-# Headscale API
+# Headscale API (Public access for VPN registration)
 {{HEADSCALE_DOMAIN}} {
     reverse_proxy headscale:8080
 }
 
-# Headplane UI on subdomain
+# Headplane Admin UI (Public access for VPN management)
 admin.{{HEADSCALE_DOMAIN}} {
     reverse_proxy headplane:3000
+}
+
+# Music Services (VPN-only via MagicDNS)
+# These are NOT publicly accessible - only via VPN client's MagicDNS
+# Example: http://navidrome.{{HEADSCALE_BASE_DOMAIN}}:4533
+
+navidrome.{{HEADSCALE_DOMAIN}} {
+    reverse_proxy navidrome:4533
+}
+
+jellyfin.{{HEADSCALE_DOMAIN}} {
+    reverse_proxy jellyfin:8096
+}
+
+slskd.{{HEADSCALE_DOMAIN}} {
+    reverse_proxy slskd:5030
+}
+
+api.{{HEADSCALE_DOMAIN}} {
+    reverse_proxy fastapi:80
 }

@@ -1355,33 +1355,59 @@ async def launch_services() -> JSONResponse:
         thread = threading.Thread(target=run_stack, daemon=True)
         thread.start()
 
-        # Get Headscale server IP from .env if available
-        server_ip = None
+        # Get Headscale configuration from .env
+        headscale_base_domain = "headscale.local"
+        headscale_enabled = False
         try:
             env_file_path = os.path.join(wizard_config_dir, ".env")
             with open(env_file_path) as f:
                 for line in f:
-                    if line.startswith("HEADSCALE_SERVER_IP="):
-                        server_ip = line.strip().split("=", 1)[1]
-                        break
+                    if line.startswith("HEADSCALE_BASE_DOMAIN="):
+                        headscale_base_domain = line.strip().split("=", 1)[1]
+                    elif line.startswith("HEADSCALE_ENABLED="):
+                        headscale_enabled = (
+                            line.strip().split("=", 1)[1].lower() == "true"
+                        )
         except Exception:
             pass
 
-        def url(ip, port):
-            return f"http://{ip}:{port}" if ip else f"http://localhost:{port}"
+        def magicdns_url(service, port):
+            """Generate MagicDNS URL for VPN-only access"""
+            if headscale_enabled:
+                # Use container name as MagicDNS hostname
+                # VPN clients will resolve these via Headscale's DNS
+                return f"http://{service}:{port}"
+            else:
+                # Fallback to localhost for testing
+                return f"http://localhost:{port}"
 
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED,
             content={
                 "success": True,
-                "message": "Music stack launch started. Use /config/stack-status to check progress.",
+                "message": "Music stack launched. Services accessible via Headscale VPN only.",
                 "project": "noiseport",
                 "configPath": runner.wizard_config_path,
+                "accessMode": "vpn-only" if headscale_enabled else "local",
                 "services": {
-                    "navidrome": url(server_ip, 4533),
-                    "jellyfin": url(server_ip, 8096),
-                    "slskd": url(server_ip, 5030),
-                    "fastapi": url(server_ip, 8010),
+                    "navidrome": magicdns_url("navidrome", 4533),
+                    "jellyfin": magicdns_url("jellyfin", 8096),
+                    "slskd": magicdns_url("slskd", 5030),
+                    "fastapi": magicdns_url("api", 80),
+                },
+                "vpnInfo": {
+                    "enabled": headscale_enabled,
+                    "baseDomain": headscale_base_domain,
+                    "instructions": (
+                        [
+                            "1. Install Tailscale client on your device",
+                            "2. Connect using: tailscale up --login-server=YOUR_HEADSCALE_URL",
+                            "3. Access services using MagicDNS hostnames (e.g., http://navidrome:4533)",
+                            "4. Services are NOT publicly accessible - VPN required",
+                        ]
+                        if headscale_enabled
+                        else ["Headscale VPN not enabled. Services running locally."]
+                    ),
                 },
             },
         )

@@ -37,11 +37,14 @@ Noiseport Commons	The public manifesto and documentation site.
 - **Health checks** and monitoring endpoints
 
 ### 🔒 **Security**
+- **VPN-only access** via self-hosted Headscale (optional)
+- **MagicDNS** for secure service discovery
 - **Input validation** with Pydantic schemas
 - **Security scanning** with Bandit and Safety
 - **Environment-based configuration** 
 - **CORS protection** with configurable origins
 - **Non-root Docker containers**
+- **Per-device VPN authentication** and authorization
 
 ### 🧪 **Testing & Quality**
 - **pytest** test suite with coverage reporting
@@ -152,12 +155,23 @@ make wizard
 ```
 
 The setup wizard guides you through:
-1. **Local Libraries** - Connect to Navidrome and Jellyfin servers
-2. **Spotify API** - Configure Spotify integration for music discovery  
-3. **Soulseek/slskd** - Set up music downloading service
-4. **Music Paths** - Configure download and storage directories
-5. **Optional Features** - Enable scrobbling, downloads, and discovery features
-6. **Summary** - Review and save your configuration
+1. **Headscale VPN** - (Optional) Set up secure VPN-only access with MagicDNS
+2. **Local Libraries** - Connect to Navidrome and Jellyfin servers
+3. **Spotify API** - Configure Spotify integration for music discovery  
+4. **Soulseek/slskd** - Set up music downloading service
+5. **Music Paths** - Configure download and storage directories
+6. **Optional Features** - Enable scrobbling, downloads, and discovery features
+7. **Summary** - Review and save your configuration
+
+### 🔒 VPN-Only Access (Recommended for Multi-User)
+
+For secure remote access, the wizard includes Headscale VPN configuration:
+- **Self-hosted VPN** using WireGuard protocol
+- **MagicDNS** for easy service discovery (`http://navidrome:4533`)
+- **Per-device authentication** for granular access control
+- **Works everywhere** - home, mobile, coffee shops, etc.
+
+See [VPN_ACCESS_GUIDE.md](VPN_ACCESS_GUIDE.md) for detailed setup instructions.
 
 ### Code Quality
 
