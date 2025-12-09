@@ -41,7 +41,7 @@ services:
     volumes:
       - {{HOST_MUSIC_PATH}}/downloads:/music/downloads
       - {{HOST_MUSIC_PATH}}/complete:/music/complete
-      - ./env:/app/.env # Mount wizard-generated .env file
+      - ./.env:/app/.env:ro # Mount wizard-generated .env file (read-only)
       - ./data:/app/data # Mount data directory for SQLite database
     depends_on:
       - slskd

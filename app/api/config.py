@@ -511,12 +511,10 @@ integration:
                 compose_content = compose_template.replace(
                     "{{HOST_MUSIC_PATH}}", host_music_path
                 )
-                
+
                 # Fix paths: since compose file will be in wizard-config directory,
                 # replace ./wizard-config/ with ./ to avoid double wizard-config path
-                compose_content = compose_content.replace(
-                    "./wizard-config/", "./"
-                )
+                compose_content = compose_content.replace("./wizard-config/", "./")
 
                 # Write the full docker-compose file to wizard-config directory
                 compose_output_path = os.path.join(
