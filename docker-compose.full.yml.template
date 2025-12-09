@@ -15,6 +15,7 @@ services:
       - ./wizard-config/slskd.yml:/app/slskd.yml 
       - {{HOST_MUSIC_PATH}}:/music
       - {{HOST_MUSIC_PATH}}/musiclibrary.db:/music/musiclibrary.db
+      - {{HOST_MUSIC_PATH}}/incomplete:/music/incomplete
       - ./shared:/shared
     restart: unless-stopped
     networks:
