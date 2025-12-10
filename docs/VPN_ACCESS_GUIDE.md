@@ -105,18 +105,48 @@ sudo tailscale up \
 tailscale status
 ```
 
-### 3. Access Services
+### 3. Add Server to VPN (CRITICAL STEP)
 
-Once connected to VPN, access services using the **server's MagicDNS hostname**:
+**The server itself must join the Headscale VPN** to be accessible via MagicDNS:
+
+```bash
+# SSH to your server
+gcloud compute ssh ensemble
+
+# Generate pre-auth key for the server
+docker exec headscale headscale preauthkeys create --user main --reusable --expiration 24h
+
+# Install Tailscale on the server (if not already installed)
+curl -fsSL https://tailscale.com/install.sh | sh
+
+# Connect server to Headscale VPN
+sudo tailscale up --login-server=https://YOUR_DOMAIN.sslip.io --authkey=YOUR_PREAUTH_KEY
+
+# Check connection and find your server's hostname
+tailscale status
+```
+
+The output will show something like:
+```
+100.64.0.3  ensemble  main  linux  -
+```
+
+Your server's MagicDNS hostname is: **ensemble.headscale.local** (or whatever name appears in the status)
+
+⚠️ **Important:** Save this hostname in the wizard's Headscale step! This will be used by all clients to access services.
+
+### 4. Access Services
+
+Once connected to VPN, access services using the **server's MagicDNS hostname** (the one you saved in the wizard):
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| Navidrome | `http://ensemble.headscale.local:4533` | Music streaming server |
-| Jellyfin | `http://ensemble.headscale.local:8096` | Media server |
-| slskd | `http://ensemble.headscale.local:5030` | Soulseek client |
-| FastAPI | `http://ensemble.headscale.local:8010` | Backend API |
+| Navidrome | `http://YOUR-SERVER-NAME.headscale.local:4533` | Music streaming server |
+| Jellyfin | `http://YOUR-SERVER-NAME.headscale.local:8096` | Media server |
+| slskd | `http://YOUR-SERVER-NAME.headscale.local:5030` | Soulseek client |
+| FastAPI | `http://YOUR-SERVER-NAME.headscale.local:8010` | Backend API |
 
-Or use the VPN IP address directly:
+Or use the VPN IP address directly (found with `tailscale status`):
 - `http://100.64.0.3:4533` (Navidrome)
 - `http://100.64.0.3:8096` (Jellyfin)
 - `http://100.64.0.3:5030` (slskd)

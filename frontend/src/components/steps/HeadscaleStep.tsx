@@ -828,29 +828,130 @@ export default function HeadscaleStep({
             form.
           </li>
           <li>
-            <strong>Create a user</strong> in Headplane UI or via command line:
+            <strong>Create a user/namespace</strong> for your server in
+            Headplane UI or via command line:
             <div className="mt-2">
               <Code block>
-                docker exec headscale headscale users create myuser
+                docker exec headscale headscale users create main
               </Code>
             </div>
+            <p className="text-xs text-neutral-400 mt-1">
+              This user/namespace will be used for your server and later for
+              other devices
+            </p>
           </li>
           <li>
-            <strong>Generate a pre-auth key</strong> in Headplane UI or via
-            command:
-            <div className="mt-2">
+            <strong>⚠️ CRITICAL: Add this server to Headscale VPN</strong> - The
+            server itself needs to join the VPN to be accessible via MagicDNS:
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-neutral-400">
+                First, generate a pre-auth key:
+              </p>
               <Code block>
-                docker exec headscale headscale preauthkeys create --user myuser
+                docker exec headscale headscale preauthkeys create --user main
                 --reusable --expiration 24h
               </Code>
+              <p className="text-xs text-neutral-400 mt-2">
+                Then, install Tailscale on this server and connect:
+              </p>
+              <Code block>
+                sudo tailscale up --login-server={config.headscale.serverUrl}{" "}
+                --authkey=YOUR_PREAUTH_KEY
+              </Code>
+              <p className="text-xs text-neutral-400 mt-2">
+                After connecting, check your server's VPN hostname:
+              </p>
+              <Code block>tailscale status</Code>
+              <Alert variant="warning" className="mt-2">
+                <p className="text-xs">
+                  <strong>Important:</strong> Copy the server's MagicDNS
+                  hostname (e.g., "noiseport.headscale.local") and save it in
+                  the field below. This hostname will be used by all clients to
+                  access your music services.
+                </p>
+              </Alert>
             </div>
           </li>
           <li>
-            <strong>Install Tailscale client</strong> on your devices and
-            connect using your Headscale server URL and pre-auth key
+            <strong>Install Tailscale client on user devices</strong> and
+            connect them using your Headscale server URL and a pre-auth key
+            generated for each device
           </li>
         </ol>
       </Paper>
+
+      {config.headscale.enabled && (
+        <Paper className="mb-6 bg-blue-900/20 border-blue-700/30">
+          <h3 className="text-lg font-kode mb-4 text-blue-200">
+            Server VPN Configuration
+          </h3>
+          <p className="text-sm text-neutral-400 mb-4">
+            After connecting this server to Headscale VPN (step 6 above), enter
+            the server's VPN hostname here. This will be used by all clients to
+            access your music services.
+          </p>
+          <div className="space-y-4">
+            <TextInput
+              label="Server VPN Hostname"
+              placeholder="ensemble.headscale.local"
+              value={config.headscale.serverVpnHostname}
+              onChange={(event) =>
+                onUpdate({
+                  headscale: {
+                    ...config.headscale,
+                    serverVpnHostname: event.currentTarget.value,
+                  },
+                })
+              }
+              description="The MagicDNS hostname of this server (found with 'tailscale status' command)"
+            />
+            <Alert variant="info">
+              <p className="text-sm">
+                <strong>How to find this:</strong> SSH to your server and run{" "}
+                <Code>tailscale status</Code>. Look for this machine's name in
+                the output (e.g., "noiseport" or "server-name"). The full
+                hostname will be:{" "}
+                <Code>machinename.{config.headscale.baseDomain}</Code>
+              </p>
+            </Alert>
+            {config.headscale.serverVpnHostname && (
+              <Alert variant="success">
+                <p className="text-sm">✓ Clients will access services at:</p>
+                <ul className="list-disc ml-5 mt-2 text-xs space-y-1">
+                  <li>
+                    <Code>
+                      http://{config.headscale.serverVpnHostname}:4533
+                    </Code>{" "}
+                    (Navidrome)
+                  </li>
+                  <li>
+                    <Code>
+                      http://{config.headscale.serverVpnHostname}:8096
+                    </Code>{" "}
+                    (Jellyfin)
+                  </li>
+                  <li>
+                    <Code>
+                      http://{config.headscale.serverVpnHostname}:5030
+                    </Code>{" "}
+                    (slskd)
+                  </li>
+                </ul>
+              </Alert>
+            )}
+            <div className="flex justify-end">
+              <Button
+                onClick={saveConfiguration}
+                loading={saving}
+                disabled={!config.headscale.serverVpnHostname}
+                variant="primary"
+              >
+                Save VPN Hostname
+              </Button>
+            </div>
+          </div>
+        </Paper>
+      )}
 
       <Alert
         variant="info"

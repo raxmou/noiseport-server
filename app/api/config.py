@@ -135,6 +135,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
             "HEADSCALE_SERVER_URL": config.headscale.serverUrl,
             "HEADSCALE_API_KEY": config.headscale.apiKey,
             "HEADSCALE_BASE_DOMAIN": config.headscale.baseDomain,
+            "HEADSCALE_SERVER_VPN_HOSTNAME": config.headscale.serverVpnHostname,
             # Navidrome
             "NAVIDROME_ENABLED": str(config.navidrome.enabled).lower(),
             "NAVIDROME_URL": config.navidrome.url,
@@ -225,6 +226,7 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 "HEADSCALE_SERVER_URL",
                 "HEADSCALE_API_KEY",
                 "HEADSCALE_BASE_DOMAIN",
+                "HEADSCALE_SERVER_VPN_HOSTNAME",
             ]:
                 f.write(f"{key}={existing_vars.get(key, '')}\n")
 

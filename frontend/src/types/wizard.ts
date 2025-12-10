@@ -8,6 +8,7 @@ export interface WizardConfiguration {
     serverUrl: string;
     apiKey: string;
     baseDomain: string;
+    serverVpnHostname: string;
   };
   
   // Local libraries

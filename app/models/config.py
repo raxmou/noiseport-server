@@ -89,6 +89,10 @@ class HeadscaleConfig(BaseModel):
     baseDomain: str = Field(
         default="headscale.local", description="Base domain for MagicDNS"
     )
+    serverVpnHostname: str = Field(
+        default="",
+        description="Server's VPN hostname (MagicDNS name after joining Headscale)",
+    )
 
 
 class WizardConfiguration(BaseModel):

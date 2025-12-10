@@ -212,22 +212,34 @@ export default function MusicPathsStep({
                   Connect to your Headscale VPN (configured in previous step)
                 </li>
                 <li>
-                  Access services via MagicDNS hostnames:
+                  Access services via server's MagicDNS hostname:
                   <ul className="list-disc list-inside ml-6 mt-1">
                     <li>
                       <code className="bg-yellow-900/30 px-1 rounded">
-                        http://navidrome:4533
-                      </code>
+                        http://
+                        {config.headscale.serverVpnHostname ||
+                          "server.headscale.local"}
+                        :4533
+                      </code>{" "}
+                      (Navidrome)
                     </li>
                     <li>
                       <code className="bg-yellow-900/30 px-1 rounded">
-                        http://jellyfin:8096
-                      </code>
+                        http://
+                        {config.headscale.serverVpnHostname ||
+                          "server.headscale.local"}
+                        :8096
+                      </code>{" "}
+                      (Jellyfin)
                     </li>
                     <li>
                       <code className="bg-yellow-900/30 px-1 rounded">
-                        http://slskd:5030
-                      </code>
+                        http://
+                        {config.headscale.serverVpnHostname ||
+                          "server.headscale.local"}
+                        :5030
+                      </code>{" "}
+                      (slskd)
                     </li>
                   </ul>
                 </li>
