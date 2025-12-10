@@ -37,14 +37,17 @@ Noiseport Commons	The public manifesto and documentation site.
 - **Health checks** and monitoring endpoints
 
 ### 🔒 **Security**
-- **VPN-only access** via self-hosted Headscale (optional)
-- **MagicDNS** for secure service discovery
+- **VPN-only access** via self-hosted Headscale (optional but recommended)
+- **MagicDNS** for secure internal service discovery
+- **Zero-trust networking** with per-device authentication
+- **Headplane UI** for easy VPN user management
 - **Input validation** with Pydantic schemas
 - **Security scanning** with Bandit and Safety
 - **Environment-based configuration** 
 - **CORS protection** with configurable origins
 - **Non-root Docker containers**
-- **Per-device VPN authentication** and authorization
+
+📖 **[Read the VPN Access Guide](docs/VPN_ACCESS_GUIDE.md)** for setup instructions
 
 ### 🧪 **Testing & Quality**
 - **pytest** test suite with coverage reporting

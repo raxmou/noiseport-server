@@ -418,19 +418,21 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                         "{{HEADSCALE_DOMAIN}}", domain or "localhost"
                     )
                 else:
-                    # Create default Caddyfile if template is missing
+                    # Create default Caddyfile if template is missing - ONLY public infrastructure
                     logger.warning(
                         f"Caddyfile template not found at {caddy_template_path}, using default"
                     )
-                    caddy_content = f"""# Headscale API
+                    caddy_content = f"""# Headscale API (Public access for VPN registration)
 {domain or "localhost"} {{
     reverse_proxy headscale:8080
 }}
 
-# Headplane UI on subdomain
+# Headplane Admin UI (Public access for VPN management)
 admin.{domain or "localhost"} {{
     reverse_proxy headplane:3000
 }}
+
+# Music Services are accessed via MagicDNS inside VPN (not publicly exposed)
 """
 
                 with open(caddy_config_path, "w") as f:
@@ -1110,19 +1112,21 @@ async def launch_headscale() -> JSONResponse:
                     "{{HEADSCALE_DOMAIN}}", default_domain
                 )
             else:
-                # Fallback to hardcoded template
+                # Fallback to hardcoded template - ONLY public infrastructure
                 logger.warning(
                     f"Caddyfile template not found at {caddy_template_path}, using default"
                 )
-                caddyfile_content = f"""# Headscale API
+                caddyfile_content = f"""# Headscale API (Public access for VPN registration)
 {default_domain} {{
     reverse_proxy headscale:8080
 }}
 
-# Headplane UI on subdomain
+# Headplane Admin UI (Public access for VPN management)
 admin.{default_domain} {{
     reverse_proxy headplane:3000
 }}
+
+# Music Services are accessed via MagicDNS inside VPN (not publicly exposed)
 """
             with open(caddy_config_path, "w") as f:
                 f.write(caddyfile_content)

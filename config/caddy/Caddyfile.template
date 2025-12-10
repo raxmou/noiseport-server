@@ -8,22 +8,9 @@ admin.{{HEADSCALE_DOMAIN}} {
     reverse_proxy headplane:3000
 }
 
-# Music Services (VPN-only via MagicDNS)
-# These are NOT publicly accessible - only via VPN client's MagicDNS
-# Example: http://navidrome.{{HEADSCALE_BASE_DOMAIN}}:4533
-
-navidrome.{{HEADSCALE_DOMAIN}} {
-    reverse_proxy navidrome:4533
-}
-
-jellyfin.{{HEADSCALE_DOMAIN}} {
-    reverse_proxy jellyfin:8096
-}
-
-slskd.{{HEADSCALE_DOMAIN}} {
-    reverse_proxy slskd:5030
-}
-
-api.{{HEADSCALE_DOMAIN}} {
-    reverse_proxy fastapi:80
-}
+# Music Services are accessed via MagicDNS inside VPN (not publicly exposed)
+# After connecting to VPN with Tailscale client, access services at:
+# - http://navidrome:4533
+# - http://jellyfin:8096
+# - http://slskd:5030
+# - http://fastapi:8000
