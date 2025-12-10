@@ -4,12 +4,10 @@ services:
   slskd:
     image: maxenceroux/noiseport-server-slskd:latest
     container_name: slskd
-    # Ports removed - accessible via Headscale VPN only
-    # VPN clients access via: slskd (MagicDNS)
-    expose:
-      - "5030"
-      - "5031"
-      - "50300"
+    ports:
+      - "5030:5030"
+      - "5031:5031"
+      - "50300:50300"
     environment:
       - SLSKD_REMOTE_CONFIGURATION=true
     volumes:
@@ -33,10 +31,8 @@ services:
   fastapi:
     image: maxenceroux/noiseport-server:latest
     container_name: fastapi
-    # Port removed - accessible via Headscale VPN only
-    # VPN clients access via: api (MagicDNS)
-    expose:
-      - "80"
+    ports:
+      - "8010:80"
     environment:
       - SLSKD_HOST=http://slskd:5030
       - NAVIDROME_URL=http://navidrome:4533
@@ -65,10 +61,8 @@ services:
   navidrome:
     image: deluan/navidrome:latest
     container_name: navidrome
-    # Port removed - accessible via Headscale VPN only
-    # VPN clients access via: navidrome (MagicDNS)
-    expose:
-      - "4533"
+    ports:
+      - "4533:4533"
     restart: unless-stopped
     environment:
       ND_SCANSCHEDULE: 1h
@@ -94,10 +88,8 @@ services:
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
-    # Port removed - accessible via Headscale VPN only
-    # VPN clients access via: jellyfin (MagicDNS)
-    expose:
-      - "8096"
+    ports:
+      - "8096:8096"
     environment:
       - PUID=1000          
       - PGID=1000          

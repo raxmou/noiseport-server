@@ -107,14 +107,20 @@ tailscale status
 
 ### 3. Access Services
 
-Once connected to VPN, access services using **MagicDNS hostnames**:
+Once connected to VPN, access services using the **server's MagicDNS hostname**:
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| Navidrome | `http://navidrome:4533` | Music streaming server |
-| Jellyfin | `http://jellyfin:8096` | Media server |
-| slskd | `http://slskd:5030` | Soulseek client |
-| FastAPI | `http://fastapi:8000` | Backend API |
+| Navidrome | `http://ensemble.headscale.local:4533` | Music streaming server |
+| Jellyfin | `http://ensemble.headscale.local:8096` | Media server |
+| slskd | `http://ensemble.headscale.local:5030` | Soulseek client |
+| FastAPI | `http://ensemble.headscale.local:8010` | Backend API |
+
+Or use the VPN IP address directly:
+- `http://100.64.0.3:4533` (Navidrome)
+- `http://100.64.0.3:8096` (Jellyfin)
+- `http://100.64.0.3:5030` (slskd)
+- `http://100.64.0.3:8010` (FastAPI)
 
 **Note:** These URLs ONLY work when connected to the VPN!
 
