@@ -335,10 +335,10 @@ export default function HeadscaleStep({
             <h4 className="font-medium">Choose Your Setup Mode:</h4>
             <ul className="list-disc ml-5 space-y-2 text-sm text-neutral-400">
               <li>
-                <strong>IP-based with sslip.io (Recommended):</strong> Automatically generates
-                a domain from your IP (e.g., 34-55-55-28.sslip.io). No DNS
-                configuration needed! Perfect for quick setup with automatic
-                HTTPS.
+                <strong>IP-based with sslip.io (Recommended):</strong>{" "}
+                Automatically generates a domain from your IP (e.g.,
+                34-55-55-28.sslip.io). No DNS configuration needed! Perfect for
+                quick setup with automatic HTTPS.
               </li>
               <li>
                 <strong>Domain-based:</strong> Use if you have your own domain
@@ -541,38 +541,6 @@ export default function HeadscaleStep({
                 Example: With base domain "headscale.local", you can access
                 machines as "machine-name.headscale.local"
               </p>
-            </div>
-
-            <div>
-              <div className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <TextInput
-                    label="Headscale API Key"
-                    placeholder="Enter or generate API key"
-                    value={config.headscale.apiKey}
-                    onChange={(event) =>
-                      handleApiKeyChange(event.currentTarget.value)
-                    }
-                    description="API key for Headplane to communicate with Headscale"
-                    type="password"
-                  />
-                </div>
-                <Button onClick={generateApiKey} variant="secondary">
-                  Generate Key
-                </Button>
-              </div>
-              <Alert variant="warning" className="mt-2">
-                <p className="text-sm">
-                  <strong>Important:</strong> After launching the services,
-                  you'll need to create this API key in Headscale. Use the
-                  command:
-                </p>
-                <div className="mt-2">
-                  <Code block>
-                    {`docker exec headscale headscale apikeys create`}
-                  </Code>
-                </div>
-              </Alert>
             </div>
 
             {configSaved && (
@@ -788,6 +756,15 @@ export default function HeadscaleStep({
             take 1-2 minutes. Check logs with: <Code>docker logs caddy</Code>
           </li>
           <li>
+            <strong>Generate Headscale API Key</strong> for Headplane:
+            <div className="mt-2">
+              <Code block>docker exec headscale headscale apikeys create</Code>
+            </div>
+            <p className="text-xs text-neutral-400 mt-1">
+              Copy the generated key - you'll need it for the next step.
+            </p>
+          </li>
+          <li>
             <strong>Access Headplane Web UI</strong> to manage your Headscale
             server through a user-friendly interface:
             <div className="mt-2">
@@ -814,18 +791,9 @@ export default function HeadscaleStep({
             </div>
             <p className="text-xs text-neutral-400 mt-1">
               Note: Headplane runs on the <Code>admin.</Code> subdomain with
-              automatic HTTPS via Caddy
+              automatic HTTPS via Caddy. Paste your API key into Headplane's
+              settings or login form.
             </p>
-          </li>
-          <li>
-            <strong>Login to Headplane</strong> with your Headscale API key (the
-            one you generated above). If you need to create the API key first,
-            run:
-            <div className="mt-2">
-              <Code block>docker exec headscale headscale apikeys create</Code>
-            </div>
-            Then copy the generated key and paste it into Headplane's login
-            form.
           </li>
           <li>
             <strong>Create a user/namespace</strong> for your server in
@@ -844,8 +812,38 @@ export default function HeadscaleStep({
             <strong>⚠️ CRITICAL: Add this server to Headscale VPN</strong> - The
             server itself needs to join the VPN to be accessible via MagicDNS:
             <div className="mt-2 space-y-2">
+              <Alert variant="info" className="mb-2">
+                <p className="text-xs">
+                  <strong>💡 Tip:</strong> You can get all the commands and
+                  create pre-auth keys directly from Headplane's settings page:
+                </p>
+                <div className="mt-2">
+                  {getHeadplaneUrl(config) ? (
+                    <a
+                      href={`${getHeadplaneUrl(config)}/admin/settings`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 underline text-xs"
+                    >
+                      {getHeadplaneUrl(config)}/admin/settings
+                      <svg
+                        className="w-3 h-3"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                      </svg>
+                    </a>
+                  ) : (
+                    <Code>
+                      https://admin.YOUR-DOMAIN/admin/settings
+                    </Code>
+                  )}
+                </div>
+              </Alert>
               <p className="text-xs text-neutral-400">
-                First, generate a pre-auth key:
+                Or generate a pre-auth key via command line:
               </p>
               <Code block>
                 docker exec headscale headscale preauthkeys create --user main
