@@ -52,20 +52,23 @@ export default function SoulseekStep({
   }, [config.soulseek]);
 
   useEffect(() => {
-    // Auto-set host using Headscale server IP if available (only if the host is still the default)
+    // Auto-set host using VPN hostname or server IP if available (only if the host is still the default)
     if (
       config.headscale.enabled &&
-      config.headscale.serverIp &&
       config.soulseek.host === "http://slskd:5030"
     ) {
-      onUpdate({
-        soulseek: {
-          ...config.soulseek,
-          host: `http://${config.headscale.serverIp}:5030`,
-        },
-      });
+      // Prefer VPN hostname (MagicDNS) over server IP
+      const hostname = config.headscale.serverVpnHostname || config.headscale.serverIp;
+      if (hostname) {
+        onUpdate({
+          soulseek: {
+            ...config.soulseek,
+            host: `http://${hostname}:5030`,
+          },
+        });
+      }
     }
-  }, [config.headscale.enabled, config.headscale.serverIp]); // Intentionally exclude onUpdate to prevent loops
+  }, [config.headscale.enabled, config.headscale.serverVpnHostname, config.headscale.serverIp]); // Intentionally exclude onUpdate to prevent loops
 
   const handleSoulseekToggle = (enabled: boolean) => {
     onUpdate({
@@ -196,8 +199,12 @@ export default function SoulseekStep({
                 }
                 required
                 description={
-                  config.headscale.enabled && config.headscale.serverIp
-                    ? `Automatically set using Headscale server IP: ${config.headscale.serverIp}`
+                  config.headscale.enabled
+                    ? config.headscale.serverVpnHostname
+                      ? `Automatically set using VPN hostname: ${config.headscale.serverVpnHostname}`
+                      : config.headscale.serverIp
+                      ? `Automatically set using server IP: ${config.headscale.serverIp} (VPN hostname not configured yet)`
+                      : "The URL where your slskd instance is running"
                     : "The URL where your slskd instance is running"
                 }
               />

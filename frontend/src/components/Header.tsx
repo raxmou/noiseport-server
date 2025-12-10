@@ -1,4 +1,4 @@
-import logo from '../assets/logo.png';
+import logo from "../assets/logo.png";
 export default function Header() {
   return (
     <header className="bg-neutral-900 border-b border-neutral-800">
@@ -10,7 +10,7 @@ export default function Header() {
           </h1>
         </div>
         <a
-          href="https://noiseport.io"
+          href="https://noiseport.rax.zone"
           target="_blank"
           rel="noopener noreferrer"
           className="font-syne text-neutral-100 text-base px-4 py-2 rounded-lg bg-primary hover:bg-primary/80 transition-colors"
