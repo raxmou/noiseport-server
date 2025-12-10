@@ -11,6 +11,7 @@ const defaultConfig: WizardConfiguration = {
     serverUrl: '',
     apiKey: '',
     baseDomain: 'headscale.local',
+    serverVpnHostname: '',
   },
   navidrome: {
     enabled: false,
