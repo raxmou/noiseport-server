@@ -335,15 +335,15 @@ export default function HeadscaleStep({
             <h4 className="font-medium">Choose Your Setup Mode:</h4>
             <ul className="list-disc ml-5 space-y-2 text-sm text-neutral-400">
               <li>
-                <strong>Domain-based:</strong> Use if you have your own domain
-                name. You'll need to set up a DNS A record pointing to your
-                server.
-              </li>
-              <li>
-                <strong>IP-based with sslip.io:</strong> Automatically generates
+                <strong>IP-based with sslip.io (Recommended):</strong> Automatically generates
                 a domain from your IP (e.g., 34-55-55-28.sslip.io). No DNS
                 configuration needed! Perfect for quick setup with automatic
                 HTTPS.
+              </li>
+              <li>
+                <strong>Domain-based:</strong> Use if you have your own domain
+                name. You'll need to set up a DNS A record pointing to your
+                server.
               </li>
             </ul>
           </div>
@@ -393,22 +393,6 @@ export default function HeadscaleStep({
                   <input
                     type="radio"
                     name="setupMode"
-                    value="domain"
-                    checked={config.headscale.setupMode === "domain"}
-                    onChange={(e) => handleSetupModeChange(e.target.value)}
-                    className="mr-3"
-                  />
-                  <div>
-                    <div className="font-medium">Own Domain (HTTPS)</div>
-                    <div className="text-sm text-neutral-400">
-                      Use your own domain name with DNS A record
-                    </div>
-                  </div>
-                </label>
-                <label className="flex items-center p-3 border border-neutral-700 rounded-lg cursor-pointer hover:bg-neutral-800 transition-colors">
-                  <input
-                    type="radio"
-                    name="setupMode"
                     value="ip"
                     checked={config.headscale.setupMode === "ip"}
                     onChange={(e) => handleSetupModeChange(e.target.value)}
@@ -419,6 +403,22 @@ export default function HeadscaleStep({
                     <div className="text-sm text-neutral-400">
                       Automatic domain from IP - no DNS setup needed!
                       (Recommended)
+                    </div>
+                  </div>
+                </label>
+                <label className="flex items-center p-3 border border-neutral-700 rounded-lg cursor-pointer hover:bg-neutral-800 transition-colors">
+                  <input
+                    type="radio"
+                    name="setupMode"
+                    value="domain"
+                    checked={config.headscale.setupMode === "domain"}
+                    onChange={(e) => handleSetupModeChange(e.target.value)}
+                    className="mr-3"
+                  />
+                  <div>
+                    <div className="font-medium">Own Domain (HTTPS)</div>
+                    <div className="text-sm text-neutral-400">
+                      Use your own domain name with DNS A record
                     </div>
                   </div>
                 </label>
