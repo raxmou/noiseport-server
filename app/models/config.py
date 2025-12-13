@@ -1,6 +1,15 @@
 """Configuration models for the setup wizard."""
 
+from enum import Enum
+
 from pydantic import BaseModel, Field
+
+
+class HeadscaleSetupMode(str, Enum):
+    """Headscale setup mode options."""
+
+    DOMAIN = "domain"
+    IP = "ip"
 
 
 class NavidromeConfig(BaseModel):
@@ -63,17 +72,33 @@ class FeaturesConfig(BaseModel):
     lastfmSecret: str = Field(default="", description="Last.fm API Secret")
 
 
-class TailscaleConfig(BaseModel):
-    """Tailscale configuration."""
+class HeadscaleConfig(BaseModel):
+    """Headscale VPN configuration."""
 
-    enabled: bool = Field(default=False, description="Enable Tailscale integration")
-    ip: str = Field(default="", description="Tailscale IP address")
+    enabled: bool = Field(default=False, description="Enable Headscale integration")
+    setupMode: HeadscaleSetupMode = Field(
+        default=HeadscaleSetupMode.DOMAIN,
+        description="Setup mode: domain-based or IP-based",
+    )
+    domain: str = Field(default="", description="Domain name for Headscale server")
+    serverIp: str = Field(
+        default="", description="Server IP address (for IP-based setup)"
+    )
+    serverUrl: str = Field(default="", description="Complete Headscale server URL")
+    apiKey: str = Field(default="", description="Headscale API key")
+    baseDomain: str = Field(
+        default="headscale.local", description="Base domain for MagicDNS"
+    )
+    serverVpnHostname: str = Field(
+        default="",
+        description="Server's VPN hostname (MagicDNS name after joining Headscale)",
+    )
 
 
 class WizardConfiguration(BaseModel):
     """Complete wizard configuration."""
 
-    tailscale: TailscaleConfig = Field(default_factory=TailscaleConfig)
+    headscale: HeadscaleConfig = Field(default_factory=HeadscaleConfig)
     navidrome: NavidromeConfig = Field(default_factory=NavidromeConfig)
     jellyfin: JellyfinConfig = Field(default_factory=JellyfinConfig)
     spotify: SpotifyConfig = Field(default_factory=SpotifyConfig)

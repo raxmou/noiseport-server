@@ -26,8 +26,14 @@ Environment configuration file containing all service credentials and settings:
 ### `docker-compose.full.yml`
 Generated Docker Compose file for the full music stack, created from the template with your specific configuration (music paths, etc.)
 
-### `slskd.yml`
+### `slskd/slskd.yml`
 Soulseek daemon configuration file with your Soulseek network credentials
+
+### `headscale/config/config.yaml`
+Headscale VPN server configuration file with your server URL and network settings (generated if Headscale is enabled)
+
+### `headscale/data/`
+Headscale data directory containing database and private keys (created when Headscale is enabled)
 
 ### `start-music-stack.sh`
 Executable shell script to start the full music stack with your configuration
@@ -147,11 +153,68 @@ echo "# Config directory" > wizard-config/.gitkeep
    docker compose -f wizard-config/docker-compose.full.yml config
    ```
 
+## Headscale VPN Setup
+
+If you enable Headscale in the wizard, the following will be configured:
+
+### What is Headscale?
+
+Headscale is a self-hosted, open-source implementation of the Tailscale control server. It creates a secure VPN network for accessing your NoisePort services remotely without relying on third-party services.
+
+### Generated Headscale Files
+
+- `headscale/config/config.yaml` - Main Headscale server configuration
+- `headscale/data/db.sqlite` - Headscale database
+- `headscale/data/private.key` - Server encryption key
+- `headscale/data/noise_private.key` - Noise protocol key
+
+### Headscale Quick Start
+
+After launching the services with Headscale enabled:
+
+1. **Access Headplane UI**: `http://localhost:3000`
+2. **Create a user/namespace**:
+   ```bash
+   docker exec headscale headscale users create myuser
+   ```
+
+3. **Generate an API key** (required for Headplane):
+   ```bash
+   docker exec headscale headscale apikeys create --expiration 0
+   ```
+   Update the API key in the wizard or `.env` file with the generated key.
+
+4. **Create a pre-auth key** for connecting devices:
+   ```bash
+   docker exec headscale headscale preauthkeys create --user myuser --reusable --expiration 24h
+   ```
+
+5. **Connect devices**: Install Tailscale client on your devices and configure them to use your Headscale server URL with the pre-auth key.
+
+### Headscale Services
+
+When Headscale is enabled, two additional services are included:
+- **Headscale** (port 8080): VPN coordination server
+- **Headplane** (port 3000): Web UI for managing Headscale
+
+### Setup Modes
+
+- **Domain-based**: Use a domain name with HTTPS (recommended for production)
+  - Requires: domain name, DNS A record, SSL certificate
+  - Example: `https://headscale.yourdomain.com`
+
+- **IP-based**: Use server IP directly (simpler for testing)
+  - Requires: server IP address (local or public)
+  - Example: `http://192.168.1.100:8080`
+
+For more details, see the [Headscale documentation](https://headscale.net/).
+
 ## Security Note
 
 This directory contains sensitive configuration including:
 - Service passwords
 - API credentials
 - Authentication tokens
+- Headscale API keys and encryption keys
 
 **Do not commit these files to version control!** The `.gitignore` is configured to exclude all files except `.gitkeep`.

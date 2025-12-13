@@ -3,9 +3,15 @@ import { WizardConfiguration } from '../types/wizard';
 import { ApiService } from '../utils/api';
 
 const defaultConfig: WizardConfiguration = {
-  tailscale: {
+  headscale: {
     enabled: false,
-    ip: '',
+    setupMode: 'domain',
+    domain: '',
+    serverIp: '',
+    serverUrl: '',
+    apiKey: '',
+    baseDomain: 'headscale.local',
+    serverVpnHostname: '',
   },
   navidrome: {
     enabled: false,

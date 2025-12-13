@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import stat
 import subprocess
 import threading
 from pathlib import Path
@@ -52,9 +53,16 @@ async def get_current_config() -> WizardConfiguration:
     try:
         # Build configuration from current settings
         config = WizardConfiguration(
-            tailscale={
-                "enabled": getattr(settings, "tailscale_enabled", False),
-                "ip": getattr(settings, "tailscale_ip", ""),
+            headscale={
+                "enabled": getattr(settings, "headscale_enabled", False),
+                "setupMode": getattr(settings, "headscale_setup_mode", "domain"),
+                "domain": getattr(settings, "headscale_domain", ""),
+                "serverIp": getattr(settings, "headscale_server_ip", ""),
+                "serverUrl": getattr(settings, "headscale_server_url", ""),
+                "apiKey": getattr(settings, "headscale_api_key", ""),
+                "baseDomain": getattr(
+                    settings, "headscale_base_domain", "headscale.local"
+                ),
             },
             navidrome={
                 "enabled": settings.navidrome_enabled,
@@ -107,8 +115,6 @@ async def get_current_config() -> WizardConfiguration:
 @router.post("/config")
 async def save_configuration(config: WizardConfiguration) -> JSONResponse:
     """Save the configuration to environment file."""
-    import os
-
     print(config)
     try:
         # Get wizard config directory from settings (environment variable or default)
@@ -119,9 +125,17 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
 
         # Convert config to environment variables
         env_vars = {
-            # Tailscale
-            "TAILSCALE_ENABLED": str(config.tailscale.enabled).lower(),
-            "TAILSCALE_IP": config.tailscale.ip,
+            # Headscale
+            "HEADSCALE_ENABLED": str(config.headscale.enabled).lower(),
+            "HEADSCALE_SETUP_MODE": (
+                config.headscale.setupMode.value if config.headscale.setupMode else ""
+            ),
+            "HEADSCALE_DOMAIN": config.headscale.domain,
+            "HEADSCALE_SERVER_IP": config.headscale.serverIp,
+            "HEADSCALE_SERVER_URL": config.headscale.serverUrl,
+            "HEADSCALE_API_KEY": config.headscale.apiKey,
+            "HEADSCALE_BASE_DOMAIN": config.headscale.baseDomain,
+            "HEADSCALE_SERVER_VPN_HOSTNAME": config.headscale.serverVpnHostname,
             # Navidrome
             "NAVIDROME_ENABLED": str(config.navidrome.enabled).lower(),
             "NAVIDROME_URL": config.navidrome.url,
@@ -203,8 +217,17 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                 if key in existing_vars:
                     f.write(f"{key}={existing_vars[key]}\n")
 
-            f.write("\n# Tailscale\n")
-            for key in ["TAILSCALE_ENABLED", "TAILSCALE_IP"]:
+            f.write("\n# Headscale\n")
+            for key in [
+                "HEADSCALE_ENABLED",
+                "HEADSCALE_SETUP_MODE",
+                "HEADSCALE_DOMAIN",
+                "HEADSCALE_SERVER_IP",
+                "HEADSCALE_SERVER_URL",
+                "HEADSCALE_API_KEY",
+                "HEADSCALE_BASE_DOMAIN",
+                "HEADSCALE_SERVER_VPN_HOSTNAME",
+            ]:
                 f.write(f"{key}={existing_vars.get(key, '')}\n")
 
             f.write("\n# Navidrome\n")
@@ -262,8 +285,13 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
 
             # Update written keys set
             written_keys = {
-                "TAILSCALE_ENABLED",
-                "TAILSCALE_IP",
+                "HEADSCALE_ENABLED",
+                "HEADSCALE_SETUP_MODE",
+                "HEADSCALE_DOMAIN",
+                "HEADSCALE_SERVER_IP",
+                "HEADSCALE_SERVER_URL",
+                "HEADSCALE_API_KEY",
+                "HEADSCALE_BASE_DOMAIN",
                 "NAVIDROME_ENABLED",
                 "NAVIDROME_URL",
                 "NAVIDROME_USERNAME",
@@ -297,8 +325,6 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
 
         # Generate slskd.yml from template with Soulseek credentials
         try:
-            import os
-
             # slskd directory is mounted at /app/slskd in the container
             slskd_template_path = str(PROJECT_ROOT / "slskd" / "slskd.yml.template")
             # Write slskd.yml to wizard-config directory
@@ -324,12 +350,160 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
         except Exception as e:
             logger.warning(f"Failed to generate slskd.yml: {e}")
 
+        # Generate Headscale config from template if enabled
+        if config.headscale.enabled:
+            try:
+                # Headscale config template
+                headscale_template_path = str(
+                    PROJECT_ROOT / "config" / "headscale" / "config.yaml.template"
+                )
+                headscale_config_dir = os.path.join(
+                    wizard_config_dir, "headscale", "config"
+                )
+                headscale_config_path = os.path.join(
+                    headscale_config_dir, "config.yaml"
+                )
+                os.makedirs(headscale_config_dir, exist_ok=True)
+
+                # Also create data directory for Headscale
+                headscale_data_dir = os.path.join(
+                    wizard_config_dir, "headscale", "data"
+                )
+                os.makedirs(headscale_data_dir, exist_ok=True)
+
+                if os.path.exists(headscale_template_path):
+                    with open(headscale_template_path) as f:
+                        template = f.read()
+
+                    # Replace placeholders
+                    config_content = template.replace(
+                        "{{HEADSCALE_SERVER_URL}}", config.headscale.serverUrl or ""
+                    )
+                    config_content = config_content.replace(
+                        "{{HEADSCALE_BASE_DOMAIN}}",
+                        config.headscale.baseDomain or "headscale.local",
+                    )
+
+                    with open(headscale_config_path, "w") as f:
+                        f.write(config_content)
+                    logger.info(
+                        f"Generated Headscale config from template at {headscale_config_path}"
+                    )
+                else:
+                    logger.warning(
+                        f"Headscale config template not found at {headscale_template_path}, skipping generation"
+                    )
+
+                # Generate Caddyfile for HTTPS reverse proxy
+                caddy_template_path = str(
+                    PROJECT_ROOT / "config" / "caddy" / "Caddyfile.template"
+                )
+                caddy_config_dir = os.path.join(wizard_config_dir, "caddy")
+                caddy_config_path = os.path.join(caddy_config_dir, "Caddyfile")
+                os.makedirs(caddy_config_dir, exist_ok=True)
+
+                # Extract domain from server URL or use domain field
+                domain = config.headscale.domain
+                if not domain and config.headscale.serverUrl:
+                    # Try to extract domain from URL
+                    import re
+
+                    match = re.search(r"https?://([^:/]+)", config.headscale.serverUrl)
+                    if match:
+                        domain = match.group(1)
+
+                if os.path.exists(caddy_template_path):
+                    with open(caddy_template_path) as f:
+                        template = f.read()
+
+                    caddy_content = template.replace(
+                        "{{HEADSCALE_DOMAIN}}", domain or "localhost"
+                    )
+                else:
+                    # Create default Caddyfile if template is missing - ONLY public infrastructure
+                    logger.warning(
+                        f"Caddyfile template not found at {caddy_template_path}, using default"
+                    )
+                    caddy_content = f"""# Headscale API (Public access for VPN registration)
+{domain or "localhost"} {{
+    reverse_proxy headscale:8080
+}}
+
+# Headplane Admin UI (Public access for VPN management)
+admin.{domain or "localhost"} {{
+    reverse_proxy headplane:3000
+}}
+
+# Music Services are accessed via MagicDNS inside VPN (not publicly exposed)
+"""
+
+                with open(caddy_config_path, "w") as f:
+                    f.write(caddy_content)
+                logger.info(
+                    f"Generated Caddyfile at {caddy_config_path} for domain: {domain or 'localhost'}"
+                )
+
+                # Generate Headplane config.yaml
+                headplane_config_dir = os.path.join(wizard_config_dir, "headplane")
+                headplane_config_path = os.path.join(
+                    headplane_config_dir, "config.yaml"
+                )
+                os.makedirs(headplane_config_dir, exist_ok=True)
+
+                # Generate a random cookie secret (32 characters)
+                import secrets
+
+                cookie_secret = secrets.token_urlsafe(32)[:32]
+
+                # Determine headscale URL for Headplane (use internal Docker network name)
+                headscale_internal_url = "http://headscale:8080"
+
+                # Headplane will be served at /admin via Caddy
+                headplane_base_url = (
+                    f"{config.headscale.serverUrl}/admin"
+                    if config.headscale.serverUrl
+                    else "http://localhost:3000/admin"
+                )
+
+                headplane_config_content = f"""# Headplane Configuration
+# Generated by NoisePort Setup Wizard
+
+# Server configuration
+server:
+  host: 0.0.0.0
+  port: 3000
+  base_url: {headplane_base_url}
+  cookie_secret: "{cookie_secret}"
+  cookie_secure: {"true" if config.headscale.serverUrl and config.headscale.serverUrl.startswith('https') else "false"}
+  cookie_max_age: 86400  # 24 hours
+  data_path: /var/lib/headplane/
+
+# Headscale connection
+headscale:
+  url: {headscale_internal_url}
+  api_key: "{config.headscale.apiKey if config.headscale.apiKey else ""}"
+  config_path: /etc/headscale/config.yaml
+  config_strict: false
+  public_url: {config.headscale.serverUrl if config.headscale.serverUrl else ""}
+
+# Docker integration for managing Headscale container
+integration:
+  docker:
+    enabled: true
+    container_label: "me.tale.headplane.target=headscale"
+    socket: "unix:///var/run/docker.sock"
+"""
+
+                with open(headplane_config_path, "w") as f:
+                    f.write(headplane_config_content)
+                logger.info(f"Generated Headplane config at {headplane_config_path}")
+            except Exception as e:
+                logger.warning(f"Failed to generate Headscale config: {e}")
+
         logger.info("Configuration saved successfully")
 
         # Generate full docker-compose file with user-specified host paths
         try:
-            import os
-
             # Read the template (mounted at /app in container)
             template_path = str(PROJECT_ROOT / f"{DOCKER_COMPOSE_FULL_FILE}.template")
             if os.path.exists(template_path):
@@ -342,6 +516,10 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                     "{{HOST_MUSIC_PATH}}", host_music_path
                 )
 
+                # Fix paths: since compose file will be in wizard-config directory,
+                # replace ./wizard-config/ with ./ to avoid double wizard-config path
+                compose_content = compose_content.replace("./wizard-config/", "./")
+
                 # Write the full docker-compose file to wizard-config directory
                 compose_output_path = os.path.join(
                     wizard_config_dir, DOCKER_COMPOSE_FULL_FILE
@@ -350,9 +528,6 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
                     f.write(compose_content)
 
                 # Create directories with proper permissions
-                import os
-                import stat
-
                 host_music_path = env_vars["HOST_MUSIC_PATH"]
                 download_path = f"{host_music_path}/downloads"
                 complete_path = f"{host_music_path}/complete"
@@ -724,45 +899,6 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
                 print(e)
                 message = f"Failed to connect to slskd: {e}"
 
-        # --- TAILSCALE ---
-        elif service == "tailscale":
-            try:
-                import subprocess
-
-                # Check if tailscale is installed and running
-                result = subprocess.run(
-                    ["tailscale", "status", "--json"],
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                )
-                if result.returncode == 0:
-                    import json
-
-                    status_data = json.loads(result.stdout)
-                    if status_data.get("BackendState") == "Running":
-                        success = True
-                        self_ip = status_data.get("TailscaleIPs", [])
-                        if self_ip:
-                            message = f"Tailscale is running. Your IP: {self_ip[0]}"
-                        else:
-                            message = "Tailscale is running but no IP assigned yet"
-                    else:
-                        success = False
-                        message = f"Tailscale not connected. State: {status_data.get('BackendState', 'Unknown')}"
-                else:
-                    success = False
-                    message = "Tailscale command failed. Make sure it's installed and configured."
-            except subprocess.TimeoutExpired:
-                success = False
-                message = "Tailscale status check timed out"
-            except FileNotFoundError:
-                success = False
-                message = "Tailscale not installed. Please install from https://tailscale.com/download"
-            except Exception as e:
-                success = False
-                message = f"Error checking Tailscale status: {e}"
-
         # --- UNKNOWN SERVICE ---
         else:
             success = False
@@ -934,6 +1070,230 @@ async def get_spotify_token() -> JSONResponse:
         )
 
 
+@router.post("/config/launch-headscale")
+async def launch_headscale() -> JSONResponse:
+    """
+    Launch Headscale and Headplane containers.
+
+    This starts only the Headscale VPN services without launching the full music stack.
+    """
+    try:
+        wizard_config_dir = settings.wizard_config_dir
+
+        # Ensure Headscale config directory and files exist before launching
+        headscale_config_dir = os.path.join(wizard_config_dir, "headscale", "config")
+        headscale_data_dir = os.path.join(wizard_config_dir, "headscale", "data")
+        os.makedirs(headscale_config_dir, exist_ok=True)
+        os.makedirs(headscale_data_dir, exist_ok=True)
+
+        # Ensure Caddyfile exists before launching
+        caddy_config_dir = os.path.join(wizard_config_dir, "caddy")
+        caddy_config_path = os.path.join(caddy_config_dir, "Caddyfile")
+        os.makedirs(caddy_config_dir, exist_ok=True)
+
+        if not os.path.exists(caddy_config_path):
+            # Create Caddyfile from template if it doesn't exist
+            # Try to get domain from env or use localhost
+            default_domain = "localhost"
+            env_file_path = os.path.join(wizard_config_dir, ".env")
+            if os.path.exists(env_file_path):
+                with open(env_file_path) as f:
+                    for line in f:
+                        if line.startswith("HEADSCALE_DOMAIN="):
+                            default_domain = line.strip().split("=", 1)[1]
+                            break
+
+            # Use template if available
+            caddy_template_path = str(
+                PROJECT_ROOT / "config" / "caddy" / "Caddyfile.template"
+            )
+            if os.path.exists(caddy_template_path):
+                with open(caddy_template_path) as f:
+                    template = f.read()
+                caddyfile_content = template.replace(
+                    "{{HEADSCALE_DOMAIN}}", default_domain
+                )
+            else:
+                # Fallback to hardcoded template - ONLY public infrastructure
+                logger.warning(
+                    f"Caddyfile template not found at {caddy_template_path}, using default"
+                )
+                caddyfile_content = f"""# Headscale API (Public access for VPN registration)
+{default_domain} {{
+    reverse_proxy headscale:8080
+}}
+
+# Headplane Admin UI (Public access for VPN management)
+admin.{default_domain} {{
+    reverse_proxy headplane:3000
+}}
+
+# Music Services are accessed via MagicDNS inside VPN (not publicly exposed)
+"""
+            with open(caddy_config_path, "w") as f:
+                f.write(caddyfile_content)
+            logger.info(
+                f"Created Caddyfile at {caddy_config_path} for domain: {default_domain}"
+            )
+        else:
+            logger.info(
+                f"Using existing Caddyfile at {caddy_config_path} (not overwriting saved configuration)"
+            )
+
+        # Ensure Headplane config exists before launching
+        headplane_config_dir = os.path.join(wizard_config_dir, "headplane")
+        headplane_config_path = os.path.join(headplane_config_dir, "config.yaml")
+        os.makedirs(headplane_config_dir, exist_ok=True)
+
+        if not os.path.exists(headplane_config_path):
+            # Create a default Headplane config if it doesn't exist
+            import secrets
+
+            cookie_secret = secrets.token_urlsafe(32)[:32]
+
+            # Try to get API key from env
+            api_key = ""
+            env_file_path = os.path.join(wizard_config_dir, ".env")
+            if os.path.exists(env_file_path):
+                with open(env_file_path) as f:
+                    for line in f:
+                        if line.startswith("HEADSCALE_API_KEY="):
+                            api_key = line.strip().split("=", 1)[1]
+                            break
+
+            default_headplane_config = f"""server:
+  host: 0.0.0.0
+  port: 3000
+  base_url: http://localhost:3000
+  cookie_secret: "{cookie_secret}"
+  cookie_secure: false
+  data_path: /var/lib/headplane/
+
+headscale:
+  url: http://headscale:8080
+  api_key: "{api_key}"
+  config_path: /etc/headscale/config.yaml
+
+integration:
+  docker:
+    enabled: true
+    container_label: "me.tale.headplane.target=headscale"
+    socket: "unix:///var/run/docker.sock"
+"""
+            with open(headplane_config_path, "w") as f:
+                f.write(default_headplane_config)
+            logger.info(f"Created default Headplane config at {headplane_config_path}")
+
+        # Create a modified docker-compose file with corrected paths for wizard-config context
+        headscale_compose_src = str(PROJECT_ROOT / "docker-compose.headscale.yml")
+        headscale_compose_dest = os.path.join(
+            wizard_config_dir, "docker-compose.headscale.yml"
+        )
+
+        if not os.path.exists(headscale_compose_src):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Headscale compose file not found.",
+            )
+
+        # Read the original compose file and adjust paths
+        import yaml
+
+        with open(headscale_compose_src, "r") as f:
+            compose_config = yaml.safe_load(f)
+
+        # Update volume paths to be relative to wizard-config directory
+        if "services" in compose_config:
+            if "headscale" in compose_config["services"]:
+                volumes = compose_config["services"]["headscale"].get("volumes", [])
+                compose_config["services"]["headscale"]["volumes"] = [
+                    v.replace("./wizard-config/", "./") for v in volumes
+                ]
+            if "caddy" in compose_config["services"]:
+                volumes = compose_config["services"]["caddy"].get("volumes", [])
+                compose_config["services"]["caddy"]["volumes"] = [
+                    v.replace("./wizard-config/", "./") for v in volumes
+                ]
+            if "headplane" in compose_config["services"]:
+                volumes = compose_config["services"]["headplane"].get("volumes", [])
+                compose_config["services"]["headplane"]["volumes"] = [
+                    v.replace("./wizard-config/", "./") for v in volumes
+                ]
+
+        # Write the modified compose file
+        with open(headscale_compose_dest, "w") as f:
+            yaml.safe_dump(compose_config, f, default_flow_style=False, sort_keys=False)
+
+        logger.info(
+            f"Created modified headscale compose file at {headscale_compose_dest}"
+        )
+
+        def run_headscale():
+            try:
+                log_file = os.path.join(wizard_config_dir, "launch_headscale.log")
+
+                # Use ComposeRunner to properly handle Docker Compose execution
+                runner = ComposeRunner()
+
+                # Run docker-compose up using ComposeRunner
+                success, message = runner.compose_up(
+                    compose_file="docker-compose.headscale.yml",
+                    detach=True,
+                    log_file=log_file,
+                )
+
+                if success:
+                    logger.info("Headscale containers launched successfully")
+                else:
+                    logger.error(f"Failed to launch Headscale: {message}")
+            except Exception as e:
+                logger.error(f"Error launching Headscale: {e}")
+
+        # Launch in background thread
+        thread = threading.Thread(target=run_headscale, daemon=True)
+        thread.start()
+
+        # Read domain from .env to show correct URLs
+        env_vars = {}
+        env_file_path = os.path.join(wizard_config_dir, ".env")
+        if os.path.exists(env_file_path):
+            with open(env_file_path) as f:
+                for line in f:
+                    if "=" in line and not line.startswith("#"):
+                        key, value = line.strip().split("=", 1)
+                        env_vars[key] = value
+
+        headscale_domain = env_vars.get("HEADSCALE_DOMAIN", "localhost")
+        headscale_url = (
+            f"https://{headscale_domain}"
+            if headscale_domain != "localhost"
+            else "http://localhost:8080"
+        )
+        headplane_url = (
+            f"https://admin.{headscale_domain}"
+            if headscale_domain != "localhost"
+            else "http://localhost:3000"
+        )
+
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content={
+                "success": True,
+                "message": "Headscale launch started. Check container status to verify.",
+                "services": {
+                    "headscale": headscale_url,
+                    "headplane": headplane_url,
+                },
+            },
+        )
+    except Exception as e:
+        logger.error(f"Failed to launch Headscale: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to launch Headscale: {str(e)}",
+        )
+
+
 @router.post("/config/launch-services")
 async def launch_services() -> JSONResponse:
     """
@@ -1001,33 +1361,59 @@ async def launch_services() -> JSONResponse:
         thread = threading.Thread(target=run_stack, daemon=True)
         thread.start()
 
-        # Get TAILSCALE_IP from .env if available
-        tailscale_ip = None
+        # Get Headscale configuration from .env
+        headscale_base_domain = "headscale.local"
+        headscale_enabled = False
         try:
             env_file_path = os.path.join(wizard_config_dir, ".env")
             with open(env_file_path) as f:
                 for line in f:
-                    if line.startswith("TAILSCALE_IP="):
-                        tailscale_ip = line.strip().split("=", 1)[1]
-                        break
+                    if line.startswith("HEADSCALE_BASE_DOMAIN="):
+                        headscale_base_domain = line.strip().split("=", 1)[1]
+                    elif line.startswith("HEADSCALE_ENABLED="):
+                        headscale_enabled = (
+                            line.strip().split("=", 1)[1].lower() == "true"
+                        )
         except Exception:
             pass
 
-        def url(ip, port):
-            return f"http://{ip}:{port}" if ip else f"http://localhost:{port}"
+        def magicdns_url(service, port):
+            """Generate MagicDNS URL for VPN-only access"""
+            if headscale_enabled:
+                # Use container name as MagicDNS hostname
+                # VPN clients will resolve these via Headscale's DNS
+                return f"http://{service}:{port}"
+            else:
+                # Fallback to localhost for testing
+                return f"http://localhost:{port}"
 
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED,
             content={
                 "success": True,
-                "message": "Music stack launch started. Use /config/stack-status to check progress.",
+                "message": "Music stack launched. Services accessible via Headscale VPN only.",
                 "project": "noiseport",
                 "configPath": runner.wizard_config_path,
+                "accessMode": "vpn-only" if headscale_enabled else "local",
                 "services": {
-                    "navidrome": url(tailscale_ip, 4533),
-                    "jellyfin": url(tailscale_ip, 8096),
-                    "slskd": url(tailscale_ip, 5030),
-                    "fastapi": url(tailscale_ip, 8010),
+                    "navidrome": magicdns_url("navidrome", 4533),
+                    "jellyfin": magicdns_url("jellyfin", 8096),
+                    "slskd": magicdns_url("slskd", 5030),
+                    "fastapi": magicdns_url("api", 80),
+                },
+                "vpnInfo": {
+                    "enabled": headscale_enabled,
+                    "baseDomain": headscale_base_domain,
+                    "instructions": (
+                        [
+                            "1. Install Tailscale client on your device",
+                            "2. Connect using: tailscale up --login-server=YOUR_HEADSCALE_URL",
+                            "3. Access services using MagicDNS hostnames (e.g., http://navidrome:4533)",
+                            "4. Services are NOT publicly accessible - VPN required",
+                        ]
+                        if headscale_enabled
+                        else ["Headscale VPN not enabled. Services running locally."]
+                    ),
                 },
             },
         )
@@ -1173,14 +1559,14 @@ async def launch_status() -> JSONResponse:
 
 @router.post("/config/restart-containers")
 async def restart_containers() -> JSONResponse:
-    """Restart development containers for Tailscale integration."""
+    """Restart development containers."""
     try:
-        logger.info("Starting container restart for Tailscale integration")
+        logger.info("Starting container restart")
 
         # Get current compose configuration
         compose_files = get_compose_file_args()
 
-        # First, restart the containers that need Tailscale integration
+        # Restart the containers
         containers_to_restart = ["fastapi"]  # Start with FastAPI, add others as needed
 
         restart_results = []
@@ -1241,8 +1627,7 @@ async def restart_containers() -> JSONResponse:
             "containers": restart_results,
             "next_steps": [
                 "Containers are restarting and will be available shortly",
-                "Tailscale integration should now be active",
-                "You can test the Tailscale connection again",
+                "Services should now be active",
             ],
         }
 
@@ -1355,13 +1740,13 @@ async def get_container_logs(container_name: str) -> JSONResponse:
 async def get_service_status() -> JSONResponse:
     """Check the status of all services with detailed state information."""
     try:
-        # Get TAILSCALE_IP from .env if available
-        tailscale_ip = None
+        # Get Headscale server IP from .env if available
+        server_ip = None
         try:
             with open(".env") as f:
                 for line in f:
-                    if line.startswith("TAILSCALE_IP="):
-                        tailscale_ip = line.strip().split("=", 1)[1]
+                    if line.startswith("HEADSCALE_SERVER_IP="):
+                        server_ip = line.strip().split("=", 1)[1]
                         break
         except Exception:
             pass
@@ -1372,25 +1757,25 @@ async def get_service_status() -> JSONResponse:
         services = {
             "navidrome": {
                 "running": False,
-                "url": url(tailscale_ip, 4533),
+                "url": url(server_ip, 4533),
                 "state": "unknown",
                 "status": "",
             },
             "jellyfin": {
                 "running": False,
-                "url": url(tailscale_ip, 8096),
+                "url": url(server_ip, 8096),
                 "state": "unknown",
                 "status": "",
             },
             "slskd": {
                 "running": False,
-                "url": url(tailscale_ip, 5030),
+                "url": url(server_ip, 5030),
                 "state": "unknown",
                 "status": "",
             },
             "fastapi": {
                 "running": False,
-                "url": url(tailscale_ip, 8000),
+                "url": url(server_ip, 8000),
                 "state": "unknown",
                 "status": "",
             },

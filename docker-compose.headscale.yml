@@ -1,0 +1,86 @@
+---
+# Headscale and Caddy (HTTPS via sslip.io)
+# This file provides self-hosted VPN coordination (Headscale) with automatic HTTPS via Caddy
+
+version: "3.8"
+
+services:
+  headscale:
+    image: headscale/headscale:latest
+    container_name: headscale
+    restart: unless-stopped
+    # Expose ports locally, but public access goes through Caddy
+    ports:
+      - "8080:8080"  # HTTP API (internal / debug)
+      - "9090:9090"  # Metrics endpoint
+    volumes:
+      - ./wizard-config/headscale/config:/etc/headscale
+      - ./wizard-config/headscale/data:/var/lib/headscale
+    command: serve
+    environment:
+      # These variables are optional but kept for compatibility
+      - HEADSCALE_SERVER_URL=${HEADSCALE_SERVER_URL:-https://localhost}
+      - HEADSCALE_LISTEN_ADDR=0.0.0.0:8080
+      - HEADSCALE_METRICS_LISTEN_ADDR=0.0.0.0:9090
+    networks:
+      - headscale-net
+    labels:
+      glance.name: Headscale VPN Server
+      glance.hide: false
+      glance.icon: si:wireguard
+      glance.url: http://localhost:8080
+      glance.description: "Self-hosted VPN coordination server"
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"    # HTTP for Let's Encrypt challenge
+      - "443:443"  # HTTPS for clients
+    volumes:
+      - ./wizard-config/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - headscale-net
+    labels:
+      glance.name: Caddy Reverse Proxy
+      glance.hide: false
+      glance.icon: si:caddy
+      glance.url: https://localhost
+      glance.description: "Automatic HTTPS reverse proxy for Headscale"
+
+  headplane:
+    image: ghcr.io/tale/headplane:latest
+    container_name: headplane
+    restart: unless-stopped
+    # No external ports - accessed via Caddy at /admin
+    volumes:
+      - ./wizard-config/headplane/config.yaml:/etc/headplane/config.yaml:ro
+      - ./wizard-config/headscale/config/config.yaml:/etc/headscale/config.yaml:ro
+      - headplane_data:/var/lib/headplane
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - HEADPLANE_CONFIG_PATH=/etc/headplane/config.yaml
+    networks:
+      - headscale-net
+    depends_on:
+      - headscale
+    labels:
+      glance.name: Headplane UI
+      glance.hide: false
+      glance.icon: si:tailscale
+      glance.url: http://localhost:3000
+      glance.description: "Web UI for managing Headscale"
+      me.tale.headplane.target: headscale
+
+networks:
+  headscale-net:
+    driver: bridge
+    name: headscale-net
+
+volumes:
+  caddy_data:
+  caddy_config:
+  headplane_data:

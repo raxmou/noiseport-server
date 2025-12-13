@@ -1,0 +1,16 @@
+# Headscale API (Public access for VPN registration)
+{{HEADSCALE_DOMAIN}} {
+    reverse_proxy headscale:8080
+}
+
+# Headplane Admin UI (Public access for VPN management)
+admin.{{HEADSCALE_DOMAIN}} {
+    reverse_proxy headplane:3000
+}
+
+# Music Services are accessed via MagicDNS inside VPN (not publicly exposed)
+# After connecting to VPN with Tailscale client, access services at:
+# - http://navidrome:4533
+# - http://jellyfin:8096
+# - http://slskd:5030
+# - http://fastapi:8000

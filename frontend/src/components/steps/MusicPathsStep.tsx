@@ -14,12 +14,14 @@ interface Props {
   config: WizardConfiguration;
   onUpdate: (updates: Partial<WizardConfiguration>) => void;
   onValidation: (valid: boolean) => void;
+  saveConfig: () => Promise<void>;
 }
 
 export default function MusicPathsStep({
   config,
   onUpdate,
   onValidation,
+  saveConfig,
 }: Props) {
   const [servicesLaunched, setServicesLaunched] = useState(false);
   const [launching, setLaunching] = useState(false);
@@ -59,25 +61,13 @@ export default function MusicPathsStep({
     setSaving(true);
     console.log("Saving configuration:", config);
     try {
-      const response = await fetch("/api/v1/config", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(config),
-      });
-
-      if (response.ok) {
-        setConfigSaved(true);
-        const result = await response.json();
-        console.log("Configuration saved:", result);
-      } else {
-        console.error("Failed to save configuration");
-      }
+      await saveConfig();
+      setConfigSaved(true);
     } catch (error) {
       console.error("Error saving configuration:", error);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const launchServices = async () => {
@@ -191,6 +181,73 @@ export default function MusicPathsStep({
         Configure the base music folder on your host system. The system will
         create necessary subdirectories for downloads and completed music files.
       </p>
+
+      <Alert variant="warning" className="mb-6">
+        <div className="flex items-start gap-3">
+          <svg
+            className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <div>
+            <p className="font-semibold text-yellow-200 mb-2">
+              🔒 VPN-Only Access Mode
+            </p>
+            <p className="text-sm text-yellow-100 mb-2">
+              Music services are configured for{" "}
+              <strong>secure VPN-only access</strong>. They are NOT publicly
+              accessible via direct IP addresses.
+            </p>
+            <div className="text-sm text-yellow-100 space-y-1 mt-3">
+              <p className="font-semibold">To access your music services:</p>
+              <ol className="list-decimal list-inside space-y-1 ml-2">
+                <li>Install Tailscale client on your device</li>
+                <li>
+                  Connect to your Headscale VPN (configured in previous step)
+                </li>
+                <li>
+                  Access services via server's MagicDNS hostname:
+                  <ul className="list-disc list-inside ml-6 mt-1">
+                    <li>
+                      <code className="bg-yellow-900/30 px-1 rounded">
+                        http://
+                        {config.headscale.serverVpnHostname ||
+                          "server.headscale.local"}
+                        :4533
+                      </code>{" "}
+                      (Navidrome)
+                    </li>
+                    <li>
+                      <code className="bg-yellow-900/30 px-1 rounded">
+                        http://
+                        {config.headscale.serverVpnHostname ||
+                          "server.headscale.local"}
+                        :8096
+                      </code>{" "}
+                      (Jellyfin)
+                    </li>
+                    <li>
+                      <code className="bg-yellow-900/30 px-1 rounded">
+                        http://
+                        {config.headscale.serverVpnHostname ||
+                          "server.headscale.local"}
+                        :5030
+                      </code>{" "}
+                      (slskd)
+                    </li>
+                  </ul>
+                </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </Alert>
 
       <Paper className="mb-4">
         <h4 className="text-lg font-kode text-primary mb-4 flex items-center gap-2">

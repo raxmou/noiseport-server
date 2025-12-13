@@ -18,8 +18,12 @@ export default function SummaryStep({ config, onValidation }: Props) {
   const onValidationRef = useRef(onValidation);
   const [confettiTriggered, setConfettiTriggered] = useState(false);
 
-  // Use Tailscale IP from config
-  const machineIP = config.tailscale.ip || "localhost";
+  // Use configured VPN hostname for VPN access, fallback to server IP for direct access
+  const vpnHostname =
+    config.headscale.serverVpnHostname || "server.headscale.local";
+  const machineIP = config.headscale.enabled
+    ? vpnHostname
+    : config.headscale.serverIp || "localhost";
 
   useEffect(() => {
     onValidationRef.current = onValidation;
@@ -55,7 +59,14 @@ export default function SummaryStep({ config, onValidation }: Props) {
           angle: randomInRange(55, 125),
           spread: randomInRange(50, 70),
           origin: { x: randomInRange(0.1, 0.9), y: Math.random() - 0.2 },
-          colors: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dfe6e9'],
+          colors: [
+            "#ff6b6b",
+            "#4ecdc4",
+            "#45b7d1",
+            "#96ceb4",
+            "#ffeaa7",
+            "#dfe6e9",
+          ],
         });
       }, 250);
 
@@ -91,7 +102,7 @@ export default function SummaryStep({ config, onValidation }: Props) {
     },
   ];
 
-  const enabledServices = services.filter(s => s.enabled);
+  const enabledServices = services.filter((s) => s.enabled);
 
   return (
     <>
@@ -105,7 +116,9 @@ export default function SummaryStep({ config, onValidation }: Props) {
         <Paper>
           <h3 className="font-medium mb-4">Running Services</h3>
           <p className="text-sm text-neutral-400 mb-4">
-            Access your services at the following addresses:
+            {config.headscale.enabled
+              ? "Access your services via VPN using the MagicDNS hostname (requires Tailscale connection):"
+              : "Access your services at the following addresses:"}
           </p>
           <div className="space-y-3">
             {enabledServices.map((service) => (
@@ -130,9 +143,13 @@ export default function SummaryStep({ config, onValidation }: Props) {
           </div>
         </Paper>
 
-        {/* Machine IP Info */}
+        {/* Machine Info */}
         <Paper>
-          <h3 className="font-medium mb-4">Machine IP Address</h3>
+          <h3 className="font-medium mb-4">
+            {config.headscale.enabled
+              ? "VPN Access Information"
+              : "Machine IP Address"}
+          </h3>
           <div className="p-4 bg-neutral-800 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <svg
@@ -146,11 +163,24 @@ export default function SummaryStep({ config, onValidation }: Props) {
                   clipRule="evenodd"
                 />
               </svg>
-              <span className="font-mono text-lg text-primary">{machineIP}</span>
+              <span className="font-mono text-lg text-primary">
+                {machineIP}
+              </span>
             </div>
             <p className="text-sm text-neutral-400">
-              This is the address to use in Noiseport Desktop and Mobile apps.
+              {config.headscale.enabled
+                ? "Use this MagicDNS hostname in Noiseport apps after connecting to the VPN."
+                : "This is the address to use in Noiseport Desktop and Mobile apps."}
             </p>
+            {config.headscale.enabled && (
+              <Alert variant="info" className="mt-3">
+                <p className="text-xs">
+                  🔒 <strong>VPN Required:</strong> You must connect to the
+                  Headscale VPN first using Tailscale client. Services are not
+                  publicly accessible.
+                </p>
+              </Alert>
+            )}
           </div>
         </Paper>
 
@@ -169,12 +199,44 @@ export default function SummaryStep({ config, onValidation }: Props) {
         >
           <div className="space-y-3">
             <p className="text-sm font-medium">Next Steps:</p>
-            <p className="text-sm">
-              All you need to do now is download the Desktop and/or Mobile app (if not done yet),
-              go to their settings/config page, and input the IP address{" "}
-              <span className="font-mono text-primary">{machineIP}</span> along with the
-              credentials you configured for your services (e.g., Navidrome or Jellyfin username and password).
-            </p>
+            {config.headscale.enabled ? (
+              <div className="space-y-2">
+                <p className="text-sm">
+                  1. <strong>Install Tailscale client</strong> on your device
+                  from{" "}
+                  <a
+                    href="https://tailscale.com/download"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    tailscale.com/download
+                  </a>
+                </p>
+                <p className="text-sm">
+                  2. <strong>Connect to VPN</strong> using:{" "}
+                  <code className="bg-neutral-800 px-1 rounded text-xs">
+                    tailscale up --login-server=https://
+                    {config.headscale.domain}
+                  </code>
+                </p>
+                <p className="text-sm">
+                  3. <strong>Download Noiseport app</strong> and configure with
+                  hostname{" "}
+                  <span className="font-mono text-primary">{machineIP}</span>{" "}
+                  and your service credentials.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm">
+                All you need to do now is download the Desktop and/or Mobile app
+                (if not done yet), go to their settings/config page, and input
+                the IP address{" "}
+                <span className="font-mono text-primary">{machineIP}</span>{" "}
+                along with the credentials you configured for your services
+                (e.g., Navidrome or Jellyfin username and password).
+              </p>
+            )}
             <div className="mt-4 space-y-2">
               <p className="text-sm font-medium">Download Apps:</p>
               <div className="flex gap-3">
@@ -184,7 +246,11 @@ export default function SummaryStep({ config, onValidation }: Props) {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-light transition-colors"
                 >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
                     <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                   </svg>
                   Desktop App
@@ -195,7 +261,11 @@ export default function SummaryStep({ config, onValidation }: Props) {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
                     <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                   </svg>
                   Mobile App

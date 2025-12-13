@@ -15,10 +15,12 @@ services:
       - ./wizard-config/slskd.yml:/app/slskd.yml 
       - {{HOST_MUSIC_PATH}}:/music
       - {{HOST_MUSIC_PATH}}/musiclibrary.db:/music/musiclibrary.db
+      - {{HOST_MUSIC_PATH}}/incomplete:/music/incomplete
       - ./shared:/shared
     restart: unless-stopped
     networks:
       - noiseport
+      - headscale-net
     labels:
       glance.name: slskd
       glance.hide: false
@@ -41,13 +43,14 @@ services:
     volumes:
       - {{HOST_MUSIC_PATH}}/downloads:/music/downloads
       - {{HOST_MUSIC_PATH}}/complete:/music/complete
-      - ./env:/app/.env # Mount wizard-generated .env file
+      - ./.env:/app/.env:ro # Mount wizard-generated .env file (read-only)
       - ./data:/app/data # Mount data directory for SQLite database
     depends_on:
       - slskd
     restart: unless-stopped
     networks:
       - noiseport
+      - headscale-net
     labels:
       glance.name: Music Stack API & Wizard
       glance.hide: false
@@ -76,16 +79,17 @@ services:
       glance.name: Navidrome
       glance.hide: false
       glance.icon: https://avatars.githubusercontent.com/u/26692192?s=200&v=4
-      glance.url: http://localhost:4533
-      glance.description: "Music Streaming Server"
+      glance.url: http://navidrome:4533
+      glance.description: "Music Streaming Server (VPN-only)"
     networks:
       - noiseport
+      - headscale-net
 
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
     ports:
-      - "8096:8096"        
+      - "8096:8096"
     environment:
       - PUID=1000          
       - PGID=1000          
@@ -98,12 +102,17 @@ services:
       glance.name: Jellyfin
       glance.hide: false
       glance.icon: https://avatars.githubusercontent.com/u/45698031?s=200&v=4
-      glance.url: http://localhost:8096
-      glance.description: "Media Streaming Server"
+      glance.url: http://jellyfin:8096
+      glance.description: "Media Streaming Server (VPN-only)"
     restart: unless-stopped
     networks:
       - noiseport
+      - headscale-net
 
 networks:
   noiseport:
+    driver: bridge
+  headscale-net:
+    external: true
+    name: headscale-net
     driver: bridge

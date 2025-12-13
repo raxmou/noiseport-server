@@ -1,8 +1,14 @@
 export interface WizardConfiguration {
-  // Tailscale VPN
-  tailscale: {
+  // Headscale VPN (self-hosted)
+  headscale: {
     enabled: boolean;
-    ip: string;
+    setupMode: 'domain' | 'ip';
+    domain: string;
+    serverIp: string;
+    serverUrl: string;
+    apiKey: string;
+    baseDomain: string;
+    serverVpnHostname: string;
   };
   
   // Local libraries

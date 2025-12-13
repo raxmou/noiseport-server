@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { WizardConfiguration } from "../../types/wizard";
-import { useWizardConfig } from "../../hooks/useWizardConfig";
 import {
   Button,
   Checkbox,
@@ -14,12 +13,16 @@ interface Props {
   config: WizardConfiguration;
   onUpdate: (updates: Partial<WizardConfiguration>) => void;
   onValidation: (valid: boolean) => void;
+  testConnection: (service: string, serviceConfig: any) => Promise<boolean>;
+  saveConfig: () => Promise<void>;
 }
 
 export default function SoulseekStep({
   config,
   onUpdate,
   onValidation,
+  testConnection,
+  saveConfig,
 }: Props) {
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "testing" | "success" | "error"
@@ -29,7 +32,6 @@ export default function SoulseekStep({
   >("idle");
   const [saving, setSaving] = useState(false);
   const [configSaved, setConfigSaved] = useState(false);
-  const { testConnection } = useWizardConfig();
 
   const onValidationRef = useRef(onValidation);
   useEffect(() => {
@@ -50,20 +52,28 @@ export default function SoulseekStep({
   }, [config.soulseek]);
 
   useEffect(() => {
-    // Auto-set host using Tailscale IP if available (only if the host is still the default)
+    // Auto-set host using VPN hostname or server IP if available (only if the host is still the default)
     if (
-      config.tailscale.enabled &&
-      config.tailscale.ip &&
+      config.headscale.enabled &&
       config.soulseek.host === "http://slskd:5030"
     ) {
-      onUpdate({
-        soulseek: {
-          ...config.soulseek,
-          host: `http://${config.tailscale.ip}:5030`,
-        },
-      });
+      // Prefer VPN hostname (MagicDNS) over server IP
+      const hostname =
+        config.headscale.serverVpnHostname || config.headscale.serverIp;
+      if (hostname) {
+        onUpdate({
+          soulseek: {
+            ...config.soulseek,
+            host: `http://${hostname}:5030`,
+          },
+        });
+      }
     }
-  }, [config.tailscale.enabled, config.tailscale.ip]); // Intentionally exclude onUpdate to prevent loops
+  }, [
+    config.headscale.enabled,
+    config.headscale.serverVpnHostname,
+    config.headscale.serverIp,
+  ]); // Intentionally exclude onUpdate to prevent loops
 
   const handleSoulseekToggle = (enabled: boolean) => {
     onUpdate({
@@ -91,25 +101,13 @@ export default function SoulseekStep({
     setSaving(true);
     console.log("Saving configuration:", config);
     try {
-      const response = await fetch("/api/v1/config", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(config),
-      });
-
-      if (response.ok) {
-        setConfigSaved(true);
-        const result = await response.json();
-        console.log("Configuration saved:", result);
-      } else {
-        console.error("Failed to save configuration");
-      }
+      await saveConfig();
+      setConfigSaved(true);
     } catch (error) {
       console.error("Error saving configuration:", error);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const restartSlskdContainer = async () => {
@@ -206,8 +204,12 @@ export default function SoulseekStep({
                 }
                 required
                 description={
-                  config.tailscale.enabled && config.tailscale.ip
-                    ? `Automatically set using Tailscale IP: ${config.tailscale.ip}`
+                  config.headscale.enabled
+                    ? config.headscale.serverVpnHostname
+                      ? `Automatically set using VPN hostname: ${config.headscale.serverVpnHostname}`
+                      : config.headscale.serverIp
+                      ? `Automatically set using server IP: ${config.headscale.serverIp} (VPN hostname not configured yet)`
+                      : "The URL where your slskd instance is running"
                     : "The URL where your slskd instance is running"
                 }
               />
