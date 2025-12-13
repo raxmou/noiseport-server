@@ -196,3 +196,24 @@ class DownloadHistoryResponse(BaseModel):
     requests: list[DownloadRequestResponse] = Field(
         ..., description="List of download requests"
     )
+
+
+class UploadAlbumResponse(BaseModel):
+    """Response model for album upload operations."""
+
+    success: bool = Field(..., description="Whether the upload was successful")
+    message: str = Field(..., description="Human-readable message")
+    task_id: str = Field(..., description="Task ID for tracking")
+    files_processed: int = Field(..., ge=0, description="Number of files processed")
+    album_path: str | None = Field(None, description="Path where album was imported")
+    detected_metadata: "AlbumMetadata | None" = Field(
+        None, description="Metadata extracted from audio files"
+    )
+
+
+class AlbumMetadata(BaseModel):
+    """Metadata extracted from audio files."""
+
+    artist: str | None = Field(None, description="Artist name from tags")
+    album: str | None = Field(None, description="Album name from tags")
+    source: str = Field(..., description="Source of metadata (tags or user_provided)")
