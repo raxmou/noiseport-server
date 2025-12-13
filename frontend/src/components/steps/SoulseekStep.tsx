@@ -58,7 +58,8 @@ export default function SoulseekStep({
       config.soulseek.host === "http://slskd:5030"
     ) {
       // Prefer VPN hostname (MagicDNS) over server IP
-      const hostname = config.headscale.serverVpnHostname || config.headscale.serverIp;
+      const hostname =
+        config.headscale.serverVpnHostname || config.headscale.serverIp;
       if (hostname) {
         onUpdate({
           soulseek: {
@@ -68,7 +69,11 @@ export default function SoulseekStep({
         });
       }
     }
-  }, [config.headscale.enabled, config.headscale.serverVpnHostname, config.headscale.serverIp]); // Intentionally exclude onUpdate to prevent loops
+  }, [
+    config.headscale.enabled,
+    config.headscale.serverVpnHostname,
+    config.headscale.serverIp,
+  ]); // Intentionally exclude onUpdate to prevent loops
 
   const handleSoulseekToggle = (enabled: boolean) => {
     onUpdate({
