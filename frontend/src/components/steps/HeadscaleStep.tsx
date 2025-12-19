@@ -891,7 +891,7 @@ export default function HeadscaleStep({
           <div className="space-y-4">
             <TextInput
               label="Server VPN Hostname"
-              placeholder="ensemble.headscale.local"
+              placeholder="noiseport.headscale.local"
               value={config.headscale.serverVpnHostname}
               onChange={(event) =>
                 onUpdate({
