@@ -739,6 +739,17 @@ export default function HeadscaleStep({
             take 1-2 minutes. Check logs with: <Code>docker logs caddy</Code>
           </li>
           <li>
+            <strong>Open SSH connection to your server</strong> - Open a new terminal
+            and SSH into the machine where NoisePort is hosted to run the following
+            commands:
+            <div className="mt-2">
+              <Code block>ssh user@your-server-ip</Code>
+            </div>
+            <p className="text-xs text-neutral-400 mt-1">
+              All the following steps require command-line access to your server.
+            </p>
+          </li>
+          <li>
             <strong>Generate Headscale API Key</strong> for Headplane:
             <div className="mt-2">
               <Code block>docker exec headscale headscale apikeys create</Code>
