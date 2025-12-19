@@ -844,7 +844,13 @@ export default function HeadscaleStep({
                 --reusable --expiration 24h
               </Code>
               <p className="text-xs text-neutral-400 mt-2">
-                Then, install Tailscale on this server and connect:
+                First, install Tailscale on this server:
+              </p>
+              <Code block>
+                curl -fsSL https://tailscale.com/install.sh | sh
+              </Code>
+              <p className="text-xs text-neutral-400 mt-2">
+                Then, connect to your Headscale server:
               </p>
               <Code block>
                 sudo tailscale up --login-server={config.headscale.serverUrl}{" "}
