@@ -12,11 +12,11 @@ interface Props {
 // Helper function to generate the admin Headplane URL
 const getHeadplaneUrl = (config: WizardConfiguration): string | null => {
   if (config.headscale.setupMode === "domain" && config.headscale.domain) {
-    return `https://admin.${config.headscale.domain}`;
+    return `https://admin.${config.headscale.domain}/admin`;
   } else if (config.headscale.setupMode === "ip" && config.headscale.serverIp) {
     const sslipDomain =
       config.headscale.serverIp.replace(/\./g, "-") + ".sslip.io";
-    return `https://admin.${sslipDomain}`;
+    return `https://admin.${sslipDomain}/admin`;
   }
   return null;
 };
@@ -803,12 +803,12 @@ export default function HeadscaleStep({
                 <div className="mt-2">
                   {getHeadplaneUrl(config) ? (
                     <a
-                      href={`${getHeadplaneUrl(config)}/admin/settings`}
+                      href={`${getHeadplaneUrl(config)}/settings`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 underline text-xs"
                     >
-                      {getHeadplaneUrl(config)}/admin/settings
+                      {getHeadplaneUrl(config)}/settings
                       <svg
                         className="w-3 h-3"
                         fill="currentColor"
