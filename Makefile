@@ -172,7 +172,8 @@ docker-compose-down: ## Stop services with docker-compose
 docker-logs: ## View docker-compose logs
 	docker compose logs -f
 
-wizard:
+wizard: ## Run the setup wizard
+	@test -f wizard-config/.env || touch wizard-config/.env
 	docker compose -f docker-compose.wizard.yml up 
 # === Pre-commit ===
 pre-commit-install: ## Install pre-commit hooks
