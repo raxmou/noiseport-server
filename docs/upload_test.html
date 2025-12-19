@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Noiseport Album Upload Test</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 40px;
+        max-width: 600px;
+        width: 100%;
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 28px;
+      }
+
+      .subtitle {
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 14px;
+      }
+
+      .drop-zone {
+        border: 3px dashed #ddd;
+        border-radius: 12px;
+        padding: 60px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #fafafa;
+        margin-bottom: 20px;
+      }
+
+      .drop-zone.dragover {
+        border-color: #667eea;
+        background: #f0f0ff;
+        transform: scale(1.02);
+      }
+
+      .drop-zone.has-files {
+        border-color: #48bb78;
+        background: #f0fff4;
+      }
+
+      .drop-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+      }
+
+      .drop-text {
+        color: #666;
+        font-size: 16px;
+      }
+
+      .file-count {
+        color: #48bb78;
+        font-weight: 600;
+        font-size: 18px;
+        margin-top: 10px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+
+      input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      input:disabled {
+        background: #f7fafc;
+        cursor: not-allowed;
+      }
+
+      .upload-btn {
+        width: 100%;
+        padding: 14px 24px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .upload-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      .upload-btn:disabled {
+        background: #cbd5e0;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .progress-container {
+        margin-top: 20px;
+        display: none;
+      }
+
+      .progress-container.active {
+        display: block;
+      }
+
+      .progress-bar-bg {
+        width: 100%;
+        height: 30px;
+        background: #e2e8f0;
+        border-radius: 15px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        border-radius: 15px;
+        transition: width 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      .status-message {
+        margin-top: 15px;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        display: none;
+      }
+
+      .status-message.active {
+        display: block;
+      }
+
+      .status-message.success {
+        background: #f0fff4;
+        color: #22543d;
+        border: 1px solid #9ae6b4;
+      }
+
+      .status-message.error {
+        background: #fff5f5;
+        color: #742a2a;
+        border: 1px solid #fc8181;
+      }
+
+      .file-list {
+        max-height: 200px;
+        overflow-y: auto;
+        margin-top: 15px;
+        font-size: 13px;
+        color: #666;
+      }
+
+      .file-item {
+        padding: 8px;
+        background: #f7fafc;
+        margin-bottom: 5px;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .config-section {
+        background: #f7fafc;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+
+      .config-label {
+        font-size: 12px;
+        color: #666;
+        font-weight: 600;
+        margin-bottom: 5px;
+      }
+
+      .config-value {
+        font-size: 14px;
+        color: #333;
+        font-family: "Courier New", monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎵 Album Upload</h1>
+      <p class="subtitle">
+        Drag and drop your album files - artist and album are auto-detected from
+        file tags!
+      </p>
+
+      <div class="config-section">
+        <div class="config-label">API Endpoint</div>
+        <div class="config-value" id="apiEndpoint">
+          http://localhost:8000/api/v1/uploads/upload
+        </div>
+      </div>
+
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-icon">📁</div>
+        <div class="drop-text">
+          Drag and drop album files here<br />or click to select
+        </div>
+        <div class="file-count" id="fileCount" style="display: none"></div>
+      </div>
+
+      <div id="fileListContainer" style="display: none">
+        <div style="font-weight: 600; margin-bottom: 10px; color: #333">
+          Selected Files:
+        </div>
+        <div class="file-list" id="fileList"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="artist"
+          >Artist Name (Optional - auto-detected from tags)</label
+        >
+        <input
+          type="text"
+          id="artist"
+          placeholder="Leave empty to auto-detect from file tags"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="album"
+          >Album Name (Optional - auto-detected from tags)</label
+        >
+        <input
+          type="text"
+          id="album"
+          placeholder="Leave empty to auto-detect from file tags"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="vpnIp">VPN IP Address *</label>
+        <input
+          type="text"
+          id="vpnIp"
+          placeholder="e.g., 100.64.0.2"
+          value="100.64.0.2"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="username">Username (Optional)</label>
+        <input
+          type="text"
+          id="username"
+          placeholder="Leave empty to use VPN IP"
+        />
+      </div>
+
+      <button class="upload-btn" id="uploadBtn" disabled>Upload Album</button>
+
+      <div class="progress-container" id="progressContainer">
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressBarFill" style="width: 0%">
+            <span id="progressText">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-message" id="statusMessage"></div>
+    </div>
+
+    <input
+      type="file"
+      id="fileInput"
+      multiple
+      accept="audio/*"
+      style="display: none"
+    />
+
+    <script>
+      let selectedFiles = [];
+
+      const dropZone = document.getElementById("dropZone");
+      const fileInput = document.getElementById("fileInput");
+      const fileCount = document.getElementById("fileCount");
+      const fileList = document.getElementById("fileList");
+      const fileListContainer = document.getElementById("fileListContainer");
+      const uploadBtn = document.getElementById("uploadBtn");
+      const progressContainer = document.getElementById("progressContainer");
+      const progressBarFill = document.getElementById("progressBarFill");
+      const progressText = document.getElementById("progressText");
+      const statusMessage = document.getElementById("statusMessage");
+      const artistInput = document.getElementById("artist");
+      const albumInput = document.getElementById("album");
+      const vpnIpInput = document.getElementById("vpnIp");
+      const usernameInput = document.getElementById("username");
+
+      const ALLOWED_EXTENSIONS = [
+        "mp3",
+        "flac",
+        "m4a",
+        "aac",
+        "ogg",
+        "opus",
+        "wav",
+        "wma",
+        "alac",
+      ];
+      const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+      const MAX_TOTAL_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+
+      function formatBytes(bytes) {
+        if (bytes === 0) return "0 Bytes";
+        const k = 1024;
+        const sizes = ["Bytes", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return (
+          Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i]
+        );
+      }
+
+      function validateFile(file) {
+        const ext = file.name.split(".").pop().toLowerCase();
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+          return { valid: false, error: `Invalid file type: ${file.name}` };
+        }
+        if (file.size > MAX_FILE_SIZE) {
+          return {
+            valid: false,
+            error: `File too large: ${file.name} (${formatBytes(file.size)})`,
+          };
+        }
+        return { valid: true };
+      }
+
+      function updateFileDisplay() {
+        if (selectedFiles.length === 0) {
+          dropZone.classList.remove("has-files");
+          fileCount.style.display = "none";
+          fileListContainer.style.display = "none";
+          uploadBtn.disabled = true;
+          return;
+        }
+
+        dropZone.classList.add("has-files");
+        fileCount.style.display = "block";
+        fileListContainer.style.display = "block";
+
+        const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
+        fileCount.textContent = `${
+          selectedFiles.length
+        } files selected (${formatBytes(totalSize)})`;
+
+        fileList.innerHTML = selectedFiles
+          .map(
+            (f) =>
+              `<div class="file-item">
+                    <span>${f.name}</span>
+                    <span>${formatBytes(f.size)}</span>
+                </div>`
+          )
+          .join("");
+
+        uploadBtn.disabled = !(vpnIpInput.value && selectedFiles.length > 0);
+      }
+
+      function showStatus(message, type) {
+        statusMessage.textContent = message;
+        statusMessage.className = `status-message active ${type}`;
+      }
+
+      function hideStatus() {
+        statusMessage.className = "status-message";
+      }
+
+      dropZone.addEventListener("click", () => fileInput.click());
+
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+      });
+
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("dragover");
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        handleFiles(Array.from(e.dataTransfer.files));
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        handleFiles(Array.from(e.target.files));
+      });
+
+      function handleFiles(files) {
+        hideStatus();
+
+        // Filter and validate files
+        const audioFiles = [];
+        let totalSize = 0;
+
+        for (const file of files) {
+          const validation = validateFile(file);
+          if (!validation.valid) {
+            showStatus(validation.error, "error");
+            return;
+          }
+          audioFiles.push(file);
+          totalSize += file.size;
+        }
+
+        if (totalSize > MAX_TOTAL_SIZE) {
+          showStatus(
+            `Total size exceeds ${formatBytes(MAX_TOTAL_SIZE)}`,
+            "error"
+          );
+          return;
+        }
+
+        selectedFiles = audioFiles;
+        updateFileDisplay();
+      }
+
+      [vpnIpInput].forEach((input) => {
+        input.addEventListener("input", updateFileDisplay);
+      });
+
+      uploadBtn.addEventListener("click", async () => {
+        if (!vpnIpInput.value || selectedFiles.length === 0) {
+          showStatus("Please provide VPN IP and select files", "error");
+          return;
+        }
+
+        hideStatus();
+        uploadBtn.disabled = true;
+        progressContainer.classList.add("active");
+
+        const formData = new FormData();
+        selectedFiles.forEach((file) => formData.append("files", file));
+        formData.append("vpn_ip", vpnIpInput.value);
+
+        // Only add artist/album if user provided them (otherwise auto-detect from tags)
+        if (artistInput.value) {
+          formData.append("artist", artistInput.value);
+        }
+        if (albumInput.value) {
+          formData.append("album", albumInput.value);
+        }
+
+        if (usernameInput.value) {
+          formData.append("username", usernameInput.value);
+        }
+
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            progressBarFill.style.width = percent + "%";
+            progressText.textContent = percent + "%";
+          }
+        });
+
+        xhr.addEventListener("load", () => {
+          progressContainer.classList.remove("active");
+          uploadBtn.disabled = false;
+
+          if (xhr.status === 200) {
+            const result = JSON.parse(xhr.responseText);
+            const metadata = result.detected_metadata || {};
+            showStatus(
+              `✅ ${result.message}\n` +
+                `Files processed: ${result.files_processed}\n` +
+                `Artist: ${metadata.artist || "N/A"} (${
+                  metadata.source || "N/A"
+                })\n` +
+                `Album: ${metadata.album || "N/A"}\n` +
+                `Task ID: ${result.task_id}`,
+              "success"
+            );
+
+            // Reset form
+            selectedFiles = [];
+            updateFileDisplay();
+            artistInput.value = "";
+            albumInput.value = "";
+            usernameInput.value = "";
+            fileInput.value = "";
+            progressBarFill.style.width = "0%";
+            progressText.textContent = "0%";
+          } else {
+            const error = JSON.parse(xhr.responseText);
+            showStatus(`❌ Upload failed: ${error.detail}`, "error");
+          }
+        });
+
+        xhr.addEventListener("error", () => {
+          progressContainer.classList.remove("active");
+          uploadBtn.disabled = false;
+          showStatus("❌ Network error occurred", "error");
+        });
+
+        xhr.addEventListener("timeout", () => {
+          progressContainer.classList.remove("active");
+          uploadBtn.disabled = false;
+          showStatus("❌ Upload timed out", "error");
+        });
+
+        xhr.timeout = 300000; // 5 minutes
+        xhr.open("POST", document.getElementById("apiEndpoint").textContent);
+        xhr.send(formData);
+      });
+    </script>
+  </body>
+</html>
