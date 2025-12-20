@@ -42,6 +42,15 @@ export default function LocalLibrariesStep({
     onValidation(true);
   }, [onValidation]);
 
+  // Generate service URLs based on Headscale configuration
+  const getServiceUrl = (port: number) => {
+    if (config.headscale.enabled) {
+      const hostname = config.headscale.serverVpnHostname || config.headscale.serverIp || 'localhost';
+      return `http://${hostname}:${port}`;
+    }
+    return `http://localhost:${port}`;
+  };
+
   const handleNavidromeToggle = (enabled: boolean) => {
     onUpdate({
       navidrome: { ...config.navidrome, enabled },
@@ -107,10 +116,10 @@ export default function LocalLibrariesStep({
           Available Services
         </Title>
         <Stack gap="lg">
-          <ServiceInfo service={serviceInfoData.navidrome} />
-          <ServiceInfo service={serviceInfoData.jellyfin} />
-          <ServiceInfo service={serviceInfoData.slskd} />
-          <ServiceInfo service={serviceInfoData.api} />
+          <ServiceInfo service={{ ...serviceInfoData.navidrome, url: getServiceUrl(4533) }} />
+          <ServiceInfo service={{ ...serviceInfoData.jellyfin, url: getServiceUrl(8096) }} />
+          <ServiceInfo service={{ ...serviceInfoData.slskd, url: getServiceUrl(5030) }} />
+          <ServiceInfo service={{ ...serviceInfoData.api, url: getServiceUrl(8010) }} />
         </Stack>
       </Paper>
 
