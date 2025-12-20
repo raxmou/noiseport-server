@@ -119,6 +119,27 @@ class Settings(BaseSettings):
     headscale_api_key: str = Field(
         default="", description="Headscale API key for authentication"
     )
+    headscale_enabled: bool = Field(
+        default=False, description="Enable Headscale integration"
+    )
+    headscale_setup_mode: str = Field(
+        default="domain", description="Setup mode: domain or ip"
+    )
+    headscale_domain: str = Field(
+        default="", description="Domain name for Headscale server"
+    )
+    headscale_server_ip: str = Field(
+        default="", description="Server IP address (for IP-based setup)"
+    )
+    headscale_server_url: str = Field(
+        default="", description="Complete Headscale server URL"
+    )
+    headscale_base_domain: str = Field(
+        default="headscale.local", description="MagicDNS base domain"
+    )
+    headscale_server_vpn_hostname: str = Field(
+        default="", description="Server's VPN hostname (MagicDNS name after joining Headscale)"
+    )
 
     @field_validator("log_level")
     @classmethod

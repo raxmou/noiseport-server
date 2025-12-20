@@ -643,6 +643,20 @@ export default function HeadscaleStep({
                 className="mt-4"
               >
                 <div>{launchMessage}</div>
+                <div className="mt-2 text-sm">
+                  <p className="font-medium mb-1">✅ Important Setup Notes:</p>
+                  <ul className="list-disc ml-5 space-y-1">
+                    <li>
+                      Services are configured with <strong>static IPs</strong> (172.20.0.10-13) for reliable MagicDNS resolution
+                    </li>
+                    <li>
+                      MagicDNS will resolve service names (navidrome, jellyfin, slskd, api) to these static IPs
+                    </li>
+                    <li>
+                      This ensures VPN clients can always access your services via consistent hostnames
+                    </li>
+                  </ul>
+                </div>
               </Alert>
             )}
 

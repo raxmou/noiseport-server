@@ -327,9 +327,9 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
         try:
             # slskd directory is mounted at /app/slskd in the container
             slskd_template_path = str(PROJECT_ROOT / "slskd" / "slskd.yml.template")
-            # Write slskd.yml to wizard-config directory
-            slskd_config_path = os.path.join(wizard_config_dir, "slskd", "slskd.yml")
-            os.makedirs(os.path.dirname(slskd_config_path), exist_ok=True)
+            # Write slskd.yml directly to wizard-config directory (not in subdirectory)
+            # This matches the docker-compose.full.yml.template mount: ./wizard-config/slskd.yml:/app/slskd.yml
+            slskd_config_path = os.path.join(wizard_config_dir, "slskd.yml")
             if os.path.exists(slskd_template_path):
                 with open(slskd_template_path) as f:
                     template = f.read()
@@ -1859,4 +1859,137 @@ async def get_service_status() -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": "Failed to check service status"},
+        )
+
+
+@router.get("/config/validate-dns")
+async def validate_dns_records() -> JSONResponse:
+    """
+    Validate that MagicDNS extra_records match actual container IP addresses.
+    
+    This ensures that the static IPs assigned in docker-compose match the
+    DNS records configured in Headscale for proper MagicDNS resolution.
+    """
+    try:
+        # Expected IPs from Headscale config.yaml.template extra_records
+        expected_ips = {
+            'navidrome': '172.20.0.10',
+            'jellyfin': '172.20.0.11',
+            'slskd': '172.20.0.12',
+            'api': '172.20.0.13',
+        }
+        
+        # Map service names to container names
+        container_map = {
+            'navidrome': 'navidrome',
+            'jellyfin': 'jellyfin',
+            'slskd': 'slskd',
+            'api': 'fastapi',
+        }
+        
+        actual_ips = {}
+        mismatches = []
+        missing_containers = []
+        
+        for service, expected_ip in expected_ips.items():
+            container_name = container_map.get(service, service)
+            try:
+                # Get actual IP from Docker inspect
+                result = subprocess.run(
+                    ['docker', 'inspect', '-f', 
+                     '{{range $net, $conf := .NetworkSettings.Networks}}{{if eq $net "noiseport"}}{{$conf.IPAddress}}{{end}}{{end}}',
+                     container_name],
+                    capture_output=True, 
+                    text=True,
+                    timeout=5
+                )
+                
+                if result.returncode == 0 and result.stdout.strip():
+                    actual_ip = result.stdout.strip()
+                    actual_ips[service] = actual_ip
+                    
+                    if actual_ip != expected_ip:
+                        mismatches.append({
+                            'service': service,
+                            'container': container_name,
+                            'expected': expected_ip,
+                            'actual': actual_ip,
+                            'severity': 'critical',
+                            'message': f'IP mismatch will break MagicDNS resolution for {service}'
+                        })
+                else:
+                    missing_containers.append({
+                        'service': service,
+                        'container': container_name,
+                        'expected': expected_ip,
+                        'severity': 'warning',
+                        'message': f'Container {container_name} not found or not running'
+                    })
+                    actual_ips[service] = None
+                    
+            except subprocess.TimeoutExpired:
+                missing_containers.append({
+                    'service': service,
+                    'container': container_name,
+                    'severity': 'error',
+                    'message': 'Docker inspect command timed out'
+                })
+                actual_ips[service] = None
+            except Exception as e:
+                logger.error(f"Error checking IP for {service}: {e}")
+                missing_containers.append({
+                    'service': service,
+                    'container': container_name,
+                    'severity': 'error',
+                    'message': str(e)
+                })
+                actual_ips[service] = None
+        
+        is_valid = len(mismatches) == 0 and len(missing_containers) == 0
+        
+        response = {
+            'valid': is_valid,
+            'expected_ips': expected_ips,
+            'actual_ips': actual_ips,
+            'mismatches': mismatches,
+            'missing_containers': missing_containers,
+            'network': 'noiseport (172.20.0.0/16)',
+            'recommendations': []
+        }
+        
+        # Add recommendations based on issues found
+        if mismatches:
+            response['recommendations'].append(
+                'Recreate the noiseport network and containers with: '
+                'docker compose down && docker compose up -d'
+            )
+            response['recommendations'].append(
+                'Ensure docker-compose.yml has static IP assignments matching Headscale DNS records'
+            )
+        
+        if missing_containers:
+            response['recommendations'].append(
+                'Start missing containers with: docker compose up -d'
+            )
+        
+        if is_valid:
+            response['message'] = 'All MagicDNS IP addresses are correctly configured'
+        else:
+            response['message'] = 'MagicDNS configuration issues detected - DNS resolution may fail'
+        
+        logger.info(f"DNS validation completed: {'valid' if is_valid else 'invalid'}")
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=response
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to validate DNS records: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                'valid': False,
+                'error': str(e),
+                'message': 'Failed to validate DNS configuration'
+            }
         )
