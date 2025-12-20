@@ -123,7 +123,7 @@ class Settings(BaseSettings):
         default=False, description="Enable Headscale integration"
     )
     headscale_setup_mode: str = Field(
-        default="domain", description="Setup mode: domain or ip"
+        default="ip", description="Setup mode: domain or ip"
     )
     headscale_domain: str = Field(
         default="", description="Domain name for Headscale server"
