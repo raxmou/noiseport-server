@@ -1414,12 +1414,27 @@ async def launch_services() -> JSONResponse:
 
         def service_url(port):
             """Generate service URL for VPN access via host's MagicDNS hostname"""
-            if headscale_enabled and server_vpn_hostname:
-                # Use host server's VPN hostname + port
-                return f"http://{server_vpn_hostname}:{port}"
-            else:
-                # Fallback to localhost for local testing
-                return f"http://localhost:{port}"
+            if headscale_enabled:
+                # Use configured server VPN hostname, or fallback to server IP
+                hostname = server_vpn_hostname
+                
+                # If no VPN hostname configured, try to use server IP from env
+                if not hostname:
+                    try:
+                        for line_check in open(env_file_path):
+                            if line_check.startswith("HEADSCALE_SERVER_IP="):
+                                server_ip = line_check.strip().split("=", 1)[1]
+                                if server_ip:
+                                    hostname = server_ip
+                                    break
+                    except Exception:
+                        pass
+                
+                if hostname:
+                    return f"http://{hostname}:{port}"
+            
+            # Fallback to localhost for local testing
+            return f"http://localhost:{port}"
 
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED,
