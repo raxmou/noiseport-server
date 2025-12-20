@@ -1447,8 +1447,21 @@ async def launch_services() -> JSONResponse:
         def service_url(port):
             """Generate service URL for VPN access using detected Tailscale IP or MagicDNS hostname"""
             if headscale_enabled:
-                # Priority: 1) MagicDNS hostname (if configured), 2) Detected Tailscale IP, 3) localhost
-                hostname = server_vpn_hostname or detected_tailscale_ip
+                hostname = None
+                
+                # If server_vpn_hostname is set and looks like a hostname (not a public IP), use it
+                if server_vpn_hostname and not server_vpn_hostname.startswith(('100.64.', '10.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.', '192.168.')):
+                    # Check if it's a hostname (contains non-numeric characters or looks like a domain)
+                    if '.' in server_vpn_hostname and any(c.isalpha() for c in server_vpn_hostname):
+                        hostname = server_vpn_hostname
+                
+                # Otherwise, prefer detected Tailscale IP (100.64.x.x range)
+                if not hostname and detected_tailscale_ip and detected_tailscale_ip.startswith('100.64.'):
+                    hostname = detected_tailscale_ip
+                
+                # Fallback to server_vpn_hostname if it's a private IP
+                if not hostname and server_vpn_hostname:
+                    hostname = server_vpn_hostname
                 
                 if hostname:
                     return f"http://{hostname}:{port}"
