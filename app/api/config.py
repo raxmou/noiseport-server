@@ -55,7 +55,7 @@ async def get_current_config() -> WizardConfiguration:
         config = WizardConfiguration(
             headscale={
                 "enabled": getattr(settings, "headscale_enabled", False),
-                "setupMode": getattr(settings, "headscale_setup_mode", "domain"),
+                "setupMode": getattr(settings, "headscale_setup_mode", "ip"),
                 "domain": getattr(settings, "headscale_domain", ""),
                 "serverIp": getattr(settings, "headscale_server_ip", ""),
                 "serverUrl": getattr(settings, "headscale_server_url", ""),
@@ -327,9 +327,9 @@ async def save_configuration(config: WizardConfiguration) -> JSONResponse:
         try:
             # slskd directory is mounted at /app/slskd in the container
             slskd_template_path = str(PROJECT_ROOT / "slskd" / "slskd.yml.template")
-            # Write slskd.yml to wizard-config directory
-            slskd_config_path = os.path.join(wizard_config_dir, "slskd", "slskd.yml")
-            os.makedirs(os.path.dirname(slskd_config_path), exist_ok=True)
+            # Write slskd.yml directly to wizard-config directory (not in subdirectory)
+            # This matches the docker-compose.full.yml.template mount: ./wizard-config/slskd.yml:/app/slskd.yml
+            slskd_config_path = os.path.join(wizard_config_dir, "slskd.yml")
             if os.path.exists(slskd_template_path):
                 with open(slskd_template_path) as f:
                     template = f.read()
@@ -899,6 +899,38 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
                 print(e)
                 message = f"Failed to connect to slskd: {e}"
 
+        # --- HEADSCALE ---
+        elif service == "headscale":
+            try:
+                server_url = config.get("serverUrl", "").rstrip("/")
+                if not server_url:
+                    return ConnectionTestResponse(
+                        success=False,
+                        message="Server URL is required"
+                    )
+                
+                # Test metrics endpoint (publicly accessible, no auth required)
+                metrics_url = f"{server_url}/metrics"
+                resp = requests.get(metrics_url, timeout=5, verify=False)
+                
+                # Metrics endpoint returns 200 with plain text, or 404 if disabled
+                if resp.status_code in [200, 404]:
+                    success = True
+                    message = "Connection successful! Headscale server is accessible."
+                else:
+                    success = False
+                    message = f"Headscale server returned status {resp.status_code}. Make sure the server is properly configured."
+                    
+            except requests.exceptions.Timeout:
+                success = False
+                message = "Connection timeout. Make sure the server is running and accessible."
+            except requests.exceptions.ConnectionError:
+                success = False
+                message = "Failed to connect to Headscale. Make sure the server is running and accessible."
+            except Exception as e:
+                success = False
+                message = f"Connection failed: {e}"
+
         # --- UNKNOWN SERVICE ---
         else:
             success = False
@@ -1364,6 +1396,7 @@ async def launch_services() -> JSONResponse:
         # Get Headscale configuration from .env
         headscale_base_domain = "headscale.local"
         headscale_enabled = False
+        server_vpn_hostname = ""
         try:
             env_file_path = os.path.join(wizard_config_dir, ".env")
             with open(env_file_path) as f:
@@ -1374,45 +1407,63 @@ async def launch_services() -> JSONResponse:
                         headscale_enabled = (
                             line.strip().split("=", 1)[1].lower() == "true"
                         )
+                    elif line.startswith("HEADSCALE_SERVER_VPN_HOSTNAME="):
+                        server_vpn_hostname = line.strip().split("=", 1)[1]
         except Exception:
             pass
 
-        def magicdns_url(service, port):
-            """Generate MagicDNS URL for VPN-only access"""
+        def service_url(port):
+            """Generate service URL for VPN access via host's MagicDNS hostname"""
             if headscale_enabled:
-                # Use container name as MagicDNS hostname
-                # VPN clients will resolve these via Headscale's DNS
-                return f"http://{service}:{port}"
-            else:
-                # Fallback to localhost for testing
-                return f"http://localhost:{port}"
+                # Use configured server VPN hostname, or fallback to server IP
+                hostname = server_vpn_hostname
+                
+                # If no VPN hostname configured, try to use server IP from env
+                if not hostname:
+                    try:
+                        for line_check in open(env_file_path):
+                            if line_check.startswith("HEADSCALE_SERVER_IP="):
+                                server_ip = line_check.strip().split("=", 1)[1]
+                                if server_ip:
+                                    hostname = server_ip
+                                    break
+                    except Exception:
+                        pass
+                
+                if hostname:
+                    return f"http://{hostname}:{port}"
+            
+            # Fallback to localhost for local testing
+            return f"http://localhost:{port}"
 
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED,
             content={
                 "success": True,
-                "message": "Music stack launched. Services accessible via Headscale VPN only.",
+                "message": "Music stack launched. Services accessible via host's VPN hostname." if headscale_enabled else "Music stack launched locally.",
                 "project": "noiseport",
                 "configPath": runner.wizard_config_path,
                 "accessMode": "vpn-only" if headscale_enabled else "local",
                 "services": {
-                    "navidrome": magicdns_url("navidrome", 4533),
-                    "jellyfin": magicdns_url("jellyfin", 8096),
-                    "slskd": magicdns_url("slskd", 5030),
-                    "fastapi": magicdns_url("api", 80),
+                    "navidrome": service_url(4533),
+                    "jellyfin": service_url(8096),
+                    "slskd": service_url(5030),
+                    "fastapi": service_url(8010),
                 },
                 "vpnInfo": {
                     "enabled": headscale_enabled,
                     "baseDomain": headscale_base_domain,
+                    "serverHostname": server_vpn_hostname,
                     "instructions": (
                         [
                             "1. Install Tailscale client on your device",
-                            "2. Connect using: tailscale up --login-server=YOUR_HEADSCALE_URL",
-                            "3. Access services using MagicDNS hostnames (e.g., http://navidrome:4533)",
-                            "4. Services are NOT publicly accessible - VPN required",
+                            f"2. Connect using: tailscale up --login-server=YOUR_HEADSCALE_URL",
+                            f"3. Access services at: http://{server_vpn_hostname}:<port> (e.g., http://{server_vpn_hostname}:4533 for Navidrome)" if server_vpn_hostname else "3. Configure server VPN hostname in Headscale step first",
+                            "4. Services are NOT publicly accessible - VPN connection required",
+                            "5. From the host machine, use localhost:<port> (e.g., http://localhost:4533)",
                         ]
                         if headscale_enabled
-                        else ["Headscale VPN not enabled. Services running locally."]
+                        else ["Headscale VPN not enabled. Services accessible at localhost:<port> only."]
                     ),
                 },
             },
@@ -1859,4 +1910,137 @@ async def get_service_status() -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": "Failed to check service status"},
+        )
+
+
+@router.get("/config/validate-dns")
+async def validate_dns_records() -> JSONResponse:
+    """
+    Validate that MagicDNS extra_records match actual container IP addresses.
+    
+    This ensures that the static IPs assigned in docker-compose match the
+    DNS records configured in Headscale for proper MagicDNS resolution.
+    """
+    try:
+        # Expected IPs from Headscale config.yaml.template extra_records
+        expected_ips = {
+            'navidrome': '172.20.0.10',
+            'jellyfin': '172.20.0.11',
+            'slskd': '172.20.0.12',
+            'api': '172.20.0.13',
+        }
+        
+        # Map service names to container names
+        container_map = {
+            'navidrome': 'navidrome',
+            'jellyfin': 'jellyfin',
+            'slskd': 'slskd',
+            'api': 'fastapi',
+        }
+        
+        actual_ips = {}
+        mismatches = []
+        missing_containers = []
+        
+        for service, expected_ip in expected_ips.items():
+            container_name = container_map.get(service, service)
+            try:
+                # Get actual IP from Docker inspect
+                result = subprocess.run(
+                    ['docker', 'inspect', '-f', 
+                     '{{range $net, $conf := .NetworkSettings.Networks}}{{if eq $net "noiseport"}}{{$conf.IPAddress}}{{end}}{{end}}',
+                     container_name],
+                    capture_output=True, 
+                    text=True,
+                    timeout=5
+                )
+                
+                if result.returncode == 0 and result.stdout.strip():
+                    actual_ip = result.stdout.strip()
+                    actual_ips[service] = actual_ip
+                    
+                    if actual_ip != expected_ip:
+                        mismatches.append({
+                            'service': service,
+                            'container': container_name,
+                            'expected': expected_ip,
+                            'actual': actual_ip,
+                            'severity': 'critical',
+                            'message': f'IP mismatch will break MagicDNS resolution for {service}'
+                        })
+                else:
+                    missing_containers.append({
+                        'service': service,
+                        'container': container_name,
+                        'expected': expected_ip,
+                        'severity': 'warning',
+                        'message': f'Container {container_name} not found or not running'
+                    })
+                    actual_ips[service] = None
+                    
+            except subprocess.TimeoutExpired:
+                missing_containers.append({
+                    'service': service,
+                    'container': container_name,
+                    'severity': 'error',
+                    'message': 'Docker inspect command timed out'
+                })
+                actual_ips[service] = None
+            except Exception as e:
+                logger.error(f"Error checking IP for {service}: {e}")
+                missing_containers.append({
+                    'service': service,
+                    'container': container_name,
+                    'severity': 'error',
+                    'message': str(e)
+                })
+                actual_ips[service] = None
+        
+        is_valid = len(mismatches) == 0 and len(missing_containers) == 0
+        
+        response = {
+            'valid': is_valid,
+            'expected_ips': expected_ips,
+            'actual_ips': actual_ips,
+            'mismatches': mismatches,
+            'missing_containers': missing_containers,
+            'network': 'noiseport (172.20.0.0/16)',
+            'recommendations': []
+        }
+        
+        # Add recommendations based on issues found
+        if mismatches:
+            response['recommendations'].append(
+                'Recreate the noiseport network and containers with: '
+                'docker compose down && docker compose up -d'
+            )
+            response['recommendations'].append(
+                'Ensure docker-compose.yml has static IP assignments matching Headscale DNS records'
+            )
+        
+        if missing_containers:
+            response['recommendations'].append(
+                'Start missing containers with: docker compose up -d'
+            )
+        
+        if is_valid:
+            response['message'] = 'All MagicDNS IP addresses are correctly configured'
+        else:
+            response['message'] = 'MagicDNS configuration issues detected - DNS resolution may fail'
+        
+        logger.info(f"DNS validation completed: {'valid' if is_valid else 'invalid'}")
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=response
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to validate DNS records: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                'valid': False,
+                'error': str(e),
+                'message': 'Failed to validate DNS configuration'
+            }
         )

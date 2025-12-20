@@ -83,12 +83,12 @@ export default function SummaryStep({ config, onValidation }: Props) {
     {
       name: "Navidrome",
       port: 4533,
-      enabled: config.navidrome.enabled,
+      enabled: true, // Always enabled - core service
     },
     {
       name: "Jellyfin",
       port: 8096,
-      enabled: config.jellyfin.enabled,
+      enabled: true, // Always enabled - core service
     },
     {
       name: "slskd (Soulseek)",

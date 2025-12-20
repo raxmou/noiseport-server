@@ -5,7 +5,7 @@ import { ApiService } from '../utils/api';
 const defaultConfig: WizardConfiguration = {
   headscale: {
     enabled: false,
-    setupMode: 'domain',
+    setupMode: 'ip',
     domain: '',
     serverIp: '',
     serverUrl: '',

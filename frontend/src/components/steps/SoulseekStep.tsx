@@ -249,6 +249,14 @@ export default function SoulseekStep({
                 actual P2P network for downloading music).
               </p>
 
+              <Alert variant="info" className="mb-4">
+                <p className="text-sm">
+                  <strong>Note:</strong> You can use any username and password you like. 
+                  If the account doesn't exist on the Soulseek network, it will be created 
+                  automatically when you first connect.
+                </p>
+              </Alert>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <TextInput
                   label="Soulseek Username"

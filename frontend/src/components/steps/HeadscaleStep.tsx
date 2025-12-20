@@ -12,11 +12,11 @@ interface Props {
 // Helper function to generate the admin Headplane URL
 const getHeadplaneUrl = (config: WizardConfiguration): string | null => {
   if (config.headscale.setupMode === "domain" && config.headscale.domain) {
-    return `https://admin.${config.headscale.domain}`;
+    return `https://admin.${config.headscale.domain}/admin`;
   } else if (config.headscale.setupMode === "ip" && config.headscale.serverIp) {
     const sslipDomain =
       config.headscale.serverIp.replace(/\./g, "-") + ".sslip.io";
-    return `https://admin.${sslipDomain}`;
+    return `https://admin.${sslipDomain}/admin`;
   }
   return null;
 };
@@ -182,24 +182,26 @@ export default function HeadscaleStep({
     setConnectionStatus("testing");
     setConnectionMessage(null);
 
-    // Create AbortController for timeout (better browser compatibility)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
     try {
-      const healthUrl = `${config.headscale.serverUrl}/health`;
-      const response = await fetch(healthUrl, {
-        method: "GET",
-        signal: controller.signal,
+      // Use backend API to test connection (avoids CORS issues)
+      const response = await fetch("/api/v1/config/test-connection", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          service: "headscale",
+          config: {
+            serverUrl: config.headscale.serverUrl,
+          },
+        }),
       });
 
-      clearTimeout(timeoutId);
+      const data = await response.json();
 
-      if (response.ok) {
+      if (data.success) {
         setConnectionStatus("success");
-        setConnectionMessage(
-          "Connection successful! Headscale server is accessible."
-        );
+        setConnectionMessage(data.message);
 
         try {
           await saveConfig();
@@ -211,12 +213,9 @@ export default function HeadscaleStep({
         }
       } else {
         setConnectionStatus("error");
-        setConnectionMessage(
-          `Headscale server returned status ${response.status}. Make sure the server is properly configured.`
-        );
+        setConnectionMessage(data.message);
       }
     } catch (error) {
-      clearTimeout(timeoutId);
       setConnectionStatus("error");
       setConnectionMessage(
         "Failed to connect to Headscale. Make sure the server is running and accessible."
@@ -643,6 +642,20 @@ export default function HeadscaleStep({
                 className="mt-4"
               >
                 <div>{launchMessage}</div>
+                <div className="mt-2 text-sm">
+                  <p className="font-medium mb-1">✅ Important Setup Notes:</p>
+                  <ul className="list-disc ml-5 space-y-1">
+                    <li>
+                      Services are configured with <strong>static IPs</strong> (172.20.0.10-13) for reliable MagicDNS resolution
+                    </li>
+                    <li>
+                      MagicDNS will resolve service names (navidrome, jellyfin, slskd, api) to these static IPs
+                    </li>
+                    <li>
+                      This ensures VPN clients can always access your services via consistent hostnames
+                    </li>
+                  </ul>
+                </div>
               </Alert>
             )}
 
@@ -739,6 +752,17 @@ export default function HeadscaleStep({
             take 1-2 minutes. Check logs with: <Code>docker logs caddy</Code>
           </li>
           <li>
+            <strong>Open SSH connection to your server</strong> - Open a new terminal
+            and SSH into the machine where NoisePort is hosted to run the following
+            commands:
+            <div className="mt-2">
+              <Code block>ssh user@your-server-ip</Code>
+            </div>
+            <p className="text-xs text-neutral-400 mt-1">
+              All the following steps require command-line access to your server.
+            </p>
+          </li>
+          <li>
             <strong>Generate Headscale API Key</strong> for Headplane:
             <div className="mt-2">
               <Code block>docker exec headscale headscale apikeys create</Code>
@@ -803,12 +827,12 @@ export default function HeadscaleStep({
                 <div className="mt-2">
                   {getHeadplaneUrl(config) ? (
                     <a
-                      href={`${getHeadplaneUrl(config)}/admin/settings`}
+                      href={`${getHeadplaneUrl(config)}/settings`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 underline text-xs"
                     >
-                      {getHeadplaneUrl(config)}/admin/settings
+                      {getHeadplaneUrl(config)}/settings
                       <svg
                         className="w-3 h-3"
                         fill="currentColor"
@@ -833,7 +857,13 @@ export default function HeadscaleStep({
                 --reusable --expiration 24h
               </Code>
               <p className="text-xs text-neutral-400 mt-2">
-                Then, install Tailscale on this server and connect:
+                First, install Tailscale on this server:
+              </p>
+              <Code block>
+                curl -fsSL https://tailscale.com/install.sh | sh
+              </Code>
+              <p className="text-xs text-neutral-400 mt-2">
+                Then, connect to your Headscale server:
               </p>
               <Code block>
                 sudo tailscale up --login-server={config.headscale.serverUrl}{" "}
@@ -874,7 +904,7 @@ export default function HeadscaleStep({
           <div className="space-y-4">
             <TextInput
               label="Server VPN Hostname"
-              placeholder="ensemble.headscale.local"
+              placeholder="noiseport.headscale.local"
               value={config.headscale.serverVpnHostname}
               onChange={(event) =>
                 onUpdate({

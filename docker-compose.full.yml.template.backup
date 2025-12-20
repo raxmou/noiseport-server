@@ -5,9 +5,9 @@ services:
     image: maxenceroux/noiseport-server-slskd:latest
     container_name: slskd
     ports:
-      - "${TAILSCALE_IP:-127.0.0.1}:5030:5030"
-      - "${TAILSCALE_IP:-127.0.0.1}:5031:5031"
-      - "${TAILSCALE_IP:-127.0.0.1}:50300:50300"
+      - "127.0.0.1:5030:5030"
+      - "127.0.0.1:5031:5031"
+      - "127.0.0.1:50300:50300"
     environment:
       - SLSKD_REMOTE_CONFIGURATION=true
     volumes:
@@ -24,14 +24,29 @@ services:
       glance.name: slskd
       glance.hide: false
       glance.icon: https://avatars.githubusercontent.com/u/76762370?s=200&v=4
-      glance.url: http://slskd:5030
-      glance.description: "Soulseek file sharing network app (VPN-only)"
+      glance.url: http://slskd.rax.zone
+      glance.description: "Soudlseek file sharing network app"
 
+  # Tailscale sidecar for fastapi
+  fastapi-tailscale:
+    image: tailscale/tailscale:latest
+    container_name: fastapi-tailscale
+    hostname: api
+    environment:
+      - TS_AUTHKEY=${FASTAPI_TS_AUTHKEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+      - TS_ACCEPT_DNS=true
+    volumes:
+      - fastapi-tailscale-state:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
   fastapi:
     image: maxenceroux/noiseport-server:latest
     container_name: fastapi
     ports:
-      - "${TAILSCALE_IP:-127.0.0.1}:8010:80"
+      - "127.0.0.1:8010:80"
     environment:
       - SLSKD_HOST=http://slskd:5030
       - NAVIDROME_URL=http://navidrome:4533
@@ -53,14 +68,15 @@ services:
       glance.name: Music Stack API & Wizard
       glance.hide: false
       glance.icon: si:fastapi
-      glance.url: http://api:80
-      glance.description: "Setup wizard and API endpoints (VPN-only)"
-      
+      glance.url: http://localhost:8000/wizard
+      glance.description: "Setup wizard and API endpoints
+      - NET_ADMIN
+      - SYS_MODULE
   navidrome:
     image: deluan/navidrome:latest
     container_name: navidrome
     ports:
-      - "${TAILSCALE_IP:-127.0.0.1}:4533:4533"
+      - "127.0.0.1:4533:4533"
     restart: unless-stopped
     environment:
       ND_SCANSCHEDULE: 1h
@@ -80,13 +96,32 @@ services:
       glance.url: http://navidrome:4533
       glance.description: "Music Streaming Server (VPN-only)"
     networks:
+      noiseport:
+        ipv4_address: 172.20.0.10
+      headscale-net:
+      - SYS_MODULE
+    restart: unless-stopped
+    networks:
       - headscale-net
 
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
+    network_mode: "service:jellyfin-tailscale"  # Share network with Tailscale sidecar
+    environment:
+      - PUID=1000          
+      - PGID=1000          
+      - TZ=UTC    
+    volumes:
+      - ./jellyfin/config:/config
+      - ./jellyfin/cache:/cache
+      - {{HOST_MUSIC_PATH}}/complete:/music:ro
+    depends_on:
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
     ports:
-      - "${TAILSCALE_IP:-127.0.0.1}:8096:8096"
+      - "127.0.0.1:8096:8096"
     environment:
       - PUID=1000          
       - PGID=1000          
@@ -106,6 +141,15 @@ services:
       - headscale-net
 
 networks:
-  headscale-net:
-    external: true
-    name: headscale-net
+  noiseport:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+    # Static IPs for MagicDNS resolution:
+    # 172.20.0.10 - navidrome
+    # 172.20.0.11 - jellyfin
+    # 172.20.0.12 - slskd
+    # 172.20.0.13 - fastapi (api)

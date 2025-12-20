@@ -113,21 +113,6 @@ dns:
       - 2606:4700:4700::1001
   split: {}
   search_domains: []
-  # Extra DNS records for service discovery
-  # Maps service names to container IPs on Docker bridge network
-  extra_records:
-    - name: navidrome
-      type: A
-      value: "172.20.0.10"
-    - name: jellyfin
-      type: A
-      value: "172.20.0.11"
-    - name: slskd
-      type: A
-      value: "172.20.0.12"
-    - name: api
-      type: A
-      value: "172.20.0.13"
 
 # Local UNIX socket for the CLI
 unix_socket: /var/run/headscale/headscale.sock
