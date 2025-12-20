@@ -182,27 +182,26 @@ export default function HeadscaleStep({
     setConnectionStatus("testing");
     setConnectionMessage(null);
 
-    // Create AbortController for timeout (better browser compatibility)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
     try {
-      // Try metrics endpoint first (accessible without auth)
-      const metricsUrl = `${config.headscale.serverUrl}/metrics`;
-      const response = await fetch(metricsUrl, {
-        method: "GET",
-        signal: controller.signal,
+      // Use backend API to test connection (avoids CORS issues)
+      const response = await fetch("/api/v1/config/test-connection", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          service: "headscale",
+          config: {
+            serverUrl: config.headscale.serverUrl,
+          },
+        }),
       });
 
-      clearTimeout(timeoutId);
+      const data = await response.json();
 
-      // Metrics endpoint returns 200 and plain text (not JSON)
-      if (response.ok || response.status === 404) {
-        // 404 is also fine - means server is responding but metrics might be disabled
+      if (data.success) {
         setConnectionStatus("success");
-        setConnectionMessage(
-          "Connection successful! Headscale server is accessible."
-        );
+        setConnectionMessage(data.message);
 
         try {
           await saveConfig();
@@ -214,12 +213,9 @@ export default function HeadscaleStep({
         }
       } else {
         setConnectionStatus("error");
-        setConnectionMessage(
-          `Headscale server returned status ${response.status}. Make sure the server is properly configured.`
-        );
+        setConnectionMessage(data.message);
       }
     } catch (error) {
-      clearTimeout(timeoutId);
       setConnectionStatus("error");
       setConnectionMessage(
         "Failed to connect to Headscale. Make sure the server is running and accessible."

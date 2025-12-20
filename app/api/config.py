@@ -899,6 +899,38 @@ def test_connection(request: ConnectionTestRequest) -> ConnectionTestResponse:
                 print(e)
                 message = f"Failed to connect to slskd: {e}"
 
+        # --- HEADSCALE ---
+        elif service == "headscale":
+            try:
+                server_url = config.get("serverUrl", "").rstrip("/")
+                if not server_url:
+                    return ConnectionTestResponse(
+                        success=False,
+                        message="Server URL is required"
+                    )
+                
+                # Test metrics endpoint (publicly accessible, no auth required)
+                metrics_url = f"{server_url}/metrics"
+                resp = requests.get(metrics_url, timeout=5, verify=False)
+                
+                # Metrics endpoint returns 200 with plain text, or 404 if disabled
+                if resp.status_code in [200, 404]:
+                    success = True
+                    message = "Connection successful! Headscale server is accessible."
+                else:
+                    success = False
+                    message = f"Headscale server returned status {resp.status_code}. Make sure the server is properly configured."
+                    
+            except requests.exceptions.Timeout:
+                success = False
+                message = "Connection timeout. Make sure the server is running and accessible."
+            except requests.exceptions.ConnectionError:
+                success = False
+                message = "Failed to connect to Headscale. Make sure the server is running and accessible."
+            except Exception as e:
+                success = False
+                message = f"Connection failed: {e}"
+
         # --- UNKNOWN SERVICE ---
         else:
             success = False
