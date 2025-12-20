@@ -55,7 +55,7 @@ async def get_current_config() -> WizardConfiguration:
         config = WizardConfiguration(
             headscale={
                 "enabled": getattr(settings, "headscale_enabled", False),
-                "setupMode": getattr(settings, "headscale_setup_mode", "domain"),
+                "setupMode": getattr(settings, "headscale_setup_mode", "ip"),
                 "domain": getattr(settings, "headscale_domain", ""),
                 "serverIp": getattr(settings, "headscale_server_ip", ""),
                 "serverUrl": getattr(settings, "headscale_server_url", ""),
@@ -1364,6 +1364,7 @@ async def launch_services() -> JSONResponse:
         # Get Headscale configuration from .env
         headscale_base_domain = "headscale.local"
         headscale_enabled = False
+        server_vpn_hostname = ""
         try:
             env_file_path = os.path.join(wizard_config_dir, ".env")
             with open(env_file_path) as f:
@@ -1374,45 +1375,48 @@ async def launch_services() -> JSONResponse:
                         headscale_enabled = (
                             line.strip().split("=", 1)[1].lower() == "true"
                         )
+                    elif line.startswith("HEADSCALE_SERVER_VPN_HOSTNAME="):
+                        server_vpn_hostname = line.strip().split("=", 1)[1]
         except Exception:
             pass
 
-        def magicdns_url(service, port):
-            """Generate MagicDNS URL for VPN-only access"""
-            if headscale_enabled:
-                # Use container name as MagicDNS hostname
-                # VPN clients will resolve these via Headscale's DNS
-                return f"http://{service}:{port}"
+        def service_url(port):
+            """Generate service URL for VPN access via host's MagicDNS hostname"""
+            if headscale_enabled and server_vpn_hostname:
+                # Use host server's VPN hostname + port
+                return f"http://{server_vpn_hostname}:{port}"
             else:
-                # Fallback to localhost for testing
+                # Fallback to localhost for local testing
                 return f"http://localhost:{port}"
 
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED,
             content={
                 "success": True,
-                "message": "Music stack launched. Services accessible via Headscale VPN only.",
+                "message": "Music stack launched. Services accessible via host's VPN hostname." if headscale_enabled else "Music stack launched locally.",
                 "project": "noiseport",
                 "configPath": runner.wizard_config_path,
                 "accessMode": "vpn-only" if headscale_enabled else "local",
                 "services": {
-                    "navidrome": magicdns_url("navidrome", 4533),
-                    "jellyfin": magicdns_url("jellyfin", 8096),
-                    "slskd": magicdns_url("slskd", 5030),
-                    "fastapi": magicdns_url("api", 80),
+                    "navidrome": service_url(4533),
+                    "jellyfin": service_url(8096),
+                    "slskd": service_url(5030),
+                    "fastapi": service_url(8010),
                 },
                 "vpnInfo": {
                     "enabled": headscale_enabled,
                     "baseDomain": headscale_base_domain,
+                    "serverHostname": server_vpn_hostname,
                     "instructions": (
                         [
                             "1. Install Tailscale client on your device",
-                            "2. Connect using: tailscale up --login-server=YOUR_HEADSCALE_URL",
-                            "3. Access services using MagicDNS hostnames (e.g., http://navidrome:4533)",
-                            "4. Services are NOT publicly accessible - VPN required",
+                            f"2. Connect using: tailscale up --login-server=YOUR_HEADSCALE_URL",
+                            f"3. Access services at: http://{server_vpn_hostname}:<port> (e.g., http://{server_vpn_hostname}:4533 for Navidrome)" if server_vpn_hostname else "3. Configure server VPN hostname in Headscale step first",
+                            "4. Services are NOT publicly accessible - VPN connection required",
+                            "5. From the host machine, use localhost:<port> (e.g., http://localhost:4533)",
                         ]
                         if headscale_enabled
-                        else ["Headscale VPN not enabled. Services running locally."]
+                        else ["Headscale VPN not enabled. Services accessible at localhost:<port> only."]
                     ),
                 },
             },

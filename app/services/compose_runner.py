@@ -30,6 +30,46 @@ class ComposeRunner:
             )
             return "linux/arm64"
 
+    def _detect_host_tailscale_ip(self) -> str | None:
+        """
+        Detect the host machine's Tailscale VPN IP address.
+        
+        This runs a lightweight container with network_mode='host' to access
+        the host's network interfaces and detect the Tailscale IP (100.64.x.x).
+        
+        Returns:
+            The Tailscale IP address or None if not detected
+        """
+        try:
+            # Run a simple Alpine container with host networking to detect IP
+            # This container has access to the host's network interfaces
+            command = [
+                "sh",
+                "-c",
+                "ip addr show | grep 'inet 100\\.64\\.' | head -n 1 | awk '{print $2}' | cut -d'/' -f1"
+            ]
+            
+            result = self.client.containers.run(
+                "alpine:latest",
+                command=command,
+                network_mode="host",
+                remove=True,
+                detach=False,
+            )
+            
+            if result:
+                ip = result.decode("utf-8").strip()
+                if ip and ip.startswith("100.64."):
+                    logger.info(f"Detected host Tailscale IP: {ip}")
+                    return ip
+            
+            logger.warning("No Tailscale IP detected on host")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to detect Tailscale IP: {e}")
+            return None
+
     def redeploy_service(
         self, service_name: str, compose_file: str = "docker-compose.full.yml"
     ) -> tuple[bool, str]:
@@ -129,6 +169,7 @@ class ComposeRunner:
         compose_args: list[str],
         capture_output: bool = True,
         stream_logs: bool = False,
+        extra_env: dict | None = None,
     ) -> tuple[int, str, str]:
         """
         Run a docker-compose command using the docker/compose:2 image.
@@ -137,6 +178,7 @@ class ComposeRunner:
             compose_args: list of arguments to pass to docker-compose
             capture_output: Whether to capture stdout/stderr
             stream_logs: Whether to stream logs in real-time
+            extra_env: Additional environment variables for docker compose
 
         Returns:
             tuple of (exit_code, stdout, stderr)
@@ -155,6 +197,11 @@ class ComposeRunner:
         # ⬅️ run Docker CLI with the "compose" subcommand
         command = ["compose"] + compose_args
 
+        # Merge environment variables
+        env = {"COMPOSE_PROJECT_NAME": COMPOSE_PROJECT_NAME}
+        if extra_env:
+            env.update(extra_env)
+
         try:
             platform_str = self._get_platform()
             container = self.client.containers.run(
@@ -166,7 +213,7 @@ class ComposeRunner:
                 remove=True,
                 detach=not capture_output,
                 platform=platform_str,
-                environment={"COMPOSE_PROJECT_NAME": COMPOSE_PROJECT_NAME},
+                environment=env,
             )
             if capture_output:
                 output = (
@@ -250,19 +297,32 @@ class ComposeRunner:
         """
         logger.info(f"Starting stack from {compose_file}")
 
+        # Detect host's Tailscale IP and set as env var
+        tailscale_ip = self._detect_host_tailscale_ip()
+        env_vars = {"COMPOSE_PROJECT_NAME": COMPOSE_PROJECT_NAME}
+        if tailscale_ip:
+            logger.info(f"Detected host Tailscale IP: {tailscale_ip}")
+            env_vars["TAILSCALE_IP"] = tailscale_ip
+        else:
+            logger.warning("Could not detect Tailscale IP, services will bind to 127.0.0.1")
+            env_vars["TAILSCALE_IP"] = "127.0.0.1"
+
         args = ["-f", compose_file, "-p", COMPOSE_PROJECT_NAME, "up"]
         if build:
             args.append("--build")
         if detach:
             args.append("-d")
 
-        exit_code, stdout, stderr = self._run_compose_command(args, capture_output=True)
+        exit_code, stdout, stderr = self._run_compose_command(
+            args, capture_output=True, extra_env=env_vars
+        )
 
         # Write logs to file if path provided
         if log_file:
             try:
                 with open(log_file, "a") as f:
-                    f.write("==== Service Launch Log ====" + "\n")
+                    f.write("==== Service Launch Log ====\n")
+                    f.write(f"Tailscale IP: {env_vars.get('TAILSCALE_IP', 'Not detected')}\n")
                     f.write(stdout)
                     if stderr:
                         f.write("\n[ERROR]\n" + stderr)

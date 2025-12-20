@@ -187,15 +187,18 @@ export default function HeadscaleStep({
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     try {
-      const healthUrl = `${config.headscale.serverUrl}/health`;
-      const response = await fetch(healthUrl, {
+      // Try metrics endpoint first (accessible without auth)
+      const metricsUrl = `${config.headscale.serverUrl}/metrics`;
+      const response = await fetch(metricsUrl, {
         method: "GET",
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
-      if (response.ok) {
+      // Metrics endpoint returns 200 and plain text (not JSON)
+      if (response.ok || response.status === 404) {
+        // 404 is also fine - means server is responding but metrics might be disabled
         setConnectionStatus("success");
         setConnectionMessage(
           "Connection successful! Headscale server is accessible."

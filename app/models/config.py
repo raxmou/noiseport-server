@@ -77,7 +77,7 @@ class HeadscaleConfig(BaseModel):
 
     enabled: bool = Field(default=False, description="Enable Headscale integration")
     setupMode: HeadscaleSetupMode = Field(
-        default=HeadscaleSetupMode.DOMAIN,
+        default=HeadscaleSetupMode.IP,
         description="Setup mode: domain-based or IP-based",
     )
     domain: str = Field(default="", description="Domain name for Headscale server")
