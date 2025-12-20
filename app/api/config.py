@@ -1385,6 +1385,35 @@ async def launch_services() -> JSONResponse:
                 )
                 if success:
                     logger.info(f"Stack launched successfully: {message}")
+                    # Extract and save Tailscale IP to .env file
+                    if "|TAILSCALE_IP=" in message:
+                        tailscale_ip = message.split("|TAILSCALE_IP=")[1]
+                        if tailscale_ip and tailscale_ip != "127.0.0.1":
+                            try:
+                                env_file_path = os.path.join(wizard_config_dir, ".env")
+                                # Read existing .env
+                                env_lines = []
+                                if os.path.exists(env_file_path):
+                                    with open(env_file_path) as f:
+                                        env_lines = f.readlines()
+                                
+                                # Update or add TAILSCALE_IP
+                                updated = False
+                                for i, line in enumerate(env_lines):
+                                    if line.startswith("TAILSCALE_IP="):
+                                        env_lines[i] = f"TAILSCALE_IP={tailscale_ip}\n"
+                                        updated = True
+                                        break
+                                
+                                if not updated:
+                                    env_lines.append(f"\n# Detected Tailscale VPN IP\nTAILSCALE_IP={tailscale_ip}\n")
+                                
+                                # Write back
+                                with open(env_file_path, "w") as f:
+                                    f.writelines(env_lines)
+                                logger.info(f"Saved detected Tailscale IP to .env: {tailscale_ip}")
+                            except Exception as e:
+                                logger.error(f"Failed to save Tailscale IP to .env: {e}")
                 else:
                     logger.error(f"Stack launch failed: {message}")
             except Exception as e:
@@ -1397,6 +1426,7 @@ async def launch_services() -> JSONResponse:
         headscale_base_domain = "headscale.local"
         headscale_enabled = False
         server_vpn_hostname = ""
+        detected_tailscale_ip = ""
         try:
             env_file_path = os.path.join(wizard_config_dir, ".env")
             with open(env_file_path) as f:
@@ -1409,26 +1439,16 @@ async def launch_services() -> JSONResponse:
                         )
                     elif line.startswith("HEADSCALE_SERVER_VPN_HOSTNAME="):
                         server_vpn_hostname = line.strip().split("=", 1)[1]
+                    elif line.startswith("TAILSCALE_IP="):
+                        detected_tailscale_ip = line.strip().split("=", 1)[1]
         except Exception:
             pass
 
         def service_url(port):
-            """Generate service URL for VPN access via host's MagicDNS hostname"""
+            """Generate service URL for VPN access using detected Tailscale IP or MagicDNS hostname"""
             if headscale_enabled:
-                # Use configured server VPN hostname, or fallback to server IP
-                hostname = server_vpn_hostname
-                
-                # If no VPN hostname configured, try to use server IP from env
-                if not hostname:
-                    try:
-                        for line_check in open(env_file_path):
-                            if line_check.startswith("HEADSCALE_SERVER_IP="):
-                                server_ip = line_check.strip().split("=", 1)[1]
-                                if server_ip:
-                                    hostname = server_ip
-                                    break
-                    except Exception:
-                        pass
+                # Priority: 1) MagicDNS hostname (if configured), 2) Detected Tailscale IP, 3) localhost
+                hostname = server_vpn_hostname or detected_tailscale_ip
                 
                 if hostname:
                     return f"http://{hostname}:{port}"
@@ -1454,6 +1474,7 @@ async def launch_services() -> JSONResponse:
                     "enabled": headscale_enabled,
                     "baseDomain": headscale_base_domain,
                     "serverHostname": server_vpn_hostname,
+                    "detectedTailscaleIp": detected_tailscale_ip,
                     "instructions": (
                         [
                             "1. Install Tailscale client on your device",

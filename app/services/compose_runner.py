@@ -366,7 +366,8 @@ class ComposeRunner:
         exit_code, stdout, stderr = self._run_compose_command(args)
 
         if exit_code == 0:
-            return True, "Stack stopped successfully"
+            # Return success message with detected Tailscale IP for caller to save
+            return True, f"Stack started successfully|TAILSCALE_IP={env_vars.get('TAILSCALE_IP', '')}"
         else:
             return False, f"Failed to stop stack: {stderr}"
 

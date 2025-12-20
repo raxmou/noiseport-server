@@ -884,9 +884,41 @@ export default function HeadscaleStep({
             </div>
           </li>
           <li>
-            <strong>Install Tailscale client on user devices</strong> and
-            connect them using your Headscale server URL and a pre-auth key
-            generated for each device
+            <strong>Connect client devices to the VPN</strong> - Each user device
+            (laptop, phone, etc.) needs to join the VPN to access your music
+            services:
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-neutral-400">
+                On each client device, install Tailscale:
+              </p>
+              <Code block>
+                # Download from https://tailscale.com/download
+                # Available for Windows, macOS, Linux, iOS, Android
+              </Code>
+              <p className="text-xs text-neutral-400 mt-2">
+                Generate a pre-auth key for the device (run on server):
+              </p>
+              <Code block>
+                docker exec headscale headscale preauthkeys create --user main
+                --reusable --expiration 90d
+              </Code>
+              <p className="text-xs text-neutral-400 mt-2">
+                On the client device, connect to your Headscale server:
+              </p>
+              <Code block>
+                tailscale up --login-server={config.headscale.serverUrl}{" "}
+                --authkey=YOUR_CLIENT_PREAUTH_KEY
+              </Code>
+              <Alert variant="success" className="mt-2">
+                <p className="text-xs">
+                  <strong>✓ Once connected:</strong> Client devices can access
+                  your music services at the server's VPN IP (automatically
+                  detected) or MagicDNS hostname. Services are{" "}
+                  <strong>NOT accessible</strong> from the public internet -
+                  VPN connection required.
+                </p>
+              </Alert>
+            </div>
           </li>
         </ol>
       </Paper>
