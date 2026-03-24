@@ -129,13 +129,16 @@ def create_upload_metadata(
 
 
 def run_beets_import(staging_dir: Path, task_id: str) -> tuple[bool, str, str]:
-    """Run beets import on the staging directory."""
+    """Run beets import via docker exec in the slskd container."""
     try:
         logger.info(f"[Task {task_id}] Running beets import on: {staging_dir}")
 
-        # Run beets import with quiet mode
+        # Run beets import via slskd container which has beets installed
         cmd = [
-            "beet",
+            "docker",
+            "exec",
+            "slskd",
+            "/opt/beets/bin/beet",
             "-c",
             BEETS_CONFIG_PATH,
             "import",
@@ -171,19 +174,18 @@ def run_beets_import(staging_dir: Path, task_id: str) -> tuple[bool, str, str]:
 
 
 def run_post_import_tagging(album_dir: Path, task_id: str) -> tuple[bool, str]:
-    """Run post-import tagging script on the album directory."""
+    """Run post-import tagging script via docker exec in the slskd container."""
     try:
         logger.info(f"[Task {task_id}] Running post-import tagging on: {album_dir}")
 
-        # Check if script exists
-        if not Path(TAGGING_SCRIPT_PATH).exists():
-            logger.warning(
-                f"[Task {task_id}] Tagging script not found: {TAGGING_SCRIPT_PATH}"
-            )
-            return True, "Tagging script not found (skipped)"
-
-        # Run tagging script
-        cmd = [TAGGING_SCRIPT_PATH, str(album_dir)]
+        # Run tagging script via slskd container
+        cmd = [
+            "docker",
+            "exec",
+            "slskd",
+            TAGGING_SCRIPT_PATH,
+            str(album_dir),
+        ]
 
         result = subprocess.run(
             cmd,

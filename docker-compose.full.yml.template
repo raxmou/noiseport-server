@@ -44,6 +44,7 @@ services:
       - {{HOST_MUSIC_PATH}}/complete:/music/complete
       - ./.env:/app/.env:ro # Mount wizard-generated .env file (read-only)
       - ./data:/app/data # Mount data directory for SQLite database
+      - /var/run/docker.sock:/var/run/docker.sock # Docker socket for beets import via slskd
     depends_on:
       - slskd
     restart: unless-stopped
