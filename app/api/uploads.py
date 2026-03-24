@@ -212,7 +212,7 @@ def run_post_import_tagging(album_dir: Path, task_id: str) -> tuple[bool, str]:
 def find_imported_album(artist: str, album: str, task_id: str) -> Path | None:
     """Find the imported album in the complete directory."""
     try:
-        complete_path = Path(settings.host_music_path) / "complete"
+        complete_path = Path(settings.download_path).parent / "complete"
         
         # Sanitize artist/album for searching
         artist_sanitized = sanitize_path_component(artist)
@@ -329,7 +329,7 @@ async def upload_album(
     artist_sanitized = sanitize_path_component(artist)
     album_sanitized = sanitize_path_component(album)
     staging_dir_name = f"{artist_sanitized} - {album_sanitized}"
-    staging_dir = Path(settings.host_music_path) / "downloads" / staging_dir_name
+    staging_dir = Path(settings.download_path) / staging_dir_name
 
     try:
         staging_dir.mkdir(parents=True, exist_ok=True)
